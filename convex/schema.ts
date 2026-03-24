@@ -46,6 +46,53 @@ export default defineSchema({
     ),
   }).index("by_areaId", ["areaId"]),
 
+  areaFeatures: defineTable(
+    v.union(
+      v.object({
+        areaId: v.id("areas"),
+        creatorId: v.id("users"),
+        name: v.string(),
+        description: v.optional(v.string()),
+        category: v.union(
+          v.literal("tower"),
+          v.literal("parking"),
+          v.literal("meeting"),
+          v.literal("custom")
+        ),
+        color: v.string(),
+        imageFileIds: v.optional(v.array(v.id("_storage"))),
+        geometryType: v.literal("point"),
+        point: v.object({
+          latitude: v.number(),
+          longitude: v.number(),
+        }),
+      }),
+      v.object({
+        areaId: v.id("areas"),
+        creatorId: v.id("users"),
+        name: v.string(),
+        description: v.optional(v.string()),
+        category: v.union(
+          v.literal("tower"),
+          v.literal("parking"),
+          v.literal("meeting"),
+          v.literal("custom")
+        ),
+        color: v.string(),
+        imageFileIds: v.optional(v.array(v.id("_storage"))),
+        geometryType: v.literal("polygon"),
+        polygon: v.array(
+          v.object({
+            latitude: v.number(),
+            longitude: v.number(),
+          })
+        ),
+      })
+    )
+  )
+    .index("by_areaId", ["areaId"])
+    .index("by_areaId_and_geometryType", ["areaId", "geometryType"]),
+
   events: defineTable({
     areaId: v.id("areas"),
     title: v.string(),

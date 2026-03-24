@@ -181,7 +181,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
   const isDragging = draggingVertex !== null;
 
-  // Camera: if we have initial points, fit to their bounds; otherwise default to Sweden
+  // Camera: fit polygon bounds when available, otherwise center on the first draft point.
   const initialCamera = useMemo(() => {
     if (initialPoints && initialPoints.length >= 2) {
       const lngs = initialPoints.map((p) => p[0]);
@@ -195,6 +195,12 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
           paddingLeft: 40,
           paddingRight: 40,
         },
+      };
+    }
+    if (initialPoints && initialPoints.length === 1) {
+      return {
+        zoomLevel: 15,
+        centerCoordinate: initialPoints[0],
       };
     }
     return {

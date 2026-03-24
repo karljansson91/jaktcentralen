@@ -1,6 +1,13 @@
 import { IconButton, Text } from '@/components/ui';
+import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import {
+  AreaFeatureDraft,
+  AreaFeatureListItem,
+  getDefaultColorForCategory,
+} from '@/lib/area-features';
+import { saveAreaFeatureDraft } from '@/lib/area-feature-draft-store';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -20,7 +27,9 @@ export default function ViewAreaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
+  const blockLongPressUntilRef = useRef(0);
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
+  const areaFeatures = useQuery(api.areaFeatures.listByArea, { areaId: id as Id<'areas'> });
 
   const polygonGeoJSON = useMemo(() => {
     if (!area) return null;
@@ -69,7 +78,62 @@ export default function ViewAreaScreen() {
     }
   }, []);
 
-  if (area === undefined) {
+  const openMarkerSheet = useCallback(
+    (mode: 'create' | 'actions', draft: AreaFeatureDraft) => {
+      const draftId = saveAreaFeatureDraft(draft);
+      router.push(`/area/${id}/marker-sheet?mode=${mode}&draftId=${draftId}`);
+    },
+    [id, router]
+  );
+
+  const handleMapLongPress = useCallback(
+    (event: GeoJSON.Feature) => {
+      if (Date.now() < blockLongPressUntilRef.current) {
+        return;
+      }
+
+      const coordinates = (event.geometry as GeoJSON.Point).coordinates as [number, number];
+      openMarkerSheet('create', {
+        mode: 'create',
+        areaId: id as Id<'areas'>,
+        category: 'tower',
+        geometryType: 'point',
+        name: '',
+        description: '',
+        color: getDefaultColorForCategory('tower'),
+        point: {
+          latitude: coordinates[1],
+          longitude: coordinates[0],
+        },
+        images: [],
+      });
+    },
+    [id, openMarkerSheet]
+  );
+
+  const handlePressFeature = useCallback(
+    (feature: AreaFeatureListItem) => {
+      blockLongPressUntilRef.current = Date.now() + 500;
+      openMarkerSheet('actions', {
+        mode: feature.source === 'feature' ? 'edit' : 'legacy',
+        areaId: id as Id<'areas'>,
+        featureId: feature.source === 'feature' ? (feature.id as Id<'areaFeatures'>) : undefined,
+        legacyPointId:
+          feature.source === 'legacy' ? (feature.id as Id<'areaPoints'>) : undefined,
+        category: feature.category,
+        geometryType: feature.geometryType,
+        name: feature.name,
+        description: feature.description ?? '',
+        color: feature.color,
+        point: feature.point,
+        polygon: feature.polygon,
+        images: feature.images,
+      });
+    },
+    [id, openMarkerSheet]
+  );
+
+  if (area === undefined || areaFeatures === undefined) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="small" color="#2c4b31" />
@@ -94,6 +158,7 @@ export default function ViewAreaScreen() {
         zoomEnabled
         rotateEnabled={false}
         pitchEnabled={false}
+        onLongPress={handleMapLongPress}
       >
         {cameraBounds && (
           <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />
@@ -111,6 +176,16 @@ export default function ViewAreaScreen() {
               style={{ lineColor: 'rgb(34, 197, 94)', lineWidth: 2 }}
             />
           </ShapeSource>
+        )}
+
+        {areaFeatures && (
+          <AreaFeatureLayers
+            features={areaFeatures}
+            idPrefix="area-view-features"
+            interactive
+            onPressPointFeature={handlePressFeature}
+            onPressPolygonFeature={handlePressFeature}
+          />
         )}
       </MapView>
 

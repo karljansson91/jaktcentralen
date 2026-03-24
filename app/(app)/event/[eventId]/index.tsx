@@ -1,4 +1,5 @@
 import { IconButton, Text } from '@/components/ui';
+import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { getCurrentUserCoordinate } from '@/lib/location';
@@ -19,14 +20,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ElementRef, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
 
-const POINT_TYPE_COLORS: Record<string, string> = {
-  pass: '#ef4444',
-  tower: '#8b5cf6',
-  meeting: '#3b82f6',
-  parking: '#6b7280',
-  other: '#f59e0b',
-};
-
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
@@ -43,8 +36,8 @@ export default function EventMapScreen() {
     api.eventMembers.listMembers,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
-  const areaPoints = useQuery(
-    api.areaPoints.listForEvent,
+  const areaFeatures = useQuery(
+    api.areaFeatures.listForEvent,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
@@ -141,26 +134,6 @@ export default function EventMapScreen() {
     };
   }, [members]);
 
-  const areaPointsGeoJSON = useMemo(() => {
-    if (!areaPoints || areaPoints.length === 0) return null;
-    const features = areaPoints.map((p) => ({
-      type: 'Feature' as const,
-      properties: {
-        name: p.name,
-        type: p.type,
-        color: POINT_TYPE_COLORS[p.type] ?? '#f59e0b',
-      },
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [p.longitude, p.latitude],
-      },
-    }));
-    return {
-      type: 'FeatureCollection' as const,
-      features,
-    };
-  }, [areaPoints]);
-
   const handleGoToMyPosition = useCallback(async () => {
     try {
       const coordinate = await getCurrentUserCoordinate();
@@ -234,32 +207,7 @@ export default function EventMapScreen() {
           </ShapeSource>
         )}
 
-        {/* Area points */}
-        {areaPointsGeoJSON && (
-          <ShapeSource id="area-points" shape={areaPointsGeoJSON}>
-            <CircleLayer
-              id="area-points-circle"
-              style={{
-                circleRadius: 6,
-                circleColor: ['get', 'color'],
-                circleStrokeColor: '#ffffff',
-                circleStrokeWidth: 2,
-              }}
-            />
-            <SymbolLayer
-              id="area-points-label"
-              style={{
-                textField: ['get', 'name'],
-                textSize: 11,
-                textOffset: [0, 1.5],
-                textAnchor: 'top',
-                textColor: '#374151',
-                textHaloColor: '#ffffff',
-                textHaloWidth: 1,
-              }}
-            />
-          </ShapeSource>
-        )}
+        {areaFeatures && <AreaFeatureLayers features={areaFeatures} idPrefix="event-area-features" />}
 
         {/* Member positions */}
         {memberPositionsGeoJSON &&

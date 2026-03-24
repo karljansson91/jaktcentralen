@@ -63,6 +63,13 @@
           "locationWhenInUsePermission": "Visa din position på kartan."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Låt appen välja bilder till markörer.",
+          "cameraPermission": "Låt appen ta bilder till markörer."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

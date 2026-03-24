@@ -23,6 +23,31 @@ export default function AreaLayout() {
         }}
       />
       <Stack.Screen
+        name="marker-sheet"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
+        name="marker"
+        options={{
+          presentation: 'modal',
+          headerShown: true,
+          title: 'Markör',
+        }}
+      />
+      <Stack.Screen
+        name="marker-geometry"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="event/create"
         options={{
           presentation: 'modal',

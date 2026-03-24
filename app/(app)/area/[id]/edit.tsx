@@ -112,6 +112,13 @@ export default function EditAreaScreen() {
         <Text>Rita om polygon</Text>
       </Button>
 
+      <Button
+        variant="outline"
+        className="mb-4"
+        onPress={() => router.replace(`/area/${id}`)}>
+        <Text>Hantera markörer på kartan</Text>
+      </Button>
+
       <Button onPress={handleSubmit} className="mb-3">
         <Text>Spara ändringar</Text>
       </Button>
