@@ -62,7 +62,8 @@
         {
           "locationWhenInUsePermission": "Visa din position på kartan."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

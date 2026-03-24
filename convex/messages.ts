@@ -4,14 +4,14 @@ import { paginationOptsValidator } from "convex/server";
 import { getCurrentUser } from "./helpers";
 
 export const send = mutation({
-  args: { huntId: v.id("hunts"), body: v.string() },
+  args: { eventId: v.id("events"), body: v.string() },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -20,7 +20,7 @@ export const send = mutation({
     }
 
     return await ctx.db.insert("messages", {
-      huntId: args.huntId,
+      eventId: args.eventId,
       userId: user._id,
       body: args.body,
     });
@@ -28,14 +28,14 @@ export const send = mutation({
 });
 
 export const list = query({
-  args: { huntId: v.id("hunts"), paginationOpts: paginationOptsValidator },
+  args: { eventId: v.id("events"), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -45,7 +45,7 @@ export const list = query({
 
     const results = await ctx.db
       .query("messages")
-      .withIndex("by_huntId", (q) => q.eq("huntId", args.huntId))
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .order("desc")
       .paginate(args.paginationOpts);
 

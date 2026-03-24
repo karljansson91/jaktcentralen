@@ -1,8 +1,4 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Text } from '@/components/ui/text';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Text } from '@/components/ui';
 import { useSignIn } from '@clerk/expo/legacy';
 import * as React from 'react';
 import { TextInput, View } from 'react-native';

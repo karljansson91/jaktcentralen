@@ -11,26 +11,24 @@ const pointTypeValidator = v.union(
   v.literal("other")
 );
 
-async function verifyAcceptedMember(
+async function verifyAreaCreator(
   ctx: QueryCtx | MutationCtx,
-  huntId: Id<"hunts">,
+  areaId: Id<"areas">,
   userId: Id<"users">
 ) {
-  const membership = await ctx.db
-    .query("huntMembers")
-    .withIndex("by_huntId_and_userId", (q) =>
-      q.eq("huntId", huntId).eq("userId", userId)
-    )
-    .unique();
-  if (!membership || membership.status !== "accepted") {
-    throw new Error("Not an accepted member");
+  const area = await ctx.db.get(areaId);
+  if (!area) {
+    throw new Error("Area not found");
   }
-  return membership;
+  if (area.creatorId !== userId) {
+    throw new Error("Not authorized");
+  }
+  return area;
 }
 
 export const add = mutation({
   args: {
-    huntId: v.id("hunts"),
+    areaId: v.id("areas"),
     name: v.string(),
     description: v.optional(v.string()),
     latitude: v.number(),
@@ -39,10 +37,10 @@ export const add = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    await verifyAcceptedMember(ctx, args.huntId, user._id);
+    await verifyAreaCreator(ctx, args.areaId, user._id);
 
-    return await ctx.db.insert("huntPoints", {
-      huntId: args.huntId,
+    return await ctx.db.insert("areaPoints", {
+      areaId: args.areaId,
       name: args.name,
       description: args.description,
       latitude: args.latitude,
@@ -54,7 +52,7 @@ export const add = mutation({
 
 export const update = mutation({
   args: {
-    pointId: v.id("huntPoints"),
+    pointId: v.id("areaPoints"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     latitude: v.optional(v.number()),
@@ -67,7 +65,7 @@ export const update = mutation({
     if (!point) {
       throw new Error("Point not found");
     }
-    await verifyAcceptedMember(ctx, point.huntId, user._id);
+    await verifyAreaCreator(ctx, point.areaId, user._id);
 
     const { pointId, ...updates } = args;
     await ctx.db.patch(pointId, updates);
@@ -75,27 +73,55 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { pointId: v.id("huntPoints") },
+  args: { pointId: v.id("areaPoints") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const point = await ctx.db.get(args.pointId);
     if (!point) {
       throw new Error("Point not found");
     }
-    await verifyAcceptedMember(ctx, point.huntId, user._id);
+    await verifyAreaCreator(ctx, point.areaId, user._id);
     await ctx.db.delete(args.pointId);
   },
 });
 
-export const listByHunt = query({
-  args: { huntId: v.id("hunts") },
+export const listByArea = query({
+  args: { areaId: v.id("areas") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    await verifyAcceptedMember(ctx, args.huntId, user._id);
+    await verifyAreaCreator(ctx, args.areaId, user._id);
 
     return await ctx.db
-      .query("huntPoints")
-      .withIndex("by_huntId", (q) => q.eq("huntId", args.huntId))
+      .query("areaPoints")
+      .withIndex("by_areaId", (q) => q.eq("areaId", args.areaId))
+      .take(200);
+  },
+});
+
+export const listForEvent = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    const membership = await ctx.db
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
+      )
+      .unique();
+
+    if (!membership || membership.status === "declined") {
+      throw new Error("Not a member of this event");
+    }
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    return await ctx.db
+      .query("areaPoints")
+      .withIndex("by_areaId", (q) => q.eq("areaId", event.areaId))
       .take(200);
   },
 });

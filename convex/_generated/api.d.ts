@@ -8,11 +8,12 @@
  * @module
  */
 
+import type * as areaPoints from "../areaPoints.js";
+import type * as areas from "../areas.js";
+import type * as eventMembers from "../eventMembers.js";
+import type * as events from "../events.js";
 import type * as friends from "../friends.js";
 import type * as helpers from "../helpers.js";
-import type * as huntMembers from "../huntMembers.js";
-import type * as huntPoints from "../huntPoints.js";
-import type * as hunts from "../hunts.js";
 import type * as messages from "../messages.js";
 import type * as positionTrails from "../positionTrails.js";
 import type * as users from "../users.js";
@@ -24,11 +25,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  areaPoints: typeof areaPoints;
+  areas: typeof areas;
+  eventMembers: typeof eventMembers;
+  events: typeof events;
   friends: typeof friends;
   helpers: typeof helpers;
-  huntMembers: typeof huntMembers;
-  huntPoints: typeof huntPoints;
-  hunts: typeof hunts;
   messages: typeof messages;
   positionTrails: typeof positionTrails;
   users: typeof users;

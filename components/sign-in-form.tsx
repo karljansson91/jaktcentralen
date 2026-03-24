@@ -1,10 +1,5 @@
 import { SocialConnections } from '@/components/social-connections';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Text } from '@/components/ui/text';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Separator, Text } from '@/components/ui';
 import { useSignIn } from '@clerk/expo/legacy';
 import { Link } from 'expo-router';
 import * as React from 'react';

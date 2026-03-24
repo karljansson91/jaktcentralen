@@ -1,6 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import * as Location from 'expo-location';
 import { Redirect, Stack } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -21,6 +22,14 @@ export default function AppLayout() {
     if (!isSignedIn) {
       hasSynced.current = false;
     }
+  }, [getOrCreateUser, isSignedIn]);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      void Location.requestForegroundPermissionsAsync().catch((error) => {
+        console.error('Failed to request location permission:', error);
+      });
+    }
   }, [isSignedIn]);
 
   if (!isLoaded) {
@@ -38,14 +47,10 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen
-        name="create-hunt"
-        options={{
-          presentation: 'modal',
-          headerShown: true,
-          title: 'Create Hunt',
-        }}
-      />
+      <Stack.Screen name="area/create" options={{ headerShown: false }} />
+      <Stack.Screen name="join" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="area/[id]" />
+      <Stack.Screen name="event/[eventId]" options={{ headerShown: false }} />
     </Stack>
   );
 }

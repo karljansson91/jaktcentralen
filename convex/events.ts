@@ -4,9 +4,9 @@ import { getCurrentUser } from "./helpers";
 
 export const create = mutation({
   args: {
+    areaId: v.id("areas"),
     title: v.string(),
     description: v.optional(v.string()),
-    area: v.array(v.object({ latitude: v.number(), longitude: v.number() })),
     joinCode: v.optional(v.string()),
     startDate: v.number(),
     endDate: v.optional(v.number()),
@@ -14,65 +14,71 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
+    // Verify caller owns the area
+    const area = await ctx.db.get(args.areaId);
+    if (!area) {
+      throw new Error("Area not found");
+    }
+    if (area.creatorId !== user._id) {
+      throw new Error("Not authorized to create events in this area");
+    }
+
     if (args.joinCode !== undefined) {
       if (args.joinCode.length > 50 || args.joinCode !== args.joinCode.toLowerCase()) {
         throw new Error("Join code must be lowercase and max 50 characters");
       }
     }
 
-    const huntId = await ctx.db.insert("hunts", {
+    const eventId = await ctx.db.insert("events", {
+      areaId: args.areaId,
       title: args.title,
       description: args.description,
       creatorId: user._id,
-      area: args.area,
       joinCode: args.joinCode,
       startDate: args.startDate,
       endDate: args.endDate,
     });
 
-    await ctx.db.insert("huntMembers", {
-      huntId,
+    await ctx.db.insert("eventMembers", {
+      eventId,
       userId: user._id,
       role: "admin",
       status: "accepted",
     });
 
-    return huntId;
+    return eventId;
   },
 });
 
 export const get = query({
-  args: { huntId: v.id("hunts") },
+  args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const hunt = await ctx.db.get(args.huntId);
-    if (!hunt) {
-      throw new Error("Hunt not found");
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
     }
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
     if (!membership || membership.status === "declined") {
-      throw new Error("Not a member of this hunt");
+      throw new Error("Not a member of this event");
     }
 
-    return hunt;
+    return event;
   },
 });
 
 export const update = mutation({
   args: {
-    huntId: v.id("hunts"),
+    eventId: v.id("events"),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
-    area: v.optional(
-      v.array(v.object({ latitude: v.number(), longitude: v.number() }))
-    ),
     joinCode: v.optional(v.string()),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
@@ -81,9 +87,9 @@ export const update = mutation({
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -97,20 +103,20 @@ export const update = mutation({
       }
     }
 
-    const { huntId, ...updates } = args;
-    await ctx.db.patch(huntId, updates);
+    const { eventId, ...updates } = args;
+    await ctx.db.patch(eventId, updates);
   },
 });
 
 export const remove = mutation({
-  args: { huntId: v.id("hunts") },
+  args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -118,26 +124,17 @@ export const remove = mutation({
       throw new Error("Admin access required");
     }
 
-    // Cascade delete all related data
     const members = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_status", (q) => q.eq("huntId", args.huntId))
+      .query("eventMembers")
+      .withIndex("by_eventId_and_status", (q) => q.eq("eventId", args.eventId))
       .take(500);
     for (const m of members) {
       await ctx.db.delete(m._id);
     }
 
-    const points = await ctx.db
-      .query("huntPoints")
-      .withIndex("by_huntId", (q) => q.eq("huntId", args.huntId))
-      .take(500);
-    for (const p of points) {
-      await ctx.db.delete(p._id);
-    }
-
     const trails = await ctx.db
       .query("positionTrails")
-      .withIndex("by_huntId", (q) => q.eq("huntId", args.huntId))
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .take(5000);
     for (const t of trails) {
       await ctx.db.delete(t._id);
@@ -145,36 +142,57 @@ export const remove = mutation({
 
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_huntId", (q) => q.eq("huntId", args.huntId))
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .take(5000);
     for (const m of messages) {
       await ctx.db.delete(m._id);
     }
 
-    await ctx.db.delete(args.huntId);
+    await ctx.db.delete(args.eventId);
   },
 });
 
-export const listMyHunts = query({
+export const listMyEvents = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
 
     const memberships = await ctx.db
-      .query("huntMembers")
+      .query("eventMembers")
       .withIndex("by_userId_and_status", (q) =>
         q.eq("userId", user._id).eq("status", "accepted")
       )
       .take(50);
 
-    const hunts = await Promise.all(
+    const events = await Promise.all(
       memberships.map(async (m) => {
-        const hunt = await ctx.db.get(m.huntId);
-        return hunt ? { ...hunt, role: m.role } : null;
+        const event = await ctx.db.get(m.eventId);
+        return event ? { ...event, role: m.role } : null;
       })
     );
 
-    return hunts.filter((h) => h !== null);
+    return events.filter((e) => e !== null);
+  },
+});
+
+export const listByArea = query({
+  args: { areaId: v.id("areas") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    // Verify caller owns the area
+    const area = await ctx.db.get(args.areaId);
+    if (!area) {
+      throw new Error("Area not found");
+    }
+    if (area.creatorId !== user._id) {
+      throw new Error("Not authorized");
+    }
+
+    return await ctx.db
+      .query("events")
+      .withIndex("by_areaId", (q) => q.eq("areaId", args.areaId))
+      .take(50);
   },
 });
 
@@ -183,33 +201,33 @@ export const joinByCode = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
-    const hunt = await ctx.db
-      .query("hunts")
+    const event = await ctx.db
+      .query("events")
       .withIndex("by_joinCode", (q) => q.eq("joinCode", args.joinCode))
       .unique();
 
-    if (!hunt) {
+    if (!event) {
       throw new Error("Invalid join code");
     }
 
     const existing = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", hunt._id).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", event._id).eq("userId", user._id)
       )
       .unique();
 
     if (existing) {
-      throw new Error("Already a member of this hunt");
+      throw new Error("Already a member of this event");
     }
 
-    await ctx.db.insert("huntMembers", {
-      huntId: hunt._id,
+    await ctx.db.insert("eventMembers", {
+      eventId: event._id,
       userId: user._id,
       role: "member",
       status: "accepted",
     });
 
-    return hunt._id;
+    return event._id;
   },
 });

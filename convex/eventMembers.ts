@@ -3,15 +3,15 @@ import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./helpers";
 
 export const invite = mutation({
-  args: { huntId: v.id("hunts"), userId: v.id("users") },
+  args: { eventId: v.id("events"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     // Verify current user is accepted member
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -42,9 +42,9 @@ export const invite = mutation({
 
     // Check not already member
     const existing = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", args.userId)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", args.userId)
       )
       .unique();
 
@@ -52,8 +52,8 @@ export const invite = mutation({
       throw new Error("User is already a member or has been invited");
     }
 
-    return await ctx.db.insert("huntMembers", {
-      huntId: args.huntId,
+    return await ctx.db.insert("eventMembers", {
+      eventId: args.eventId,
       userId: args.userId,
       role: "member",
       status: "invited",
@@ -62,7 +62,7 @@ export const invite = mutation({
 });
 
 export const acceptInvite = mutation({
-  args: { memberId: v.id("huntMembers") },
+  args: { memberId: v.id("eventMembers") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const member = await ctx.db.get(args.memberId);
@@ -80,7 +80,7 @@ export const acceptInvite = mutation({
 });
 
 export const declineInvite = mutation({
-  args: { memberId: v.id("huntMembers") },
+  args: { memberId: v.id("eventMembers") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const member = await ctx.db.get(args.memberId);
@@ -98,15 +98,15 @@ export const declineInvite = mutation({
 });
 
 export const removeMember = mutation({
-  args: { huntId: v.id("hunts"), userId: v.id("users") },
+  args: { eventId: v.id("events"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     // Verify current user is admin
     const adminMembership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -115,18 +115,18 @@ export const removeMember = mutation({
     }
 
     // Can't remove the creator
-    const hunt = await ctx.db.get(args.huntId);
-    if (!hunt) {
-      throw new Error("Hunt not found");
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
     }
-    if (args.userId === hunt.creatorId) {
-      throw new Error("Cannot remove the hunt creator");
+    if (args.userId === event.creatorId) {
+      throw new Error("Cannot remove the event creator");
     }
 
     const targetMembership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", args.userId)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", args.userId)
       )
       .unique();
 
@@ -139,22 +139,22 @@ export const removeMember = mutation({
 });
 
 export const leave = mutation({
-  args: { huntId: v.id("hunts") },
+  args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
-    const hunt = await ctx.db.get(args.huntId);
-    if (!hunt) {
-      throw new Error("Hunt not found");
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
     }
-    if (hunt.creatorId === user._id) {
-      throw new Error("Creator cannot leave. Delete the hunt instead.");
+    if (event.creatorId === user._id) {
+      throw new Error("Creator cannot leave. Delete the event instead.");
     }
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -167,14 +167,14 @@ export const leave = mutation({
 });
 
 export const promoteMember = mutation({
-  args: { huntId: v.id("hunts"), userId: v.id("users") },
+  args: { eventId: v.id("events"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     const adminMembership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -183,9 +183,9 @@ export const promoteMember = mutation({
     }
 
     const targetMembership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", args.userId)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", args.userId)
       )
       .unique();
 
@@ -202,26 +202,26 @@ export const promoteMember = mutation({
 });
 
 export const listMembers = query({
-  args: { huntId: v.id("hunts") },
+  args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     // Verify caller is a member
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
     if (!membership || membership.status === "declined") {
-      throw new Error("Not a member of this hunt");
+      throw new Error("Not a member of this event");
     }
 
     const members = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_status", (q) =>
-        q.eq("huntId", args.huntId).eq("status", "accepted")
+      .query("eventMembers")
+      .withIndex("by_eventId_and_status", (q) =>
+        q.eq("eventId", args.eventId).eq("status", "accepted")
       )
       .take(100);
 
@@ -240,7 +240,7 @@ export const listMyInvitations = query({
     const user = await getCurrentUser(ctx);
 
     const invitations = await ctx.db
-      .query("huntMembers")
+      .query("eventMembers")
       .withIndex("by_userId_and_status", (q) =>
         q.eq("userId", user._id).eq("status", "invited")
       )
@@ -249,7 +249,7 @@ export const listMyInvitations = query({
     return await Promise.all(
       invitations.map(async (inv) => ({
         ...inv,
-        hunt: await ctx.db.get(inv.huntId),
+        event: await ctx.db.get(inv.eventId),
       }))
     );
   },
@@ -257,7 +257,7 @@ export const listMyInvitations = query({
 
 export const updatePosition = mutation({
   args: {
-    huntId: v.id("hunts"),
+    eventId: v.id("events"),
     latitude: v.number(),
     longitude: v.number(),
     heading: v.optional(v.number()),
@@ -266,9 +266,9 @@ export const updatePosition = mutation({
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 

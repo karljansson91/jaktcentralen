@@ -4,7 +4,7 @@ import { getCurrentUser } from "./helpers";
 
 export const record = mutation({
   args: {
-    huntId: v.id("hunts"),
+    eventId: v.id("events"),
     latitude: v.number(),
     longitude: v.number(),
     heading: v.optional(v.number()),
@@ -14,9 +14,9 @@ export const record = mutation({
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -25,7 +25,7 @@ export const record = mutation({
     }
 
     await ctx.db.insert("positionTrails", {
-      huntId: args.huntId,
+      eventId: args.eventId,
       userId: user._id,
       latitude: args.latitude,
       longitude: args.longitude,
@@ -33,7 +33,7 @@ export const record = mutation({
       timestamp: args.timestamp,
     });
 
-    // Update denormalized latest position on huntMembers
+    // Update denormalized latest position on eventMembers
     await ctx.db.patch(membership._id, {
       lastLatitude: args.latitude,
       lastLongitude: args.longitude,
@@ -43,15 +43,15 @@ export const record = mutation({
   },
 });
 
-export const listByHunt = query({
-  args: { huntId: v.id("hunts") },
+export const listByEvent = query({
+  args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -61,20 +61,20 @@ export const listByHunt = query({
 
     return await ctx.db
       .query("positionTrails")
-      .withIndex("by_huntId", (q) => q.eq("huntId", args.huntId))
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .take(5000);
   },
 });
 
 export const listByMember = query({
-  args: { huntId: v.id("hunts"), userId: v.id("users") },
+  args: { eventId: v.id("events"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
     const membership = await ctx.db
-      .query("huntMembers")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", user._id)
+      .query("eventMembers")
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", user._id)
       )
       .unique();
 
@@ -84,8 +84,8 @@ export const listByMember = query({
 
     return await ctx.db
       .query("positionTrails")
-      .withIndex("by_huntId_and_userId", (q) =>
-        q.eq("huntId", args.huntId).eq("userId", args.userId)
+      .withIndex("by_eventId_and_userId", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", args.userId)
       )
       .take(5000);
   },

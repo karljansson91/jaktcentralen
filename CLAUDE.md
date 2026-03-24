@@ -9,6 +9,10 @@ Convex agent skills for common tasks can be installed by running `npx convex ai-
 ## Navigation
 
 - **Always use Expo Router routes for modals** — never use the React Native `<Modal>` component. Define modal screens in the route layout with `presentation: 'modal'` and navigate to them with `router.push()`. This gives proper deep linking, back button support, and native transitions for free.
+## Forms
+
+- Use `@tanstack/react-form` (`useForm` + `form.Field`) for all larger forms. Do not use manual `useState` per field.
+
 ## Styling
 
 - Always use NativeWind `className` for styling.
