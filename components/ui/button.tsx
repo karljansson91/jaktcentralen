@@ -5,7 +5,7 @@ import { Platform, Pressable } from 'react-native';
 
 const buttonVariants = cva(
   cn(
-    'group shrink-0 flex-row items-center justify-center gap-2 rounded-md shadow-none',
+    'group min-w-0 shrink-0 flex-row items-center justify-center gap-2 rounded-md shadow-none',
     Platform.select({
       web: "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
     }),
@@ -24,7 +24,7 @@ const buttonVariants = cva(
           }),
         ),
         outline: cn(
-          'border border-border bg-background shadow-sm shadow-black/5 active:bg-accent dark:border-input dark:bg-input/30 dark:active:bg-input/50',
+          'border border-border bg-card shadow-sm shadow-black/5 active:bg-accent dark:border-input dark:bg-input/30 dark:active:bg-input/50',
           Platform.select({
             web: 'hover:bg-accent dark:hover:bg-input/50',
           }),
@@ -46,6 +46,7 @@ const buttonVariants = cva(
           Platform.select({ web: 'has-[>svg]:px-2.5' }),
         ),
         lg: cn('h-11 rounded-md px-6 sm:h-10', Platform.select({ web: 'has-[>svg]:px-4' })),
+        xl: cn('h-12 rounded-2xl px-6 py-3', Platform.select({ web: 'has-[>svg]:px-5' })),
         icon: 'h-10 w-10 sm:h-9 sm:w-9',
       },
     },
@@ -58,7 +59,7 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'text-sm font-medium text-foreground',
+    'min-w-0 shrink text-center text-sm font-medium text-foreground',
     Platform.select({ web: 'pointer-events-none transition-colors' }),
   ),
   {
@@ -81,6 +82,7 @@ const buttonTextVariants = cva(
         default: '',
         sm: '',
         lg: '',
+        xl: 'text-lg font-semibold',
         icon: '',
       },
     },

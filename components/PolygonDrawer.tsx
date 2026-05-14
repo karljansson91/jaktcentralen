@@ -1,5 +1,10 @@
 import { Button, Text } from '@/components/ui';
 import {
+  DEFAULT_MAP_STYLE,
+  getSavedMapStyle,
+  subscribeToMapStyleChanges,
+} from '@/lib/map-styles';
+import {
   Camera,
   CircleLayer,
   FillLayer,
@@ -8,7 +13,7 @@ import {
   MapView,
   ShapeSource,
 } from '@rnmapbox/maps';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 export type LngLat = [number, number];
@@ -76,9 +81,28 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
   const mapRef = useRef<MapView>(null);
   const [polygonPoints, setPolygonPoints] = useState<LngLat[]>(initialPoints ?? []);
   const [draggingVertex, setDraggingVertex] = useState<number | null>(null);
+  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
 
   const draggingRef = useRef<number | null>(null);
   const suppressMapPress = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = subscribeToMapStyleChanges((style) => {
+      setMapStyleURL(style.styleURL);
+    });
+
+    void getSavedMapStyle().then((style) => {
+      if (!cancelled) {
+        setMapStyleURL(style.styleURL);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   // --- Touch handlers for vertex dragging ---
 
@@ -87,16 +111,56 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       if (!mapRef.current || polygonPoints.length === 0) return;
       const { pageX, pageY } = e.nativeEvent;
 
-      for (let i = 0; i < polygonPoints.length; i++) {
-        const screenPt = await mapRef.current.getPointInView(polygonPoints[i]);
-        const dx = pageX - screenPt[0];
-        const dy = pageY - screenPt[1];
-        if (dx * dx + dy * dy < 40 * 40) {
-          draggingRef.current = i;
-          suppressMapPress.current = true;
-          setDraggingVertex(i);
-          return;
+      try {
+        const hitRadius = 40 * 40;
+
+        for (let i = 0; i < polygonPoints.length; i++) {
+          const map = mapRef.current;
+          if (!map) return;
+
+          const screenPt = await map.getPointInView(polygonPoints[i]);
+          const dx = pageX - screenPt[0];
+          const dy = pageY - screenPt[1];
+          if (dx * dx + dy * dy < hitRadius) {
+            draggingRef.current = i;
+            suppressMapPress.current = true;
+            setDraggingVertex(i);
+            return;
+          }
         }
+
+        const segmentCount = polygonPoints.length >= 3
+          ? polygonPoints.length
+          : Math.max(polygonPoints.length - 1, 0);
+
+        for (let i = 0; i < segmentCount; i++) {
+          const map = mapRef.current;
+          if (!map) return;
+
+          const a = polygonPoints[i];
+          const b = polygonPoints[(i + 1) % polygonPoints.length];
+          const midpoint: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+          const screenPt = await map.getPointInView(midpoint);
+          const dx = pageX - screenPt[0];
+          const dy = pageY - screenPt[1];
+
+          if (dx * dx + dy * dy < hitRadius) {
+            const droppedAt = await map.getCoordinateFromView([pageX, pageY]) as LngLat;
+            const insertIndex = i + 1;
+
+            draggingRef.current = insertIndex;
+            suppressMapPress.current = true;
+            setDraggingVertex(insertIndex);
+            setPolygonPoints((prev) => {
+              const updated = [...prev];
+              updated.splice(insertIndex, 0, droppedAt);
+              return updated;
+            });
+            return;
+          }
+        }
+      } catch {
+        // Mapbox can reject if the drawer unmounts while a toolbar tap is bubbling.
       }
     },
     [polygonPoints],
@@ -105,13 +169,18 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
   const handleTouchMove = useCallback(async (e: any) => {
     if (draggingRef.current === null || !mapRef.current) return;
     const { pageX, pageY } = e.nativeEvent;
-    const coords = await mapRef.current.getCoordinateFromView([pageX, pageY]);
-    const idx = draggingRef.current;
-    setPolygonPoints((prev) => {
-      const updated = [...prev];
-      updated[idx] = coords as LngLat;
-      return updated;
-    });
+
+    try {
+      const coords = await mapRef.current.getCoordinateFromView([pageX, pageY]);
+      const idx = draggingRef.current;
+      setPolygonPoints((prev) => {
+        const updated = [...prev];
+        updated[idx] = coords as LngLat;
+        return updated;
+      });
+    } catch {
+      // The native map view can disappear mid-gesture when the drawer is dismissed.
+    }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
@@ -135,21 +204,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
     },
     [],
   );
-
-  const handleMidpointPress = useCallback((e: any) => {
-    suppressMapPress.current = true;
-    const insertAfter = e.features?.[0]?.properties?.insertAfter;
-    if (insertAfter !== undefined) {
-      setPolygonPoints((prev) => {
-        const updated = [...prev];
-        const a = prev[insertAfter];
-        const b = prev[(insertAfter + 1) % prev.length];
-        const mid: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-        updated.splice(insertAfter + 1, 0, mid);
-        return updated;
-      });
-    }
-  }, []);
 
   const handleUndo = useCallback(() => {
     setDraggingVertex(null);
@@ -220,7 +274,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       <MapView
         ref={mapRef}
         style={{ flex: 1 }}
-        styleURL="mapbox://styles/mapbox/outdoors-v12"
+        styleURL={mapStyleURL}
         onPress={handleMapPress}
         scrollEnabled={!isDragging}
         zoomEnabled={!isDragging}
@@ -254,7 +308,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             id="midpoints"
             shape={midpointsGeoJSON}
             hitbox={{ width: 30, height: 30 }}
-            onPress={handleMidpointPress}
           >
             <CircleLayer
               id="midpoint-circles"
@@ -312,7 +365,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
           onPress={handleDone}
           disabled={polygonPoints.length < 3}
         >
-          <Text>Klar</Text>
+          <Text>spara</Text>
         </Button>
       </View>
 

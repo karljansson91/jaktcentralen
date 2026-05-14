@@ -1,3 +1,4 @@
+import { APP_COLORS } from '@/lib/theme';
 import { Stack } from 'expo-router';
 
 export default function AreaLayout() {
@@ -19,7 +20,15 @@ export default function AreaLayout() {
         options={{
           presentation: 'modal',
           headerShown: true,
-          title: 'Redigera område',
+          title: 'Uppdatera info',
+        }}
+      />
+      <Stack.Screen
+        name="redraw"
+        options={{
+          presentation: 'fullScreenModal',
+          headerShown: false,
+          gestureEnabled: false,
         }}
       />
       <Stack.Screen
@@ -27,6 +36,17 @@ export default function AreaLayout() {
         options={{
           presentation: 'formSheet',
           headerShown: false,
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
+        name="actions"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
           sheetAllowedDetents: 'fitToContents',
           sheetGrabberVisible: true,
           sheetCornerRadius: 28,
