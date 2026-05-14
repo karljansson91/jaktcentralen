@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function formatDate(ts: number): string {
@@ -43,6 +43,19 @@ export default function HomeScreen() {
   const areas = useQuery(api.areas.listMyAreas, user ? {} : 'skip');
   const events = useQuery(api.events.listMyEvents, user ? {} : 'skip');
   const firstName = user?.name?.trim().split(/\s+/)[0] ?? 'där';
+  const showAddOptions = () => {
+    Alert.alert('Lägg till', 'Vill du gå med i en jakt eller skapa ett nytt område?', [
+      {
+        text: 'Gå med i en jakt',
+        onPress: () => router.push('/join'),
+      },
+      {
+        text: 'Skapa nytt område',
+        onPress: () => router.push('/area/create'),
+      },
+      { text: 'Avbryt', style: 'cancel' },
+    ]);
+  };
 
   if (user === undefined || areas === undefined || events === undefined) {
     return (
@@ -154,63 +167,19 @@ export default function HomeScreen() {
           </IconButton>
         </View>
 
-        <Card className="overflow-hidden border-border/60 bg-primary py-0">
-          <CardContent className="gap-5 px-5 py-5">
-            <View className="flex-row items-start justify-between gap-4">
-              <View className="flex-1 gap-2">
-                <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-primary-foreground/80">
-                  Din översikt
-                </Text>
-                <Text className="text-2xl font-bold leading-tight text-primary-foreground">
-                  {events.length > 0
-                    ? 'Du har aktiva jakter att följa upp.'
-                    : 'Du är redo att starta nästa jakt.'}
-                </Text>
-                <Text className="text-sm leading-6 text-primary-foreground/80">
-                  Håll koll på deltagare, marker och datum från ett ställe.
-                </Text>
-              </View>
-
-              <View className="rounded-2xl bg-primary-foreground/10 px-3 py-2">
-                <Ionicons name="map-outline" size={22} color="#f8f4ea" />
-              </View>
-            </View>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1 rounded-2xl bg-primary-foreground/10 px-4 py-4">
-                <Text className="text-2xl font-extrabold text-primary-foreground">
-                  {areas.length}
-                </Text>
-                <Text className="mt-1 text-sm text-primary-foreground/80">Områden</Text>
-              </View>
-              <View className="flex-1 rounded-2xl bg-primary-foreground/10 px-4 py-4">
-                <Text className="text-2xl font-extrabold text-primary-foreground">
-                  {events.length}
-                </Text>
-                <Text className="mt-1 text-sm text-primary-foreground/80">Jakter</Text>
-              </View>
-            </View>
-
-            <View className="gap-3">
-              <Button
-                variant="secondary"
-                className="h-12 rounded-xl bg-primary-foreground"
-                onPress={() => router.push('/area/create')}>
-                <Text className="text-primary">Skapa nytt område</Text>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12 rounded-xl border-primary-foreground/30 bg-transparent"
-                onPress={() => router.push('/join')}>
-                <Text className="text-primary-foreground">Gå med i en jakt</Text>
-              </Button>
-            </View>
-          </CardContent>
-        </Card>
-
         <View className="gap-3">
           <View className="flex-row items-center justify-between">
-            <Text className="text-xl font-semibold text-foreground">Mina jakter</Text>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-xl font-semibold text-foreground">Mina jakter</Text>
+              <IconButton
+                accessibilityLabel="Lägg till jakt eller område"
+                size="sm"
+                variant="outline"
+                onPress={showAddOptions}
+                className="border border-border/70 bg-card">
+                <Ionicons name="add" size={20} color="#425848" />
+              </IconButton>
+            </View>
             <Text className="text-sm text-muted-foreground">{events.length} st</Text>
           </View>
 
@@ -263,7 +232,17 @@ export default function HomeScreen() {
 
         <View className="gap-3">
           <View className="flex-row items-center justify-between">
-            <Text className="text-xl font-semibold text-foreground">Mina områden</Text>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-xl font-semibold text-foreground">Mina områden</Text>
+              <IconButton
+                accessibilityLabel="Lägg till jakt eller område"
+                size="sm"
+                variant="outline"
+                onPress={showAddOptions}
+                className="border border-border/70 bg-card">
+                <Ionicons name="add" size={20} color="#425848" />
+              </IconButton>
+            </View>
             <Text className="text-sm text-muted-foreground">{areas.length} st</Text>
           </View>
 
