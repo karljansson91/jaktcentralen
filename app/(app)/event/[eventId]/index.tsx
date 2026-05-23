@@ -1,8 +1,20 @@
-import { IconButton, Text } from '@/components/ui';
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
+import { EventMapSummary } from '@/components/event/event-map-summary';
+import { IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import {
+  formatElapsedHuntTime,
+  formatParticipantCount,
+  getMemberInitials,
+} from '@/lib/event-formatting';
 import { getCurrentUserCoordinate } from '@/lib/location';
+import {
+  DEFAULT_MAP_STYLE,
+  getSavedMapStyle,
+  subscribeToMapStyleChanges,
+} from '@/lib/map-styles';
+import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
@@ -16,14 +28,19 @@ import {
 } from '@rnmapbox/maps';
 import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type ElementRef, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
+  const watchRef = useRef<Location.LocationSubscription | null>(null);
+  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
+  const [now, setNow] = useState(() => Date.now());
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -41,9 +58,39 @@ export default function EventMapScreen() {
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
-  // GPS position tracking
   const updatePosition = useMutation(api.eventMembers.updatePosition);
-  const watchRef = useRef<Location.LocationSubscription | null>(null);
+
+  useEffect(() => {
+    return subscribeToMapStyleChanges((style) => {
+      setMapStyleURL(style.styleURL);
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      void getSavedMapStyle().then((style) => {
+        if (!cancelled) {
+          setMapStyleURL(style.styleURL);
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 60_000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (!event) return;
@@ -86,9 +133,7 @@ export default function EventMapScreen() {
 
   const polygonGeoJSON = useMemo(() => {
     if (!area) return null;
-    const coords = area.polygon.map(
-      (p) => [p.longitude, p.latitude] as [number, number]
-    );
+    const coords = area.polygon.map((p) => [p.longitude, p.latitude] as [number, number]);
     return {
       type: 'Feature' as const,
       properties: {},
@@ -106,28 +151,34 @@ export default function EventMapScreen() {
     return {
       ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
       sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-      paddingTop: 120,
-      paddingBottom: 120,
-      paddingLeft: 40,
-      paddingRight: 40,
+      paddingTop: Math.max(insets.top + 180, 200),
+      paddingBottom: Math.max(insets.bottom + 132, 160),
+      paddingLeft: 42,
+      paddingRight: 42,
     };
-  }, [area]);
+  }, [area, insets.bottom, insets.top]);
 
   const memberPositionsGeoJSON = useMemo(() => {
     if (!members) return null;
     const features = members
-      .filter((m) => m.lastLatitude != null && m.lastLongitude != null)
-      .map((m) => ({
-        type: 'Feature' as const,
-        properties: {
-          name: m.user?.name ?? 'Okänd',
-          id: m._id,
-        },
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [m.lastLongitude!, m.lastLatitude!],
-        },
-      }));
+      .filter((member) => member.lastLatitude != null && member.lastLongitude != null)
+      .map((member) => {
+        const name = member.user?.name?.trim() || 'Okänd';
+
+        return {
+          type: 'Feature' as const,
+          properties: {
+            id: member._id,
+            name,
+            initials: getMemberInitials(name),
+          },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [member.lastLongitude!, member.lastLatitude!],
+          },
+        };
+      });
+
     return {
       type: 'FeatureCollection' as const,
       features,
@@ -157,7 +208,7 @@ export default function EventMapScreen() {
   if (event === undefined) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="small" color="#2c4b31" />
+        <ActivityIndicator size="small" color={APP_COLORS.primary} />
       </View>
     );
   }
@@ -170,108 +221,114 @@ export default function EventMapScreen() {
     );
   }
 
-  if (area === undefined || cameraBounds === null) {
+  if (area === undefined || members === undefined || cameraBounds === null) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="small" color="#2c4b31" />
+        <ActivityIndicator size="small" color={APP_COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (area === null) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background p-6">
+        <Text variant="h3">Området hittades inte</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: APP_COLORS.background }}>
       <MapView
         style={{ flex: 1 }}
-        styleURL="mapbox://styles/mapbox/outdoors-v12"
+        styleURL={mapStyleURL}
         scrollEnabled
         zoomEnabled
         rotateEnabled={false}
         pitchEnabled={false}
-      >
-        {cameraBounds && (
-          <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />
-        )}
+        attributionEnabled={false}>
+        {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         <LocationPuck puckBearingEnabled puckBearing="heading" />
 
-        {/* Area polygon */}
         {polygonGeoJSON && (
-          <ShapeSource id="area-polygon" shape={polygonGeoJSON}>
-            <FillLayer
-              id="area-fill"
-              style={{ fillColor: 'rgba(34, 197, 94, 0.2)' }}
-            />
+          <ShapeSource id="event-area-polygon" shape={polygonGeoJSON}>
+            <FillLayer id="event-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
             <LineLayer
-              id="area-line"
-              style={{ lineColor: 'rgb(34, 197, 94)', lineWidth: 2 }}
+              id="event-area-line"
+              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 2.5 }}
             />
           </ShapeSource>
         )}
 
-        {areaFeatures && <AreaFeatureLayers features={areaFeatures} idPrefix="event-area-features" />}
+        {areaFeatures && (
+          <AreaFeatureLayers features={areaFeatures} idPrefix="event-area-features" />
+        )}
 
-        {/* Member positions */}
-        {memberPositionsGeoJSON &&
-          memberPositionsGeoJSON.features.length > 0 && (
-            <ShapeSource id="member-positions" shape={memberPositionsGeoJSON}>
-              <CircleLayer
-                id="member-circle"
-                style={{
-                  circleRadius: 8,
-                  circleColor: '#2c4b31',
-                  circleStrokeColor: '#ffffff',
-                  circleStrokeWidth: 2,
-                }}
-              />
-              <SymbolLayer
-                id="member-label"
-                style={{
-                  textField: ['get', 'name'],
-                  textSize: 12,
-                  textOffset: [0, -1.8],
-                  textAnchor: 'bottom',
-                  textColor: '#1f2937',
-                  textHaloColor: '#ffffff',
-                  textHaloWidth: 1.5,
-                  textFont: ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-                }}
-              />
-            </ShapeSource>
-          )}
+        {memberPositionsGeoJSON && memberPositionsGeoJSON.features.length > 0 && (
+          <ShapeSource id="event-member-positions" shape={memberPositionsGeoJSON}>
+            <CircleLayer
+              id="event-member-circle"
+              style={{
+                circleRadius: 35,
+                circleColor: APP_COLORS.primary,
+                circleStrokeColor: APP_COLORS.surface,
+                circleStrokeWidth: 3,
+              }}
+            />
+            <SymbolLayer
+              id="event-member-initials"
+              style={{
+                textField: ['get', 'initials'],
+                textSize: 27,
+                textAnchor: 'center',
+                textColor: APP_COLORS.surface,
+                textAllowOverlap: true,
+                textIgnorePlacement: true,
+                textFont: ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+              }}
+            />
+          </ShapeSource>
+        )}
       </MapView>
 
-      {/* My position button */}
-      <IconButton
-        variant="outline"
-        onPress={handleGoToMyPosition}
-        accessibilityLabel="Gå till min position"
-        className="absolute bottom-24 left-4 bg-background/90 shadow">
-        <Ionicons name="locate" size={22} color="#374151" />
-      </IconButton>
+      <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
+        <View pointerEvents="box-none" className="absolute left-0 right-0 top-0">
+          <EventMapSummary
+            title={event.title}
+            elapsedLabel={formatElapsedHuntTime(event.startDate, now)}
+            areaName={area.name}
+            participantLabel={formatParticipantCount(members.length)}
+            topInset={insets.top}
+            onOpenActions={() => router.push(`/event/${eventId}/actions`)}
+          />
+        </View>
 
-      {/* Back button */}
-      <IconButton
-        variant="outline"
-        onPress={() => router.back()}
-        className="absolute bottom-10 left-4 bg-background/90 shadow">
-        <Ionicons name="arrow-back" size={22} color="#374151" />
-      </IconButton>
+        <View
+          className="absolute left-6"
+          style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
+          <IconButton
+            variant="outline"
+            size="lg"
+            onPress={handleGoToMyPosition}
+            accessibilityLabel="Gå till min position"
+            className="h-16 w-16 bg-card"
+            style={{ boxShadow: '0 8px 22px rgba(49, 52, 68, 0.16)' }}>
+            <Ionicons name="locate" size={30} color={APP_COLORS.text} />
+          </IconButton>
+        </View>
 
-      {/* Event actions */}
-      <View className="absolute bottom-10 right-4 gap-3">
-        <IconButton
-          variant="outline"
-          onPress={() => router.push(`/event/${eventId}/members`)}
-          size="lg"
-          className="bg-background/90 shadow-lg">
-          <Ionicons name="people" size={24} color="#374151" />
-        </IconButton>
-
-        <IconButton
-          onPress={() => router.push(`/event/${eventId}/chat`)}
-          size="lg"
-          className="bg-primary shadow-lg">
-          <Ionicons name="chatbubbles" size={24} color="white" />
-        </IconButton>
+        <View
+          className="absolute right-6"
+          style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
+          <IconButton
+            size="lg"
+            onPress={() => router.push(`/event/${eventId}/chat`)}
+            accessibilityLabel="Öppna chat"
+            className="h-16 w-16 bg-primary"
+            style={{ boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)' }}>
+            <Ionicons name="chatbubbles" size={29} color={APP_COLORS.surface} />
+          </IconButton>
+        </View>
       </View>
     </View>
   );
