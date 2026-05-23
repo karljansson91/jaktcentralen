@@ -57,6 +57,7 @@ export type AreaFeatureDraft = {
   areaId: Id<"areas">;
   featureId?: Id<"areaFeatures">;
   legacyPointId?: Id<"areaPoints">;
+  hasUnsavedChanges?: boolean;
   category: AreaFeatureCategory;
   geometryType: AreaFeatureGeometryType;
   name: string;
@@ -104,4 +105,8 @@ export function polygonCentroid(points: LatLngPoint[]): [number, number] {
   );
 
   return [total.longitude / points.length, total.latitude / points.length];
+}
+
+export function getAreaFeatureTargetKey(feature: Pick<AreaFeatureListItem, "id" | "source">) {
+  return `${feature.source}:${String(feature.id)}`;
 }

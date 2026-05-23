@@ -1,0 +1,41 @@
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+export async function deleteEventCascade(
+  ctx: MutationCtx,
+  eventId: Id<"events">
+) {
+  const [members, assignments, trails, messages] = await Promise.all([
+    ctx.db
+      .query("eventMembers")
+      .withIndex("by_eventId_and_status", (q) => q.eq("eventId", eventId))
+      .collect(),
+    ctx.db
+      .query("eventPointAssignments")
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .collect(),
+    ctx.db
+      .query("positionTrails")
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .collect(),
+    ctx.db
+      .query("messages")
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .collect(),
+  ]);
+
+  for (const member of members) {
+    await ctx.db.delete(member._id);
+  }
+  for (const assignment of assignments) {
+    await ctx.db.delete(assignment._id);
+  }
+  for (const trail of trails) {
+    await ctx.db.delete(trail._id);
+  }
+  for (const message of messages) {
+    await ctx.db.delete(message._id);
+  }
+
+  await ctx.db.delete(eventId);
+}

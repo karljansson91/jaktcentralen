@@ -11,7 +11,8 @@ export default defineSchema({
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_clerkId", ["clerkId"])
-    .searchIndex("search_name", { searchField: "name" }),
+    .searchIndex("search_name", { searchField: "name" })
+    .searchIndex("search_email", { searchField: "email" }),
 
   friendships: defineTable({
     requesterId: v.id("users"),
@@ -100,7 +101,8 @@ export default defineSchema({
     creatorId: v.id("users"),
     joinCode: v.optional(v.string()),
     startDate: v.number(),
-    endDate: v.optional(v.number()),
+    endDate: v.number(),
+    endedAt: v.optional(v.number()),
   })
     .index("by_areaId", ["areaId"])
     .index("by_creatorId", ["creatorId"])
@@ -124,6 +126,17 @@ export default defineSchema({
     .index("by_userId_and_status", ["userId", "status"])
     .index("by_eventId_and_userId", ["eventId", "userId"]),
 
+  eventPointAssignments: defineTable({
+    eventId: v.id("events"),
+    targetKey: v.string(),
+    assignedUserId: v.id("users"),
+    createdByUserId: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_eventId_and_targetKey", ["eventId", "targetKey"])
+    .index("by_eventId_and_assignedUserId", ["eventId", "assignedUserId"]),
+
   positionTrails: defineTable({
     eventId: v.id("events"),
     userId: v.id("users"),
@@ -133,6 +146,12 @@ export default defineSchema({
     timestamp: v.number(),
   })
     .index("by_eventId_and_userId", ["eventId", "userId"])
+    .index("by_eventId_and_userId_and_timestamp", [
+      "eventId",
+      "userId",
+      "timestamp",
+    ])
+    .index("by_eventId_and_timestamp", ["eventId", "timestamp"])
     .index("by_eventId", ["eventId"]),
 
   messages: defineTable({

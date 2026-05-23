@@ -11,14 +11,40 @@ import {
   getAreaFeatureDraft,
   saveAreaFeatureDraft,
 } from '@/lib/area-feature-draft-store';
+import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type MarkerSheetMode = 'create' | 'actions';
+
+type MarkerOptionCardProps = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  fullWidth?: boolean;
+};
+
+function MarkerOptionCard({ label, icon, onPress, fullWidth }: MarkerOptionCardProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className="min-h-24 items-center justify-center gap-3 rounded-3xl border border-border bg-card px-4 py-4 active:bg-muted"
+      style={{
+        width: fullWidth ? '100%' : '48%',
+        boxShadow: '0 7px 18px rgba(49, 52, 68, 0.08)',
+      }}>
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+        <Ionicons name={icon} size={20} color={APP_COLORS.primary} />
+      </View>
+      <Text className="text-center text-sm font-semibold">{label}</Text>
+    </Pressable>
+  );
+}
 
 function buildPointDraft(draft: AreaFeatureDraft, category: AreaFeatureCategory): AreaFeatureDraft {
   return {
@@ -146,56 +172,59 @@ export default function MarkerSheetScreen() {
       />
 
       <View className="px-6 pt-4">
-        <View className="flex-row items-start justify-between">
-          <View className="flex-1 pr-4">
-            <Text variant="h3">{sheetMode === 'create' ? 'Ny markör' : draft.name}</Text>
-            <Text className="mt-2 text-muted-foreground">
-              {sheetMode === 'create'
-                ? 'Välj vad du vill placera på kartan.'
-                : 'Välj vad du vill göra med markören.'}
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={closeSheet}
-            className="h-11 w-11 items-center justify-center rounded-full bg-muted/70">
-            <Ionicons name="close" size={22} color="#374151" />
-          </Pressable>
-        </View>
+        <Text variant="h3">{sheetMode === 'create' ? 'Ny markör' : draft.name}</Text>
+        {sheetMode === 'actions' ? (
+          <Text className="mt-2 text-muted-foreground">Välj vad du vill göra med markören.</Text>
+        ) : null}
       </View>
 
       <View
-        className="mt-6 gap-3 px-6"
+        className="mt-6 px-6"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
         {sheetMode === 'create' ? (
-          <>
-            <Button variant="outline" onPress={() => openPointMarker('tower')} className="rounded-2xl">
-              <Text>Jaktorn</Text>
-            </Button>
-            <Button
-              variant="outline"
+          <View className="flex-row flex-wrap justify-between gap-y-3">
+            <MarkerOptionCard
+              label="Jaktorn"
+              icon="trail-sign-outline"
+              onPress={() => openPointMarker('tower')}
+            />
+            <MarkerOptionCard
+              label="Parkering"
+              icon="car-outline"
               onPress={() => openPointMarker('parking')}
-              className="rounded-2xl">
-              <Text>Parkering</Text>
-            </Button>
-            <Button
-              variant="outline"
+            />
+            <MarkerOptionCard
+              label="Samlingsplats"
+              icon="people-outline"
               onPress={() => openPointMarker('meeting')}
-              className="rounded-2xl">
-              <Text>Samlingsplats</Text>
-            </Button>
-            <Button
-              variant="outline"
+            />
+            <MarkerOptionCard
+              label="Anpassad"
+              icon="sparkles-outline"
               onPress={() => openPointMarker('custom')}
-              className="rounded-2xl">
-              <Text>Anpassad punkt</Text>
-            </Button>
-            <Button variant="outline" onPress={openPolygonMarker} className="rounded-2xl">
-              <Text>Anpassat område</Text>
-            </Button>
-          </>
+            />
+            <MarkerOptionCard
+              label="Anpassat område"
+              icon="map-outline"
+              fullWidth
+              onPress={openPolygonMarker}
+            />
+          </View>
         ) : (
-          <>
+          <View className="gap-3">
+            {draft.images.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+                <View className="flex-row gap-3 px-1">
+                  {draft.images.map((image) => (
+                    <Image
+                      key={image.fileId}
+                      source={{ uri: image.url }}
+                      className="h-24 w-24 rounded-2xl bg-muted"
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
             <Button
               variant="outline"
               onPress={() => goToDraft('marker', draft)}
@@ -205,12 +234,9 @@ export default function MarkerSheetScreen() {
             <Button variant="destructive" onPress={confirmDelete} className="rounded-2xl">
               <Text>Ta bort markör</Text>
             </Button>
-          </>
+          </View>
         )}
 
-        <Button variant="ghost" onPress={closeSheet} className="mt-1 rounded-2xl">
-          <Text>Stäng</Text>
-        </Button>
       </View>
     </View>
   );

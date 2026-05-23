@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "jaktcentralen",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "icon": "./assets/images/ios-icon.png",
       "supportsTablet": true,
@@ -23,7 +22,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -71,7 +69,9 @@
           "cameraPermission": "Låt appen ta bilder till markörer."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

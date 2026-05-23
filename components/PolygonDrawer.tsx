@@ -1,9 +1,11 @@
 import { Button, Text } from '@/components/ui';
+import { APP_COLORS } from '@/lib/theme';
 import {
   DEFAULT_MAP_STYLE,
   getSavedMapStyle,
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
   CircleLayer,
@@ -14,7 +16,8 @@ import {
   ShapeSource,
 } from '@rnmapbox/maps';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export type LngLat = [number, number];
 
@@ -71,6 +74,10 @@ function buildMidpointsGeoJSON(points: LngLat[]): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features };
 }
 
+function hasPointChanges(current: LngLat[], initial: LngLat[] = []) {
+  return JSON.stringify(current) !== JSON.stringify(initial);
+}
+
 interface PolygonDrawerProps {
   initialPoints?: LngLat[];
   onComplete: (points: LngLat[]) => void;
@@ -79,6 +86,7 @@ interface PolygonDrawerProps {
 
 export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDrawerProps) {
   const mapRef = useRef<MapView>(null);
+  const insets = useSafeAreaInsets();
   const [polygonPoints, setPolygonPoints] = useState<LngLat[]>(initialPoints ?? []);
   const [draggingVertex, setDraggingVertex] = useState<number | null>(null);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
@@ -234,6 +242,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
   );
 
   const isDragging = draggingVertex !== null;
+  const hasChanges = hasPointChanges(polygonPoints, initialPoints);
 
   // Camera: fit polygon bounds when available, otherwise center on the first draft point.
   const initialCamera = useMemo(() => {
@@ -347,11 +356,23 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         )}
       </MapView>
 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Stäng"
+        hitSlop={12}
+        onPress={onCancel}
+        className="absolute right-4 h-11 w-11 items-center justify-center rounded-full bg-background/95"
+        style={{
+          top: Math.max(insets.top, 12) + 8,
+          boxShadow: '0 8px 22px rgba(49, 52, 68, 0.18)',
+        }}>
+        <Ionicons name="close" size={24} color={APP_COLORS.text} />
+      </Pressable>
+
       {/* Drawing toolbar */}
-      <View className="absolute bottom-10 left-4 right-4 flex-row justify-center gap-3">
-        <Button variant="outline" className="flex-1 bg-background" onPress={onCancel}>
-          <Text>Avbryt</Text>
-        </Button>
+      <View
+        className="absolute left-4 right-4 flex-row justify-center gap-3"
+        style={{ bottom: Math.max(insets.bottom, 16) + 16 }}>
         <Button
           variant="outline"
           className="flex-1 bg-background"
@@ -363,7 +384,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         <Button
           className="flex-1"
           onPress={handleDone}
-          disabled={polygonPoints.length < 3}
+          disabled={polygonPoints.length < 3 || !hasChanges}
         >
           <Text>spara</Text>
         </Button>

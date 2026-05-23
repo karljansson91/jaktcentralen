@@ -52,12 +52,8 @@ export default function EventActionsScreen() {
     eventId: eventId as Id<'events'>,
   });
   const currentUser = useQuery(api.users.getCurrentUserProfile);
-  const members = useQuery(
-    api.eventMembers.listMembers,
-    event ? { eventId: eventId as Id<'events'> } : 'skip'
-  );
   const leaveEvent = useMutation(api.eventMembers.leave);
-  const removeEvent = useMutation(api.events.remove);
+  const endEvent = useMutation(api.events.end);
 
   function closeAndNavigate(path: Href) {
     router.back();
@@ -79,13 +75,13 @@ export default function EventActionsScreen() {
     }
   }
 
-  async function handleRemoveEvent() {
+  async function handleEndEvent() {
     if (!event) return;
 
     setIsSubmitting(true);
     try {
-      await removeEvent({ eventId: eventId as Id<'events'> });
-      router.replace(`/area/${event.areaId}` as Href);
+      await endEvent({ eventId: eventId as Id<'events'> });
+      router.replace(`/event/${eventId}` as Href);
     } catch (error) {
       Alert.alert(
         'Kunde inte avsluta jakten',
@@ -99,16 +95,15 @@ export default function EventActionsScreen() {
   function confirmLeaveOrRemove() {
     if (!event || !currentUser) return;
 
-    const currentMember = members?.find((member) => member.userId === currentUser._id);
-    const isAdmin = currentMember?.role === 'admin';
+    const isCreator = event.creatorId === currentUser._id;
 
-    if (isAdmin) {
+    if (isCreator) {
       Alert.alert(
         'Avsluta jakt',
-        'Detta tar bort jakten för alla deltagare. Vill du fortsätta?',
+        'Jakten flyttas till historik och blir skrivskyddad. Vill du fortsätta?',
         [
           { text: 'Avbryt', style: 'cancel' },
-          { text: 'Avsluta jakt', style: 'destructive', onPress: () => void handleRemoveEvent() },
+          { text: 'Avsluta jakt', style: 'destructive', onPress: () => void handleEndEvent() },
         ]
       );
       return;
@@ -120,7 +115,7 @@ export default function EventActionsScreen() {
     ]);
   }
 
-  if (event === undefined || currentUser === undefined || (event && members === undefined)) {
+  if (event === undefined || currentUser === undefined) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="small" color={APP_COLORS.primary} />
@@ -136,9 +131,9 @@ export default function EventActionsScreen() {
     );
   }
 
-  const currentMember = (members ?? []).find((member) => member.userId === currentUser._id);
-  const isAdmin = currentMember?.role === 'admin';
-  const destructiveLabel = isAdmin ? 'Avsluta jakt' : 'Lämna jakt';
+  const isCreator = event.creatorId === currentUser._id;
+  const destructiveLabel = isCreator ? 'Avsluta jakt' : 'Lämna jakt';
+  const isEnded = event.endedAt !== undefined;
 
   return (
     <View
@@ -150,45 +145,59 @@ export default function EventActionsScreen() {
       <View className="gap-3">
         <EventActionButton
           variant="outline"
-          onPress={() => router.replace('/' as Href)}
-          accessibilityLabel="Gå till startvyn"
-          icon="home-outline"
+          onPress={() =>
+            closeAndNavigate({
+              pathname: '/event/[eventId]/members',
+              params: { eventId },
+            } as Href)
+          }
+          accessibilityLabel="Visa jaktinfo"
+          icon="information-circle-outline"
           iconColor={APP_COLORS.text}
-          label="Gå till startvyn"
+          label="Info"
           disabled={isSubmitting}
         />
 
-        <EventActionButton
-          variant="outline"
-          onPress={() => closeAndNavigate(`/event/${eventId}/members` as Href)}
-          accessibilityLabel="Visa deltagare"
-          icon="people-outline"
-          iconColor={APP_COLORS.text}
-          label="Deltagare"
-          disabled={isSubmitting}
-        />
-
-        {isAdmin && (
+        {isEnded && (
           <EventActionButton
             variant="outline"
-            onPress={() => closeAndNavigate(`/event/${eventId}/invite` as Href)}
-            accessibilityLabel="Bjud in fler"
-            icon="person-add-outline"
+            onPress={() => closeAndNavigate(`/event/${eventId}/timeline` as Href)}
+            accessibilityLabel="Visa jakt tidslinje"
+            icon="analytics-outline"
             iconColor={APP_COLORS.text}
-            label="Bjud in fler"
+            label="Jakt tidslinje"
             disabled={isSubmitting}
           />
         )}
 
-        <EventActionButton
-          variant="destructive"
-          onPress={confirmLeaveOrRemove}
-          accessibilityLabel={destructiveLabel}
-          icon={isAdmin ? 'trash-outline' : 'exit-outline'}
-          iconColor={APP_COLORS.surface}
-          label={destructiveLabel}
-          disabled={isSubmitting}
-        />
+        {isCreator && !isEnded && (
+          <EventActionButton
+            variant="outline"
+            onPress={() =>
+              closeAndNavigate({
+                pathname: '/event/[eventId]/invite',
+                params: { eventId },
+              } as Href)
+            }
+            accessibilityLabel="Bjud in användare"
+            icon="person-add-outline"
+            iconColor={APP_COLORS.text}
+            label="Bjud in användare"
+            disabled={isSubmitting}
+          />
+        )}
+
+        {!isEnded && (
+          <EventActionButton
+            variant="destructive"
+            onPress={confirmLeaveOrRemove}
+            accessibilityLabel={destructiveLabel}
+            icon={isCreator ? 'archive-outline' : 'exit-outline'}
+            iconColor={APP_COLORS.surface}
+            label={destructiveLabel}
+            disabled={isSubmitting}
+          />
+        )}
       </View>
     </View>
   );

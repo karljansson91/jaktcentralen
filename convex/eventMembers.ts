@@ -1,43 +1,27 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./helpers";
+import { writeMemberPosition } from "./positionTracking";
 
 export const invite = mutation({
   args: { eventId: v.id("events"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
-    // Verify current user is accepted member
-    const membership = await ctx.db
-      .query("eventMembers")
-      .withIndex("by_eventId_and_userId", (q) =>
-        q.eq("eventId", args.eventId).eq("userId", user._id)
-      )
-      .unique();
-
-    if (!membership || membership.status !== "accepted") {
-      throw new Error("Must be an accepted member to invite");
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    if (event.creatorId !== user._id) {
+      throw new Error("Only the hunt creator can invite members");
+    }
+    if (event.endedAt !== undefined) {
+      throw new Error("Cannot invite members to an ended hunt");
     }
 
-    // Verify target is a friend
-    const friendship1 = await ctx.db
-      .query("friendships")
-      .withIndex("by_requesterId_and_addresseeId", (q) =>
-        q.eq("requesterId", user._id).eq("addresseeId", args.userId)
-      )
-      .unique();
-    const friendship2 = await ctx.db
-      .query("friendships")
-      .withIndex("by_requesterId_and_addresseeId", (q) =>
-        q.eq("requesterId", args.userId).eq("addresseeId", user._id)
-      )
-      .unique();
-
-    const isFriend =
-      (friendship1 && friendship1.status === "accepted") ||
-      (friendship2 && friendship2.status === "accepted");
-    if (!isFriend) {
-      throw new Error("Can only invite friends");
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error("User not found");
     }
 
     // Check not already member
@@ -47,6 +31,14 @@ export const invite = mutation({
         q.eq("eventId", args.eventId).eq("userId", args.userId)
       )
       .unique();
+
+    if (existing?.status === "declined") {
+      await ctx.db.patch(existing._id, {
+        role: "member",
+        status: "invited",
+      });
+      return existing._id;
+    }
 
     if (existing) {
       throw new Error("User is already a member or has been invited");
@@ -102,22 +94,12 @@ export const removeMember = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
-    // Verify current user is admin
-    const adminMembership = await ctx.db
-      .query("eventMembers")
-      .withIndex("by_eventId_and_userId", (q) =>
-        q.eq("eventId", args.eventId).eq("userId", user._id)
-      )
-      .unique();
-
-    if (!adminMembership || adminMembership.role !== "admin") {
-      throw new Error("Admin access required");
-    }
-
-    // Can't remove the creator
     const event = await ctx.db.get(args.eventId);
     if (!event) {
       throw new Error("Event not found");
+    }
+    if (event.creatorId !== user._id) {
+      throw new Error("Creator access required");
     }
     if (args.userId === event.creatorId) {
       throw new Error("Cannot remove the event creator");
@@ -234,6 +216,33 @@ export const listMembers = query({
   },
 });
 
+export const listInviteStatuses = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    if (event.creatorId !== user._id) {
+      throw new Error("Creator access required");
+    }
+
+    const statuses = await ctx.db
+      .query("eventMembers")
+      .withIndex("by_eventId_and_status", (q) => q.eq("eventId", args.eventId))
+      .take(500);
+
+    return await Promise.all(
+      statuses.map(async (member) => ({
+        ...member,
+        user: await ctx.db.get(member.userId),
+      }))
+    );
+  },
+});
+
 export const listMyInvitations = query({
   args: {},
   handler: async (ctx) => {
@@ -246,12 +255,19 @@ export const listMyInvitations = query({
       )
       .take(50);
 
-    return await Promise.all(
-      invitations.map(async (inv) => ({
-        ...inv,
-        event: await ctx.db.get(inv.eventId),
-      }))
+    const rows = await Promise.all(
+      invitations.map(async (inv) => {
+        const event = await ctx.db.get(inv.eventId);
+        return event?.endedAt === undefined
+          ? {
+              ...inv,
+              event,
+            }
+          : null;
+      })
     );
+
+    return rows.filter((row) => row !== null);
   },
 });
 
@@ -264,23 +280,13 @@ export const updatePosition = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-
-    const membership = await ctx.db
-      .query("eventMembers")
-      .withIndex("by_eventId_and_userId", (q) =>
-        q.eq("eventId", args.eventId).eq("userId", user._id)
-      )
-      .unique();
-
-    if (!membership || membership.status !== "accepted") {
-      throw new Error("Not an accepted member");
-    }
-
-    await ctx.db.patch(membership._id, {
-      lastLatitude: args.latitude,
-      lastLongitude: args.longitude,
-      lastHeading: args.heading,
-      lastSeenAt: Date.now(),
+    await writeMemberPosition(ctx, {
+      eventId: args.eventId,
+      userId: user._id,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      heading: args.heading,
+      timestamp: Date.now(),
     });
   },
 });

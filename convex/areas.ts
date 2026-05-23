@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { deleteEventCascade } from "./eventCleanup";
 import { getCurrentUser } from "./helpers";
 
 export const create = mutation({
@@ -75,46 +76,20 @@ export const remove = mutation({
       throw new Error("Not authorized");
     }
 
-    // Delete area points
     const points = await ctx.db
       .query("areaPoints")
       .withIndex("by_areaId", (q) => q.eq("areaId", args.areaId))
-      .take(500);
+      .collect();
     for (const p of points) {
       await ctx.db.delete(p._id);
     }
 
-    // Delete events and their related data
     const events = await ctx.db
       .query("events")
       .withIndex("by_areaId", (q) => q.eq("areaId", args.areaId))
-      .take(500);
+      .collect();
     for (const event of events) {
-      const members = await ctx.db
-        .query("eventMembers")
-        .withIndex("by_eventId_and_status", (q) => q.eq("eventId", event._id))
-        .take(500);
-      for (const m of members) {
-        await ctx.db.delete(m._id);
-      }
-
-      const trails = await ctx.db
-        .query("positionTrails")
-        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
-        .take(5000);
-      for (const t of trails) {
-        await ctx.db.delete(t._id);
-      }
-
-      const messages = await ctx.db
-        .query("messages")
-        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
-        .take(5000);
-      for (const m of messages) {
-        await ctx.db.delete(m._id);
-      }
-
-      await ctx.db.delete(event._id);
+      await deleteEventCascade(ctx, event._id);
     }
 
     await ctx.db.delete(args.areaId);

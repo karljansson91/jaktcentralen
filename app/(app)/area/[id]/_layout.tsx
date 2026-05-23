@@ -19,8 +19,7 @@ export default function AreaLayout() {
         name="edit"
         options={{
           presentation: 'modal',
-          headerShown: true,
-          title: 'Uppdatera info',
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -36,6 +35,7 @@ export default function AreaLayout() {
         options={{
           presentation: 'formSheet',
           headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
           sheetAllowedDetents: 'fitToContents',
           sheetGrabberVisible: true,
           sheetCornerRadius: 28,
@@ -57,7 +57,10 @@ export default function AreaLayout() {
         options={{
           presentation: 'modal',
           headerShown: true,
-          title: 'Markör',
+          headerBackVisible: false,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: APP_COLORS.background },
+          contentStyle: { backgroundColor: APP_COLORS.background },
         }}
       />
       <Stack.Screen

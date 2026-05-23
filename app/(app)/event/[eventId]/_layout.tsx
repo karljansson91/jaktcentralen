@@ -28,20 +28,44 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
-        name="invite"
+        name="station"
         options={{
           presentation: 'formSheet',
           headerShown: false,
           contentStyle: { backgroundColor: '#FCF8F2' },
-          sheetAllowedDetents: [0.5, 0.86],
-          sheetInitialDetentIndex: 0,
+          sheetAllowedDetents: 'fitToContents',
           sheetGrabberVisible: true,
-          sheetExpandsWhenScrolledToEdge: true,
+        }}
+      />
+      <Stack.Screen name="timeline" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="invite"
+        options={{
+          presentation: 'modal',
+          headerShown: true,
+          title: 'Bjud in användare',
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#FCF8F2' },
+          headerTintColor: '#313444',
+          contentStyle: { backgroundColor: '#FCF8F2' },
         }}
       />
       <Stack.Screen
         name="members"
-        options={{ presentation: 'modal', headerShown: true, title: 'Deltagare' }}
+        options={{
+          presentation: 'modal',
+          headerShown: true,
+          title: 'Info',
+          headerBackVisible: false,
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#FCF8F2' },
+          headerTintColor: '#313444',
+          contentStyle: { backgroundColor: '#FCF8F2' },
+        }}
       />
     </Stack>
   );

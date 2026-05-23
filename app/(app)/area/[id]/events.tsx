@@ -1,6 +1,8 @@
+import { GlassScreenHeader, useGlassHeaderSpacing } from '@/components/glass';
 import { Button, Card, CardDescription, CardHeader, CardTitle, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -13,30 +15,31 @@ function formatDate(ts: number): string {
 export default function EventsListScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { insets } = useGlassHeaderSpacing();
   const events = useQuery(api.events.listByArea, { areaId: id as Id<'areas'> });
 
   return (
     <View className="flex-1 bg-background">
+      <GlassScreenHeader
+        title="Jakter"
+        onBack={() => router.back()}
+        onRightPress={() => router.push(`/area/${id}/event/create`)}
+        rightAccessibilityLabel="Skapa jakt"
+        rightIcon="add"
+      />
       <FlatList
         data={events ?? []}
         keyExtractor={(item) => item._id}
-        contentContainerClassName="p-4 gap-2"
-        ListHeaderComponent={
-          <View className="mb-2 flex-row items-center justify-between">
-            <Text variant="h3">Jakter</Text>
-            <Pressable
-              onPress={() => router.push(`/area/${id}/event/create`)}
-              className="flex-row items-center gap-1"
-            >
-              <Ionicons name="add-circle-outline" size={22} color="#2c4b31" />
-              <Text className="font-medium text-primary">Ny jakt</Text>
-            </Pressable>
-          </View>
-        }
+        contentContainerStyle={{
+          gap: 8,
+          paddingBottom: Math.max(insets.bottom, 16),
+          paddingHorizontal: 16,
+          paddingTop: 0,
+        }}
         ListEmptyComponent={
           events === undefined ? (
             <View className="items-center py-10">
-              <ActivityIndicator size="small" color="#2c4b31" />
+              <ActivityIndicator size="small" color={APP_COLORS.primary} />
             </View>
           ) : (
             <View className="items-center py-10">
@@ -57,8 +60,7 @@ export default function EventsListScreen() {
                 <View className="flex-1">
                   <CardTitle className="text-base">{item.title}</CardTitle>
                   <CardDescription>
-                    {formatDate(item.startDate)}
-                    {item.endDate ? ` — ${formatDate(item.endDate)}` : ''}
+                    {formatDate(item.startDate)} — {formatDate(item.endDate)}
                   </CardDescription>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#9ca3af" />

@@ -1,15 +1,59 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { GlassIconButton } from '@/components/glass';
+import { APP_COLORS } from '@/lib/theme';
 import * as Location from 'expo-location';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 export default function AppLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const router = useRouter();
   const getOrCreateUser = useMutation(api.users.getOrCreateCurrentUser);
   const hasSynced = useRef(false);
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte logga ut',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    }
+  }
+
+  const profileHeaderOptions = (title: string) => ({
+    headerShown: true,
+    title,
+    headerLargeTitle: false,
+    headerTitleAlign: 'center' as const,
+    headerBackVisible: false,
+    headerLeft: () => (
+      <GlassIconButton
+        icon="chevron-back"
+        iconSize={21}
+        onPress={() => router.back()}
+        accessibilityLabel="Gå tillbaka"
+        surfaceClassName="h-10 w-10"
+      />
+    ),
+    headerRight: () => (
+      <GlassIconButton
+        icon="log-out-outline"
+        iconSize={20}
+        onPress={() => void handleSignOut()}
+        accessibilityLabel="Logga ut"
+        surfaceClassName="h-10 w-10"
+      />
+    ),
+    headerShadowVisible: false,
+    headerStyle: { backgroundColor: APP_COLORS.background },
+    headerTintColor: APP_COLORS.text,
+    contentStyle: { backgroundColor: APP_COLORS.background },
+  });
 
   useEffect(() => {
     if (isSignedIn && !hasSynced.current) {
@@ -47,8 +91,37 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen
+        name="profile"
+        options={profileHeaderOptions('')}
+      />
+      <Stack.Screen
+        name="profile/add-friend"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: [0.58, 0.86],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
       <Stack.Screen name="area/create" options={{ headerShown: false }} />
-      <Stack.Screen name="join" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen
+        name="join"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: [0.42, 0.72],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
       <Stack.Screen name="area/[id]" />
       <Stack.Screen name="event/[eventId]" options={{ headerShown: false }} />
     </Stack>

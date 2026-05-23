@@ -1,161 +1,64 @@
 import { Button, Input, Text } from '@/components/ui';
+import {
+  CATEGORY_ICONS,
+  ChoiceChip,
+  ColorSwatch,
+  ImageGrid,
+  MAX_MARKER_IMAGES,
+} from '@/components/area/marker-form-controls';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import {
   AREA_FEATURE_CATEGORY_LABELS,
   AREA_FEATURE_COLOR_PALETTE,
   AreaFeatureCategory,
+  AreaFeatureDraft,
   AreaFeatureGeometryType,
   AreaFeatureImage,
-  LatLngPoint,
   getDefaultColorForCategory,
 } from '@/lib/area-features';
 import {
   clearAreaFeatureDraft,
   getAreaFeatureDraft,
-  saveAreaFeatureDraft,
 } from '@/lib/area-feature-draft-store';
+import {
+  MarkerFormValues,
+  buildMarkerFormValues,
+  getPlacementSummary,
+  getPointFallback,
+  getPolygonFallback,
+  hasMarkerFormChanges,
+} from '@/lib/area-marker-form';
+import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm } from '@tanstack/react-form';
 import { useMutation } from 'convex/react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
   Pressable,
   ScrollView,
   View,
 } from 'react-native';
-
-const MAX_IMAGES = 5;
-
-type MarkerFormValues = {
-  name: string;
-  description: string;
-  category: AreaFeatureCategory;
-  geometryType: AreaFeatureGeometryType;
-  color: string;
-  point?: LatLngPoint;
-  polygon?: LatLngPoint[];
-  images: AreaFeatureImage[];
-};
-
-function ChoiceChip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`rounded-full border px-4 py-2 ${
-        selected ? 'border-primary bg-primary/10' : 'border-border bg-background'
-      }`}>
-      <Text>{label}</Text>
-    </Pressable>
-  );
-}
-
-function ColorSwatch({
-  color,
-  selected,
-  onPress,
-}: {
-  color: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`h-10 w-10 items-center justify-center rounded-full border ${
-        selected ? 'border-foreground' : 'border-border'
-      }`}
-      style={{ backgroundColor: color }}>
-      {selected && <Ionicons name="checkmark" size={18} color="white" />}
-    </Pressable>
-  );
-}
-
-function ImageGrid({
-  images,
-  onRemove,
-}: {
-  images: AreaFeatureImage[];
-  onRemove: (fileId: Id<'_storage'>) => void;
-}) {
-  return (
-    <>
-      <View className="mb-2 flex-row items-center justify-between">
-        <Text className="font-medium">Bilder</Text>
-        <Text className="text-sm text-muted-foreground">
-          {images.length}/{MAX_IMAGES}
-        </Text>
-      </View>
-
-      <View className="mb-4 flex-row flex-wrap gap-3">
-        {images.map((image) => (
-          <View key={image.fileId} className="relative">
-            <Image source={{ uri: image.url }} className="h-24 w-24 rounded-xl bg-muted" />
-            <Pressable
-              onPress={() => onRemove(image.fileId)}
-              className="absolute right-1 top-1 rounded-full bg-black/65 p-1">
-              <Ionicons name="close" size={14} color="white" />
-            </Pressable>
-          </View>
-        ))}
-      </View>
-
-      <View className="mb-4 rounded-xl border border-dashed border-border bg-card px-4 py-3">
-        <Text className="text-sm text-muted-foreground">
-          Bilduppladdning är tillfälligt avstängd medan markörflödet testas.
-        </Text>
-      </View>
-    </>
-  );
-}
-
-function getPlacementSummary(
-  geometryType: AreaFeatureGeometryType,
-  point?: LatLngPoint,
-  polygon?: LatLngPoint[]
-) {
-  if (geometryType === 'point') {
-    if (!point) {
-      return 'Ingen punkt vald';
-    }
-    return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
-  }
-
-  return polygon ? `${polygon.length} polygonpunkter` : 'Ingen polygon vald';
-}
-
-function getGeometryButtonLabel(geometryType: AreaFeatureGeometryType) {
-  return geometryType === 'point' ? 'Byt till område på kartan' : 'Redigera område';
-}
-
-function getPointFallback(point?: LatLngPoint, polygon?: LatLngPoint[]) {
-  return point ?? polygon?.[0];
-}
-
-function getPolygonFallback(polygon?: LatLngPoint[], point?: LatLngPoint) {
-  return polygon ?? (point ? [point] : undefined);
-}
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MarkerFormScreen() {
   const { id, draftId } = useLocalSearchParams<{ id: string; draftId?: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const saveFeature = useMutation(api.areaFeatures.save);
   const removeFeature = useMutation(api.areaFeatures.remove);
+  const generateUploadUrl = useMutation(api.areaFeatures.generateUploadUrl);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const preserveDraftRef = useRef(false);
-  const draft = draftId ? getAreaFeatureDraft(draftId) : undefined;
+  const [draft, setDraft] = useState<AreaFeatureDraft | undefined>(() =>
+    draftId ? getAreaFeatureDraft(draftId) : undefined
+  );
+  const initialFormValues = useMemo(() => buildMarkerFormValues(draft), [draft]);
 
   useEffect(() => {
     return () => {
@@ -166,16 +69,7 @@ export default function MarkerFormScreen() {
   }, [draftId]);
 
   const form = useForm({
-    defaultValues: {
-      name: draft?.name ?? '',
-      description: draft?.description ?? '',
-      category: draft?.category ?? 'tower',
-      geometryType: draft?.geometryType ?? 'point',
-      color: draft?.color ?? getDefaultColorForCategory(draft?.category ?? 'tower'),
-      point: draft?.point,
-      polygon: draft?.polygon,
-      images: draft?.images ?? [],
-    } satisfies MarkerFormValues,
+    defaultValues: initialFormValues,
     onSubmit: async ({ value }: { value: MarkerFormValues }) => {
       const name = value.name.trim();
       const description = value.description.trim();
@@ -193,30 +87,69 @@ export default function MarkerFormScreen() {
       }
     },
   });
+  const formRef = useRef(form);
+
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!draftId) {
+        return;
+      }
+
+      const nextDraft = getAreaFeatureDraft(draftId);
+      if (!nextDraft) {
+        return;
+      }
+
+      const nextValues = buildMarkerFormValues(nextDraft);
+      const activeForm = formRef.current;
+
+      activeForm.setFieldValue('name', nextValues.name);
+      activeForm.setFieldValue('description', nextValues.description);
+      activeForm.setFieldValue('category', nextValues.category);
+      activeForm.setFieldValue('geometryType', nextValues.geometryType);
+      activeForm.setFieldValue('color', nextValues.color);
+      activeForm.setFieldValue('point', nextValues.point);
+      activeForm.setFieldValue('polygon', nextValues.polygon);
+      activeForm.setFieldValue('images', nextValues.images);
+      setDraft(nextDraft);
+    }, [draftId])
+  );
 
   if (!draftId || !draft) {
     return (
       <View className="flex-1 items-center justify-center bg-background p-6">
+        <Stack.Screen
+          options={{
+            contentStyle: { backgroundColor: APP_COLORS.background },
+            headerBackVisible: false,
+            headerLeft: () => null,
+            headerRight: () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Stäng"
+                hitSlop={12}
+                onPress={() => router.back()}>
+                <Ionicons name="close" size={24} color={APP_COLORS.text} />
+              </Pressable>
+            ),
+            headerShadowVisible: false,
+            headerShown: true,
+            headerStyle: { backgroundColor: APP_COLORS.background },
+            headerTitleAlign: 'center',
+            title: 'Markör',
+          }}
+        />
         <Text className="mb-4">Markörutkastet kunde inte hittas.</Text>
-        <Button variant="outline" onPress={() => router.back()}>
-          <Text>Tillbaka</Text>
-        </Button>
       </View>
     );
   }
 
   const activeDraft = draft;
   const activeDraftId = draftId;
-
-  function persistDraft() {
-    saveAreaFeatureDraft(
-      {
-        ...activeDraft,
-        ...form.state.values,
-      },
-      activeDraftId
-    );
-  }
 
   function completeAndClose() {
     clearAreaFeatureDraft(activeDraftId);
@@ -318,10 +251,70 @@ export default function MarkerFormScreen() {
     ]);
   }
 
-  function openGeometryEditor() {
-    preserveDraftRef.current = true;
-    persistDraft();
-    router.push(`/area/${id}/marker-geometry?draftId=${activeDraftId}`);
+  async function uploadImage(asset: ImagePicker.ImagePickerAsset) {
+    const uploadUrl = await generateUploadUrl();
+    const imageResponse = await fetch(asset.uri);
+    const blob = await imageResponse.blob();
+    const uploadResponse = await fetch(uploadUrl, {
+      body: blob,
+      headers: { 'Content-Type': asset.mimeType ?? 'image/jpeg' },
+      method: 'POST',
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Kunde inte ladda upp bilden.');
+    }
+
+    const { storageId } = (await uploadResponse.json()) as { storageId: Id<'_storage'> };
+    return {
+      fileId: storageId,
+      url: asset.uri,
+    } satisfies AreaFeatureImage;
+  }
+
+  async function handleAddImages() {
+    const currentImages = form.state.values.images;
+    const remainingSlots = MAX_MARKER_IMAGES - currentImages.length;
+
+    if (remainingSlots <= 0) {
+      Alert.alert('Max antal bilder', `Du kan lägga till max ${MAX_MARKER_IMAGES} bilder.`);
+      return;
+    }
+
+    setIsUploadingImages(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Behörighet krävs', 'Ge appen åtkomst till bilder för att ladda upp.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: remainingSlots > 1,
+        mediaTypes: ['images'],
+        quality: 0.78,
+        selectionLimit: remainingSlots,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const uploadedImages = await Promise.all(
+        result.assets.slice(0, remainingSlots).map((asset) => uploadImage(asset))
+      );
+
+      form.setFieldValue('images', (images) =>
+        [...images, ...uploadedImages].slice(0, MAX_MARKER_IMAGES)
+      );
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte lägga till bild',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    } finally {
+      setIsUploadingImages(false);
+    }
   }
 
   return (
@@ -329,140 +322,172 @@ export default function MarkerFormScreen() {
       {({ values, isSubmitting }) => {
         const isCustomCategory = values.category === 'custom';
         const canDelete = activeDraft.mode !== 'create';
-        const isBusy = isSubmitting;
+        const hasChanges =
+          Boolean(activeDraft.hasUnsavedChanges) ||
+          hasMarkerFormChanges(values, initialFormValues);
+        const isBusy = isSubmitting || isUploadingImages;
+
+        const screenTitle = activeDraft.mode === 'create' ? 'Ny markör' : 'Redigera markör';
 
         return (
-          <ScrollView className="flex-1 bg-background p-6" keyboardShouldPersistTaps="handled">
-            <Text variant="h3" className="mb-2">
-              {activeDraft.mode === 'create' ? 'Ny markör' : 'Redigera markör'}
-            </Text>
-            <Text className="mb-6 text-muted-foreground">
-              {values.geometryType === 'point'
-                ? 'Punktmarkör på kartan'
-                : `${values.polygon?.length ?? 0} punkter i markerat område`}
-            </Text>
-
-            <Text className="mb-2 font-medium">Typ</Text>
-            <View className="mb-4 flex-row flex-wrap gap-2">
-              {(Object.keys(AREA_FEATURE_CATEGORY_LABELS) as AreaFeatureCategory[]).map((option) => (
-                <ChoiceChip
-                  key={option}
-                  label={AREA_FEATURE_CATEGORY_LABELS[option]}
-                  selected={values.category === option}
-                  onPress={() => handleCategoryChange(option)}
-                />
-              ))}
-            </View>
-
-            {isCustomCategory && (
-              <>
-                <Text className="mb-2 font-medium">Geometri</Text>
-                <View className="mb-4 flex-row gap-2">
-                  {(['point', 'polygon'] as const).map((option) => (
-                    <ChoiceChip
-                      key={option}
-                      label={option === 'point' ? 'Punkt' : 'Område'}
-                      selected={values.geometryType === option}
-                      onPress={() => handleGeometryTypeChange(option)}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-
-            <Text className="mb-2 font-medium">Placering</Text>
-            <View className="mb-4 rounded-xl border border-border bg-card px-4 py-3">
-              <Text className="text-sm text-muted-foreground">
-                {getPlacementSummary(values.geometryType, values.point, values.polygon)}
-              </Text>
-              {isCustomCategory && (
-                <Button variant="outline" className="mt-3 self-start" onPress={openGeometryEditor}>
-                  <Text>{getGeometryButtonLabel(values.geometryType)}</Text>
-                </Button>
-              )}
-            </View>
-
-            <form.Field
-              name="name"
-              validators={{
-                onSubmit: ({ value }) => (!value.trim() ? 'Namn krävs' : undefined),
-              }}>
-              {(field) => (
-                <View className="mb-4">
-                  <Text className="mb-1 font-medium">Namn *</Text>
-                  <Input
-                    value={field.state.value}
-                    onChangeText={(value) => field.handleChange(value)}
-                    onBlur={() => field.handleBlur()}
-                    placeholder="Namn på markören"
-                    autoFocus
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <Text className="mt-1 text-sm text-destructive">{field.state.meta.errors[0]}</Text>
-                  )}
-                </View>
-              )}
-            </form.Field>
-
-            <form.Field name="description">
-              {(field) => (
-                <View className="mb-4">
-                  <Text className="mb-1 font-medium">Beskrivning</Text>
-                  <Input
-                    value={field.state.value}
-                    onChangeText={(value) => field.handleChange(value)}
-                    onBlur={() => field.handleBlur()}
-                    placeholder="Valfri beskrivning"
-                    multiline
-                    numberOfLines={4}
-                    className="h-24"
-                    textAlignVertical="top"
-                  />
-                </View>
-              )}
-            </form.Field>
-
-            <Text className="mb-2 font-medium">Färg</Text>
-            <View className="mb-6 flex-row flex-wrap gap-3">
-              {AREA_FEATURE_COLOR_PALETTE.map((option) => (
-                <ColorSwatch
-                  key={option}
-                  color={option}
-                  selected={values.color === option}
-                  onPress={() => form.setFieldValue('color', option)}
-                />
-              ))}
-            </View>
-
-            <ImageGrid
-              images={values.images}
-              onRemove={(fileId) =>
-                form.setFieldValue('images', (current) =>
-                  current.filter((image) => image.fileId !== fileId)
-                )
-              }
+          <View className="flex-1 bg-background">
+            <Stack.Screen
+              options={{
+                contentStyle: { backgroundColor: APP_COLORS.background },
+                headerBackVisible: false,
+                headerLeft: () => null,
+                headerRight: () => (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Stäng"
+                    hitSlop={12}
+                    onPress={discardAndClose}>
+                    <Ionicons name="close" size={24} color={APP_COLORS.text} />
+                  </Pressable>
+                ),
+                headerShadowVisible: false,
+                headerShown: true,
+                headerStyle: { backgroundColor: APP_COLORS.background },
+                headerTitleAlign: 'center',
+                title: screenTitle,
+              }}
             />
 
-            <Button className="mb-3" onPress={() => form.handleSubmit()} disabled={isBusy}>
-              <Text>{isSubmitting ? 'Sparar...' : 'Spara markör'}</Text>
-            </Button>
+            <ScrollView
+              className="flex-1 bg-background"
+              contentContainerStyle={{
+                paddingBottom: Math.max(insets.bottom, 24) + 16,
+                paddingHorizontal: 24,
+                paddingTop: 24,
+              }}
+              keyboardShouldPersistTaps="handled">
+              <Text className="mb-2 font-medium">Typ</Text>
+              <View className="mb-5 flex-row flex-wrap justify-between gap-y-3">
+                {(Object.keys(AREA_FEATURE_CATEGORY_LABELS) as AreaFeatureCategory[]).map(
+                  (option) => (
+                    <ChoiceChip
+                      key={option}
+                      label={AREA_FEATURE_CATEGORY_LABELS[option]}
+                      icon={CATEGORY_ICONS[option]}
+                      selected={values.category === option}
+                      onPress={() => handleCategoryChange(option)}
+                    />
+                  )
+                )}
+              </View>
 
-            {canDelete && (
+              {isCustomCategory && (
+                <>
+                  <Text className="mb-2 font-medium">Geometri</Text>
+                  <View className="mb-5 flex-row flex-wrap justify-between gap-y-3">
+                    {(['point', 'polygon'] as const).map((option) => (
+                      <ChoiceChip
+                        key={option}
+                        label={option === 'point' ? 'Punkt' : 'Område'}
+                        icon={option === 'point' ? 'location-outline' : 'scan-outline'}
+                        selected={values.geometryType === option}
+                        onPress={() => handleGeometryTypeChange(option)}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <Text className="mb-2 font-medium">Placering</Text>
+              <View className="mb-5 rounded-2xl border border-border bg-card px-4 py-3">
+                <View className="min-w-0 flex-1">
+                  <Text className="text-sm text-muted-foreground">
+                    {getPlacementSummary(values.geometryType, values.point, values.polygon)}
+                  </Text>
+                </View>
+              </View>
+
+              <form.Field
+                name="name"
+                validators={{
+                  onSubmit: ({ value }) => (!value.trim() ? 'Namn krävs' : undefined),
+                }}>
+                {(field) => (
+                  <View className="mb-4">
+                    <Text className="mb-1 font-medium">Namn *</Text>
+                    <Input
+                      value={field.state.value}
+                      onChangeText={(value) => field.handleChange(value)}
+                      onBlur={() => field.handleBlur()}
+                      placeholder="Namn på markören"
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <Text className="mt-1 text-sm text-destructive">
+                        {field.state.meta.errors[0]}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </form.Field>
+
+              <form.Field name="description">
+                {(field) => (
+                  <View className="mb-4">
+                    <Text className="mb-1 font-medium">Beskrivning</Text>
+                    <Input
+                      value={field.state.value}
+                      onChangeText={(value) => field.handleChange(value)}
+                      onBlur={() => field.handleBlur()}
+                      placeholder="Valfri beskrivning"
+                      multiline
+                      numberOfLines={4}
+                      className="h-24"
+                      textAlignVertical="top"
+                    />
+                  </View>
+                )}
+              </form.Field>
+
+              <Text className="mb-2 font-medium">Färg</Text>
+              <View className="mb-6 flex-row flex-wrap gap-3">
+                {AREA_FEATURE_COLOR_PALETTE.map((option) => (
+                  <ColorSwatch
+                    key={option}
+                    color={option}
+                    selected={values.color === option}
+                    onPress={() => form.setFieldValue('color', option)}
+                  />
+                ))}
+              </View>
+
+              <ImageGrid
+                images={values.images}
+                isUploading={isUploadingImages}
+                onAdd={() => void handleAddImages()}
+                onRemove={(fileId) =>
+                  form.setFieldValue('images', (current) =>
+                    current.filter((image) => image.fileId !== fileId)
+                  )
+                }
+              />
+
               <Button
-                variant="destructive"
-                className="mb-3"
-                onPress={confirmDelete}
-                disabled={isBusy}>
-                <Text>Ta bort markör</Text>
+                size="xl"
+                className="mb-3 rounded-2xl"
+                onPress={() => form.handleSubmit()}
+                disabled={isBusy || !hasChanges}>
+                <Text>{isSubmitting ? 'Sparar...' : 'Spara markör'}</Text>
               </Button>
-            )}
 
-            <Button variant="outline" onPress={discardAndClose} disabled={isBusy}>
-              <Text>Avbryt</Text>
-            </Button>
+              {canDelete && (
+                <Button
+                  variant="destructive"
+                  size="xl"
+                  className="mb-3 rounded-2xl"
+                  onPress={confirmDelete}
+                  disabled={isBusy}>
+                  <Text>Ta bort markör</Text>
+                </Button>
+              )}
 
-            <View className="h-10" />
-          </ScrollView>
+              <View className="h-10" />
+            </ScrollView>
+          </View>
         );
       }}
     </form.Subscribe>

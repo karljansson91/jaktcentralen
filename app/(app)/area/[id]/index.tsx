@@ -1,20 +1,11 @@
-import { AreaViewSummary } from '@/components/area/area-view-summary';
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
-import { IconButton, Text } from '@/components/ui';
+import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
+import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
+import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import {
-  AreaFeatureDraft,
-  AreaFeatureListItem,
-  LatLngPoint,
-  getDefaultColorForCategory,
-} from '@/lib/area-features';
-import {
-  calculatePolygonHectares,
-  formatHectares,
-  formatInterestPointCount,
-} from '@/lib/area-metrics';
-import { saveAreaFeatureDraft } from '@/lib/area-feature-draft-store';
+import { getAreaFeatureTargetKey } from '@/lib/area-features';
+import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
   DEFAULT_MAP_STYLE,
@@ -22,7 +13,6 @@ import {
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
-import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
   FillLayer,
@@ -42,10 +32,17 @@ export default function ViewAreaScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
-  const blockLongPressUntilRef = useRef(0);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
   const areaFeatures = useQuery(api.areaFeatures.listByArea, { areaId: id as Id<'areas'> });
+  const {
+    draggedPointOverrides,
+    handleDropFeature,
+    handleMapLongPress,
+    handlePressFeature,
+    handleStartDraggingFeature,
+    resetMarkerGestureLocks,
+  } = useAreaMarkerGestures(id as Id<'areas'>);
 
   useEffect(() => {
     return subscribeToMapStyleChanges((style) => {
@@ -56,6 +53,7 @@ export default function ViewAreaScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      resetMarkerGestureLocks();
 
       void getSavedMapStyle().then((style) => {
         if (!cancelled) {
@@ -66,7 +64,7 @@ export default function ViewAreaScreen() {
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [resetMarkerGestureLocks])
   );
 
   const polygonGeoJSON = useMemo(() => {
@@ -89,22 +87,30 @@ export default function ViewAreaScreen() {
     return {
       ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
       sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-      paddingTop: Math.max(insets.top + 150, 160),
+      paddingTop: Math.max(insets.top + 92, 112),
       paddingBottom: Math.max(insets.bottom + 96, 120),
       paddingLeft: 40,
       paddingRight: 40,
     };
   }, [area, insets.bottom, insets.top]);
 
-  const hectaresLabel = useMemo(() => {
-    if (!area) return '0 ha';
-    return formatHectares(calculatePolygonHectares(area.polygon));
-  }, [area]);
+  const visibleAreaFeatures = useMemo(() => {
+    if (!areaFeatures) {
+      return areaFeatures;
+    }
 
-  const interestPointLabel = useMemo(
-    () => formatInterestPointCount(areaFeatures?.length ?? 0),
-    [areaFeatures]
-  );
+    return areaFeatures.map((feature) => {
+      const override = draggedPointOverrides[getAreaFeatureTargetKey(feature)];
+      if (!override || feature.geometryType !== 'point') {
+        return feature;
+      }
+
+      return {
+        ...feature,
+        point: override,
+      };
+    });
+  }, [areaFeatures, draggedPointOverrides]);
 
   const handleGoToMyPosition = useCallback(async () => {
     try {
@@ -125,68 +131,6 @@ export default function ViewAreaScreen() {
       Alert.alert('Kunde inte hitta position', 'Försök igen om en stund.');
     }
   }, []);
-
-  const openMarkerSheet = useCallback(
-    (mode: 'create' | 'actions', draft: AreaFeatureDraft) => {
-      const draftId = saveAreaFeatureDraft(draft);
-      router.push(`/area/${id}/marker-sheet?mode=${mode}&draftId=${draftId}`);
-    },
-    [id, router]
-  );
-
-  const openCreateMarkerAtPoint = useCallback(
-    (point: LatLngPoint) => {
-      openMarkerSheet('create', {
-        mode: 'create',
-        areaId: id as Id<'areas'>,
-        category: 'tower',
-        geometryType: 'point',
-        name: '',
-        description: '',
-        color: getDefaultColorForCategory('tower'),
-        point,
-        images: [],
-      });
-    },
-    [id, openMarkerSheet]
-  );
-
-  const handleMapLongPress = useCallback(
-    (event: GeoJSON.Feature) => {
-      if (Date.now() < blockLongPressUntilRef.current) {
-        return;
-      }
-
-      const coordinates = (event.geometry as GeoJSON.Point).coordinates as [number, number];
-      openCreateMarkerAtPoint({
-        latitude: coordinates[1],
-        longitude: coordinates[0],
-      });
-    },
-    [openCreateMarkerAtPoint]
-  );
-
-  const handlePressFeature = useCallback(
-    (feature: AreaFeatureListItem) => {
-      blockLongPressUntilRef.current = Date.now() + 500;
-      openMarkerSheet('actions', {
-        mode: feature.source === 'feature' ? 'edit' : 'legacy',
-        areaId: id as Id<'areas'>,
-        featureId: feature.source === 'feature' ? (feature.id as Id<'areaFeatures'>) : undefined,
-        legacyPointId:
-          feature.source === 'legacy' ? (feature.id as Id<'areaPoints'>) : undefined,
-        category: feature.category,
-        geometryType: feature.geometryType,
-        name: feature.name,
-        description: feature.description ?? '',
-        color: feature.color,
-        point: feature.point,
-        polygon: feature.polygon,
-        images: feature.images,
-      });
-    },
-    [id, openMarkerSheet]
-  );
 
   const handleOpenAreaActions = useCallback(() => {
     router.push(`/area/${id}/actions`);
@@ -238,42 +182,52 @@ export default function ViewAreaScreen() {
           </ShapeSource>
         )}
 
-        {areaFeatures && (
+        {visibleAreaFeatures && (
           <AreaFeatureLayers
-            features={areaFeatures}
+            features={visibleAreaFeatures}
             idPrefix="area-view-features"
             interactive
-            onPressPointFeature={handlePressFeature}
+            hidePointCircles
             onPressPolygonFeature={handlePressFeature}
+          />
+        )}
+
+        {visibleAreaFeatures && (
+          <DraggableAreaPointMarkers
+            features={visibleAreaFeatures}
+            idPrefix="area-view-point-markers"
+            onPressPointFeature={handlePressFeature}
+            onDragStartPointFeature={handleStartDraggingFeature}
+            onDragEndPointFeature={(feature, point) => {
+              void handleDropFeature(feature, point);
+            }}
           />
         )}
       </MapView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
         <View
-          className="absolute left-2 right-2"
+          className="absolute left-4 right-4"
           style={{ top: Math.max(insets.top, 8) + 8 }}>
-          <AreaViewSummary
-            name={area.name}
-            hectaresLabel={hectaresLabel}
-            interestPointLabel={interestPointLabel}
+          <GlassTopNav
+            appearance="floating"
+            title={area.name}
             onBack={() => router.back()}
-            onOpenActions={handleOpenAreaActions}
+            onRightPress={handleOpenAreaActions}
+            rightAccessibilityLabel="Områdesåtgärder"
           />
         </View>
 
         <View
           className="absolute left-4"
           style={{ bottom: Math.max(insets.bottom, 16) + 8 }}>
-          <IconButton
-            variant="outline"
-            size="lg"
+          <GlassFloatingButton
+            icon="locate"
             onPress={handleGoToMyPosition}
             accessibilityLabel="Gå till min position"
-            className="bg-card"
-            style={{ boxShadow: '0 7px 18px rgba(49, 52, 68, 0.16)' }}>
-            <Ionicons name="locate" size={22} color={APP_COLORS.text} />
-          </IconButton>
+            surfaceClassName="h-12 w-12"
+            tone="dark"
+          />
         </View>
       </View>
     </View>

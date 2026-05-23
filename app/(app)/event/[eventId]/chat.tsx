@@ -48,12 +48,15 @@ export default function EventChatScreen() {
       <ScrollView
         ref={scrollViewRef}
         className="min-h-0 flex-1"
-        contentContainerClassName="grow gap-4 px-5 pb-5 pt-4"
+        contentContainerClassName="grow gap-3 px-5 pb-4 pt-3"
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <Text className="text-[20px] font-medium leading-[26px] text-foreground">
-          Chat
-        </Text>
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[0]}>
+        <View className="bg-background pb-2 pt-1" collapsable={false}>
+          <Text className="text-[18px] font-medium leading-[24px] text-foreground">
+            Chat
+          </Text>
+        </View>
 
         {status === 'CanLoadMore' && (
           <Pressable
@@ -81,7 +84,8 @@ export default function EventChatScreen() {
             )}
           </View>
         ) : (
-          messages.map((item) => {
+          <View className="flex-1 justify-end gap-3">
+            {messages.map((item) => {
               const isMine = item.userId === currentUser?._id;
 
               return (
@@ -102,7 +106,8 @@ export default function EventChatScreen() {
                   </Text>
                 </View>
               );
-            })
+            })}
+          </View>
         )}
       </ScrollView>
 

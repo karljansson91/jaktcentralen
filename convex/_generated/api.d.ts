@@ -11,12 +11,15 @@
 import type * as areaFeatures from "../areaFeatures.js";
 import type * as areaPoints from "../areaPoints.js";
 import type * as areas from "../areas.js";
+import type * as eventCleanup from "../eventCleanup.js";
 import type * as eventMembers from "../eventMembers.js";
+import type * as eventPointAssignments from "../eventPointAssignments.js";
 import type * as events from "../events.js";
 import type * as friends from "../friends.js";
 import type * as helpers from "../helpers.js";
 import type * as messages from "../messages.js";
 import type * as migrations from "../migrations.js";
+import type * as positionTracking from "../positionTracking.js";
 import type * as positionTrails from "../positionTrails.js";
 import type * as users from "../users.js";
 
@@ -30,12 +33,15 @@ declare const fullApi: ApiFromModules<{
   areaFeatures: typeof areaFeatures;
   areaPoints: typeof areaPoints;
   areas: typeof areas;
+  eventCleanup: typeof eventCleanup;
   eventMembers: typeof eventMembers;
+  eventPointAssignments: typeof eventPointAssignments;
   events: typeof events;
   friends: typeof friends;
   helpers: typeof helpers;
   messages: typeof messages;
   migrations: typeof migrations;
+  positionTracking: typeof positionTracking;
   positionTrails: typeof positionTrails;
   users: typeof users;
 }>;
