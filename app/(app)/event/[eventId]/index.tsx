@@ -171,31 +171,38 @@ export default function EventMapScreen() {
   }, [area, insets.bottom, insets.top]);
 
   const memberPositionsGeoJSON = useMemo(() => {
-    if (!members) return null;
-    const features = members
-      .filter((member) => member.lastLatitude != null && member.lastLongitude != null)
-      .map((member) => {
-        const name = member.user?.name?.trim() || 'Okänd';
+    if (!members || !currentUser) return null;
+    const features = [];
 
-        return {
-          type: 'Feature' as const,
-          properties: {
-            id: member._id,
-            name,
-            initials: getMemberInitials(name),
-          },
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [member.lastLongitude!, member.lastLatitude!],
-          },
-        };
+    for (const member of members) {
+      if (
+        member.userId === currentUser._id ||
+        member.lastLatitude == null ||
+        member.lastLongitude == null
+      ) {
+        continue;
+      }
+
+      const name = member.user?.name?.trim() || 'Okänd';
+      features.push({
+        type: 'Feature' as const,
+        properties: {
+          id: member._id,
+          name,
+          initials: getMemberInitials(name),
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [member.lastLongitude, member.lastLatitude],
+        },
       });
+    }
 
     return {
       type: 'FeatureCollection' as const,
       features,
     };
-  }, [members]);
+  }, [currentUser, members]);
 
   const assignedStationMarkers = useMemo(() => {
     if (!areaFeatures || !assignments) return null;
