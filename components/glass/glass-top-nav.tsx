@@ -1,5 +1,5 @@
 import { GlassIconButton } from '@/components/glass/glass-icon-button';
-import { GlassSurface } from '@/components/glass/glass-surface';
+import { GlassSurface, canUseLiquidGlass } from '@/components/glass/glass-surface';
 import { Text } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,9 +64,8 @@ export function GlassTopNav({
     </Text>
   );
 
-  return (
-    <View className={cn('w-full', className)}>
-      <GlassContainer spacing={GLASS_NAV_HORIZONTAL_GAP} style={glassTopNavRowStyle}>
+  const rowContent = (
+    <>
         {onBack ? (
           <GlassIconButton
             icon={leftIcon}
@@ -105,7 +104,18 @@ export function GlassTopNav({
         ) : (
           <View style={{ width: GLASS_NAV_HEIGHT }} />
         )}
-      </GlassContainer>
+    </>
+  );
+
+  return (
+    <View className={cn('w-full', className)}>
+      {canUseLiquidGlass ? (
+        <GlassContainer spacing={GLASS_NAV_HORIZONTAL_GAP} style={glassTopNavRowStyle}>
+          {rowContent}
+        </GlassContainer>
+      ) : (
+        <View style={glassTopNavRowStyle}>{rowContent}</View>
+      )}
     </View>
   );
 }

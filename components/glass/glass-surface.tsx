@@ -22,6 +22,8 @@ type GlassSurfaceProps = ViewProps & {
 const canUseLiquidGlass =
   Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
+export { canUseLiquidGlass };
+
 export function GlassSurface({
   children,
   className,
@@ -44,10 +46,10 @@ export function GlassSurface({
   return (
     <View
       className={cn(
-        'overflow-hidden border shadow-sm',
+        'overflow-hidden border',
         isDark
-          ? 'border-white/15 bg-[#1A1C26]/60 shadow-black/25'
-          : 'border-white/45 bg-card/65 shadow-black/10',
+          ? 'border-white/15 bg-[#1A1C26]/60'
+          : 'border-white/45 bg-card/65',
         className
       )}
       style={[isDark ? darkSurfaceStyle : lightSurfaceStyle, style]}
@@ -74,9 +76,9 @@ export function GlassSurface({
 }
 
 const lightSurfaceStyle: ViewStyle = {
-  boxShadow: '0 8px 24px rgba(49, 52, 68, 0.16)',
+  backgroundColor: 'rgba(252, 248, 242, 0.52)',
 };
 
 const darkSurfaceStyle: ViewStyle = {
-  boxShadow: '0 10px 28px rgba(0, 0, 0, 0.28)',
+  backgroundColor: 'rgba(26, 28, 38, 0.72)',
 };

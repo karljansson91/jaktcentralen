@@ -24,6 +24,9 @@ function EventActionButton({
   iconColor,
   label,
 }: EventActionButtonProps) {
+  const isDestructive = variant === 'destructive';
+  const textColor = isDestructive ? APP_COLORS.surface : APP_COLORS.text;
+
   return (
     <Button
       variant={variant}
@@ -32,9 +35,18 @@ function EventActionButton({
       disabled={disabled}
       accessibilityLabel={accessibilityLabel}
       className="h-auto min-h-12 rounded-xl px-4 py-3"
-      style={{ height: 'auto', minHeight: 48 }}>
+      style={{
+        backgroundColor: isDestructive ? '#DA8686' : APP_COLORS.surface,
+        borderColor: isDestructive ? '#DA8686' : APP_COLORS.border,
+        borderWidth: 1,
+        height: 'auto',
+        minHeight: 48,
+      }}>
       <Ionicons name={icon} size={20} color={iconColor} />
-      <Text className="flex-1 text-center text-base leading-5" numberOfLines={2}>
+      <Text
+        className="flex-1 text-center text-base font-semibold leading-5"
+        numberOfLines={2}
+        style={{ color: textColor }}>
         {label}
       </Text>
       <View style={{ width: 20 }} />
