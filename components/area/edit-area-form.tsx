@@ -40,7 +40,7 @@ function editAreaFormReducer(
 }
 
 export function EditAreaForm({ area }: EditAreaFormProps) {
-  const { back, replace } = useRouter();
+  const { back } = useRouter();
   const insets = useSafeAreaInsets();
   const updateArea = useMutation(api.areas.update);
   const [formState, dispatch] = useReducer(
@@ -101,13 +101,6 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
             className="mb-4 h-20"
             textAlignVertical="top"
           />
-
-          <Button
-            variant="outline"
-            className="mb-4"
-            onPress={() => replace(`/area/${area._id}`)}>
-            <Text>Hantera markörer på kartan</Text>
-          </Button>
 
           <View className="flex-1" />
 
