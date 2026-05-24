@@ -69,6 +69,10 @@ export default function EventMapScreen() {
     api.eventPointAssignments.listByEvent,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
+  const unreadMessageCount = useQuery(
+    api.messages.getUnreadCount,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
 
   const updatePosition = useMutation(api.eventMembers.updatePosition);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
@@ -536,8 +540,12 @@ export default function EventMapScreen() {
           <IconButton
             size="lg"
             onPress={() => push(`/event/${eventId}/chat`)}
-            accessibilityLabel="Öppna chat"
-            className="size-16 bg-primary"
+            accessibilityLabel={
+              unreadMessageCount
+                ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`
+                : 'Öppna chat'
+            }
+            className="relative size-16 bg-primary"
             style={{
               backgroundColor: APP_COLORS.primary,
               borderColor: 'rgba(254, 253, 251, 0.7)',
@@ -545,6 +553,13 @@ export default function EventMapScreen() {
               boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
             }}>
             <Ionicons name="chatbubbles" size={29} color={APP_COLORS.surface} />
+            {unreadMessageCount ? (
+              <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
+                <Text className="text-[11px] font-bold leading-4 text-white">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </Text>
+              </View>
+            ) : null}
           </IconButton>
         </View>
       </View>

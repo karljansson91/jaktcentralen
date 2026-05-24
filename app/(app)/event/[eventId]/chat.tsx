@@ -30,6 +30,7 @@ export default function EventChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [body, setBody] = useState('');
   const sendMessage = useMutation(api.messages.send);
+  const markMessagesRead = useMutation(api.messages.markRead);
   const currentUser = useQuery(api.users.getCurrentUserProfile);
 
   const { results, status, loadMore } = usePaginatedQuery(
@@ -45,6 +46,14 @@ export default function EventChatScreen() {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (status === 'LoadingFirstPage') return;
+
+    void markMessagesRead({ eventId: eventId as Id<'events'> }).catch((error) => {
+      console.error('Failed to mark chat read:', error);
+    });
+  }, [eventId, markMessagesRead, messages.length, status]);
 
   const handleSend = useCallback(async () => {
     const trimmed = body.trim();
