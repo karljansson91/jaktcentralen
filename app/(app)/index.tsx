@@ -68,9 +68,6 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="absolute left-[-72] top-[-12] size-56 rounded-full bg-primary/10" />
-      <View className="absolute bottom-24 right-[-64] size-52 rounded-full bg-secondary/80" />
-
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
