@@ -9,8 +9,10 @@ type GlassIconButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   color?: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconSize?: number;
+  overlayColor?: string;
   surfaceClassName?: string;
   style?: StyleProp<ViewStyle>;
+  tintColor?: string;
   tone?: 'light' | 'dark';
 };
 
@@ -20,8 +22,10 @@ export function GlassIconButton({
   disabled,
   icon,
   iconSize = 22,
+  overlayColor,
   surfaceClassName,
   style,
+  tintColor,
   tone = 'light',
   ...props
 }: GlassIconButtonProps) {
@@ -37,7 +41,9 @@ export function GlassIconButton({
       {({ pressed }) => (
         <GlassSurface
           interactive={!disabled}
+          overlayColor={overlayColor}
           tone={tone}
+          tintColor={tintColor}
           className={cn('h-12 w-12 rounded-full', surfaceClassName)}
           contentClassName="h-full w-full items-center justify-center"
           style={[

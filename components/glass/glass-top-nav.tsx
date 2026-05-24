@@ -1,9 +1,8 @@
 import { GlassIconButton } from '@/components/glass/glass-icon-button';
-import { GlassSurface, canUseLiquidGlass } from '@/components/glass/glass-surface';
+import { GlassSurface } from '@/components/glass/glass-surface';
 import { Text } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassContainer } from 'expo-glass-effect';
 import { View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +10,8 @@ export const GLASS_NAV_HEIGHT = 44;
 const GLASS_NAV_TOP_GAP = 6;
 const GLASS_NAV_HORIZONTAL_GAP = 8;
 const GLASS_SCREEN_HEADER_BOTTOM_GAP = 14;
+const FLOATING_HEADER_TINT = 'rgba(42, 108, 55, 0.84)';
+const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
 
 type GlassTopNavProps = {
   appearance?: 'screen' | 'floating';
@@ -48,10 +49,11 @@ export function GlassTopNav({
   rightAccessibilityLabel = 'Fler alternativ',
   rightIcon = 'ellipsis-horizontal',
   title,
-  titleBackground = false,
+  titleBackground,
 }: GlassTopNavProps) {
   const isFloating = appearance === 'floating';
   const buttonTone = isFloating ? 'dark' : 'light';
+  const shouldShowTitleBackground = titleBackground ?? isFloating;
   const titleClassName = isFloating ? 'text-white' : 'text-foreground';
   const titleContent = (
     <Text
@@ -66,56 +68,54 @@ export function GlassTopNav({
 
   const rowContent = (
     <>
-        {onBack ? (
-          <GlassIconButton
-            icon={leftIcon}
-            iconSize={21}
-            onPress={onBack}
-            accessibilityLabel={leftAccessibilityLabel}
-            surfaceClassName="h-11 w-11"
-            tone={buttonTone}
-          />
-        ) : (
-          <View style={{ width: GLASS_NAV_HEIGHT }} />
-        )}
+      {onBack ? (
+        <GlassIconButton
+          icon={leftIcon}
+          iconSize={21}
+          onPress={onBack}
+          accessibilityLabel={leftAccessibilityLabel}
+          surfaceClassName="h-11 w-11"
+          tone={buttonTone}
+        />
+      ) : (
+        <View style={{ width: GLASS_NAV_HEIGHT }} />
+      )}
 
-        <View className="min-w-0 flex-1 items-center justify-center px-2">
-          {titleBackground ? (
-            <GlassSurface
-              tone={buttonTone}
-              className="h-10 max-w-full rounded-full"
-              contentClassName="h-full items-center justify-center px-5">
-              {titleContent}
-            </GlassSurface>
-          ) : (
-            titleContent
-          )}
-        </View>
-
-        {onRightPress ? (
-          <GlassIconButton
-            icon={rightIcon}
-            iconSize={21}
-            onPress={onRightPress}
-            accessibilityLabel={rightAccessibilityLabel}
-            surfaceClassName="h-11 w-11"
+      <View className="min-w-0 flex-1 items-center justify-center px-2">
+        {shouldShowTitleBackground ? (
+          <GlassSurface
             tone={buttonTone}
-          />
+            overlayColor={isFloating ? FLOATING_HEADER_OVERLAY : undefined}
+            tintColor={isFloating ? FLOATING_HEADER_TINT : undefined}
+            className="h-10 max-w-full rounded-full"
+            contentClassName="h-full items-center justify-center px-5">
+            {titleContent}
+          </GlassSurface>
         ) : (
-          <View style={{ width: GLASS_NAV_HEIGHT }} />
+          titleContent
         )}
+      </View>
+
+      {onRightPress ? (
+        <GlassIconButton
+          icon={rightIcon}
+          iconSize={21}
+          onPress={onRightPress}
+          accessibilityLabel={rightAccessibilityLabel}
+          overlayColor={isFloating ? FLOATING_HEADER_OVERLAY : undefined}
+          surfaceClassName="h-11 w-11"
+          tintColor={isFloating ? FLOATING_HEADER_TINT : undefined}
+          tone={buttonTone}
+        />
+      ) : (
+        <View style={{ width: GLASS_NAV_HEIGHT }} />
+      )}
     </>
   );
 
   return (
     <View className={cn('w-full', className)}>
-      {canUseLiquidGlass ? (
-        <GlassContainer spacing={GLASS_NAV_HORIZONTAL_GAP} style={glassTopNavRowStyle}>
-          {rowContent}
-        </GlassContainer>
-      ) : (
-        <View style={glassTopNavRowStyle}>{rowContent}</View>
-      )}
+      <View style={glassTopNavRowStyle}>{rowContent}</View>
     </View>
   );
 }

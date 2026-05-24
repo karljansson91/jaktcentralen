@@ -71,6 +71,7 @@ export default function ProfileScreen() {
   const user = useQuery(api.users.getCurrentUserProfile);
   const invitations = useQuery(api.eventMembers.listMyInvitations);
   const friendRequests = useQuery(api.friends.listPendingReceived);
+  const sentFriendRequests = useQuery(api.friends.listPendingSent);
   const friends = useQuery(api.friends.listFriends);
 
   const acceptInvite = useMutation(api.eventMembers.acceptInvite);
@@ -260,6 +261,41 @@ export default function ProfileScreen() {
                     onPress={() => void handleDeclineFriendRequest(request.friendshipId)}>
                     <Text>Avböj</Text>
                   </Button>
+                </View>
+              </CardContent>
+            </Card>
+          ))}
+        </View>
+      ) : null}
+
+      {sentFriendRequests && sentFriendRequests.length > 0 ? (
+        <View className="gap-3">
+          <SectionHeader title="Skickade förfrågningar" subtitle="Väntar på svar." />
+
+          {sentFriendRequests.map((request) => (
+            <Card key={request.friendshipId} className="border-border/70 bg-card py-0">
+              <CardContent className="px-5 py-4">
+                <View className="flex-row items-center gap-3">
+                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                    <Text className="text-sm font-semibold text-primary">
+                      {getInitials(request.user?.name)}
+                    </Text>
+                  </View>
+                  <View className="min-w-0 flex-1 gap-1">
+                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+                      {request.user?.name || 'Okänd användare'}
+                    </Text>
+                    {request.user?.email ? (
+                      <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+                        {request.user.email}
+                      </Text>
+                    ) : (
+                      <Text className="text-sm text-muted-foreground">Vänförfrågan skickad</Text>
+                    )}
+                  </View>
+                  <Badge className="bg-secondary">
+                    <Text className="text-muted-foreground">Skickad</Text>
+                  </Badge>
                 </View>
               </CardContent>
             </Card>

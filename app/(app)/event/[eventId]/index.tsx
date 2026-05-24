@@ -470,7 +470,12 @@ export default function EventMapScreen() {
             onPress={() => router.push(`/event/${eventId}/chat`)}
             accessibilityLabel="Öppna chat"
             className="h-16 w-16 bg-primary"
-            style={{ boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)' }}>
+            style={{
+              backgroundColor: APP_COLORS.primary,
+              borderColor: 'rgba(254, 253, 251, 0.7)',
+              borderWidth: 1,
+              boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
+            }}>
             <Ionicons name="chatbubbles" size={29} color={APP_COLORS.surface} />
           </IconButton>
         </View>
