@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react';
 import { Alert, ScrollView } from 'react-native';
 
 export default function CreateAreaScreen() {
-  const router = useRouter();
+  const { back, replace } = useRouter();
   const [polygonPoints, setPolygonPoints] = useState<LngLat[] | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -23,9 +23,9 @@ export default function CreateAreaScreen() {
       // Go back to drawing
       setPolygonPoints(null);
     } else {
-      router.back();
+      back();
     }
-  }, [polygonPoints, router]);
+  }, [back, polygonPoints]);
 
   const handleSubmit = useCallback(async () => {
     if (!name.trim()) {
@@ -48,18 +48,18 @@ export default function CreateAreaScreen() {
         description: description.trim() || undefined,
         polygon,
       });
-      router.replace(`/area/${areaId}`);
+      replace(`/area/${areaId}`);
     } catch (e: any) {
       Alert.alert('Fel', e.message ?? 'Kunde inte skapa område');
     }
-  }, [name, description, polygonPoints, createArea, router]);
+  }, [createArea, description, name, polygonPoints, replace]);
 
   // Step 1: Draw polygon
   if (!polygonPoints) {
     return (
       <PolygonDrawer
         onComplete={handlePolygonComplete}
-        onCancel={() => router.back()}
+        onCancel={() => back()}
       />
     );
   }

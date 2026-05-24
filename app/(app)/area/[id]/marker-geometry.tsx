@@ -7,7 +7,7 @@ import { View } from 'react-native';
 
 export default function MarkerGeometryScreen() {
   const { draftId } = useLocalSearchParams<{ id: string; draftId?: string }>();
-  const router = useRouter();
+  const { back } = useRouter();
 
   if (!draftId) {
     return (
@@ -50,9 +50,9 @@ export default function MarkerGeometryScreen() {
             },
             draftId
           );
-          router.back();
+          back();
         }}
-        onCancel={() => router.back()}
+        onCancel={() => back()}
       />
     );
   }
@@ -71,9 +71,9 @@ export default function MarkerGeometryScreen() {
           },
           draftId
         );
-        router.back();
+        back();
       }}
-      onCancel={() => router.back()}
+      onCancel={() => back()}
     />
   );
 }

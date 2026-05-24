@@ -9,7 +9,7 @@ import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function JoinEventScreen() {
-  const router = useRouter();
+  const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const joinByCode = useMutation(api.events.joinByCode);
@@ -26,13 +26,12 @@ export default function JoinEventScreen() {
       setIsSubmitting(true);
       try {
         const eventId = await joinByCode({ joinCode: value.joinCode.trim() });
-        router.back();
-        setTimeout(() => router.push(`/event/${eventId}`), 100);
+        back();
+        setTimeout(() => push(`/event/${eventId}`), 100);
       } catch (e: any) {
         Alert.alert('Kunde inte gå med', e.message ?? 'Ogiltig kod');
-      } finally {
-        setIsSubmitting(false);
       }
+      setIsSubmitting(false);
     },
   });
 
@@ -96,7 +95,7 @@ export default function JoinEventScreen() {
               onPress={form.handleSubmit}
               disabled={!joinCode.trim() || isSubmitting}
               className="rounded-2xl">
-              <Text>{isSubmitting ? 'Går med...' : 'Gå med'}</Text>
+              <Text>{isSubmitting ? 'Går med…' : 'Gå med'}</Text>
             </Button>
           )}
         </form.Subscribe>

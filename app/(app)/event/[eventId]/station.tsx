@@ -8,9 +8,10 @@ import {
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EventStationAssignmentScreen() {
@@ -83,9 +84,8 @@ export default function EventStationAssignmentScreen() {
         'Kunde inte tilldela pass',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   }
 
   async function handleClear() {
@@ -100,9 +100,8 @@ export default function EventStationAssignmentScreen() {
         'Kunde inte ta bort tilldelning',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   }
 
   function handleToggleAssignment(assignedUserId: Id<'users'>) {
@@ -167,7 +166,7 @@ export default function EventStationAssignmentScreen() {
                 <Image
                   key={image.fileId}
                   source={{ uri: image.url }}
-                  className="h-28 w-28 rounded-2xl bg-muted"
+                  className="size-28 rounded-2xl bg-muted"
                 />
               ))}
             </View>

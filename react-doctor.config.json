@@ -1,0 +1,15 @@
+{
+  "ignore": {
+    "files": ["convex/**"],
+    "overrides": [
+      {
+        "files": ["app/_layout.tsx"],
+        "rules": ["react-hooks-js/hooks"]
+      }
+    ]
+  },
+  "failOn": "error",
+  "rules": {
+    "react-doctor/no-giant-component": "off"
+  }
+}

@@ -6,7 +6,7 @@ import {
 } from "@/lib/area-features";
 import { MarkerView, PointAnnotation } from "@rnmapbox/maps";
 import { useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 type PointFeature = AreaFeatureListItem & {
   point: NonNullable<AreaFeatureListItem["point"]>;
@@ -112,35 +112,19 @@ export function DraggableAreaPointMarkers({
         >
           <View
             pointerEvents="none"
-            style={{
-              width: 64,
-              height: 64,
-              alignItems: "center",
-              justifyContent: "center",
-              transform: [{ translateY: -12 }],
-            }}
+            style={draggingMarkerStyles.container}
           >
             <View
-              style={{
-                position: "absolute",
-                width: 58,
-                height: 58,
-                borderRadius: 999,
-                backgroundColor: `${draggingPoint.color}2e`,
-                borderWidth: 1,
-                borderColor: "#ffffff",
-                boxShadow: "0 10px 24px rgba(49, 52, 68, 0.3)",
-              }}
+              style={[
+                draggingMarkerStyles.halo,
+                { backgroundColor: `${draggingPoint.color}2e` },
+              ]}
             />
             <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 999,
-                backgroundColor: draggingPoint.color,
-                borderWidth: 4,
-                borderColor: "#ffffff",
-              }}
+              style={[
+                draggingMarkerStyles.dot,
+                { backgroundColor: draggingPoint.color },
+              ]}
             />
           </View>
         </MarkerView>
@@ -148,3 +132,29 @@ export function DraggableAreaPointMarkers({
     </>
   );
 }
+
+const draggingMarkerStyles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+    height: 64,
+    justifyContent: "center",
+    transform: [{ translateY: -12 }],
+    width: 64,
+  },
+  halo: {
+    borderColor: "#ffffff",
+    borderRadius: 999,
+    borderWidth: 1,
+    boxShadow: "0 10px 24px rgba(49, 52, 68, 0.3)",
+    height: 58,
+    position: "absolute",
+    width: 58,
+  },
+  dot: {
+    borderColor: "#ffffff",
+    borderRadius: 999,
+    borderWidth: 4,
+    height: 36,
+    width: 36,
+  },
+});

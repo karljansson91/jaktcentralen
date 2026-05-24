@@ -62,7 +62,7 @@ export const DEFAULT_MAP_STYLE = MAP_STYLE_OPTIONS.find(
   (option) => option.id === 'outdoors'
 ) ?? MAP_STYLE_OPTIONS[0];
 
-export function getMapStyleById(styleId?: string | null) {
+function getMapStyleById(styleId?: string | null) {
   return MAP_STYLE_OPTIONS.find((option) => option.id === styleId) ?? DEFAULT_MAP_STYLE;
 }
 

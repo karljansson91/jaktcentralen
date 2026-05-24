@@ -10,7 +10,7 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 export default function AppLayout() {
   const { isLoaded, isSignedIn, signOut } = useAuth();
-  const router = useRouter();
+  const { back } = useRouter();
   const getOrCreateUser = useMutation(api.users.getOrCreateCurrentUser);
   const hasSynced = useRef(false);
 
@@ -35,9 +35,9 @@ export default function AppLayout() {
       <GlassIconButton
         icon="chevron-back"
         iconSize={21}
-        onPress={() => router.back()}
+        onPress={() => back()}
         accessibilityLabel="Gå tillbaka"
-        surfaceClassName="h-10 w-10"
+        surfaceClassName="size-10"
       />
     ),
     headerRight: () => (
@@ -46,7 +46,7 @@ export default function AppLayout() {
         iconSize={20}
         onPress={() => void handleSignOut()}
         accessibilityLabel="Logga ut"
-        surfaceClassName="h-10 w-10"
+        surfaceClassName="size-10"
       />
     ),
     headerShadowVisible: false,

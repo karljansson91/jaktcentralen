@@ -115,7 +115,7 @@ export function PointPlacementDrawer({
         accessibilityLabel="Stäng"
         hitSlop={12}
         onPress={onCancel}
-        className="absolute right-4 h-11 w-11 items-center justify-center rounded-full bg-background/95"
+        className="absolute right-4 size-11 items-center justify-center rounded-full bg-background/95"
         style={{
           top: Math.max(insets.top, 12) + 8,
           boxShadow: '0 8px 22px rgba(49, 52, 68, 0.18)',

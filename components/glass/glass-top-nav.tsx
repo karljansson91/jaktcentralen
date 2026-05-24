@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const GLASS_NAV_HEIGHT = 44;
+const GLASS_NAV_HEIGHT = 44;
 const GLASS_NAV_TOP_GAP = 6;
 const GLASS_NAV_HORIZONTAL_GAP = 8;
 const GLASS_SCREEN_HEADER_BOTTOM_GAP = 14;
@@ -26,7 +26,7 @@ type GlassTopNavProps = {
   titleBackground?: boolean;
 };
 
-export function getGlassHeaderTop(topInset: number) {
+function getGlassHeaderTop(topInset: number) {
   return Math.max(topInset, 8) + GLASS_NAV_TOP_GAP;
 }
 
@@ -74,7 +74,7 @@ export function GlassTopNav({
           iconSize={21}
           onPress={onBack}
           accessibilityLabel={leftAccessibilityLabel}
-          surfaceClassName="h-11 w-11"
+          surfaceClassName="size-11"
           tone={buttonTone}
         />
       ) : (
@@ -103,7 +103,7 @@ export function GlassTopNav({
           onPress={onRightPress}
           accessibilityLabel={rightAccessibilityLabel}
           overlayColor={isFloating ? FLOATING_HEADER_OVERLAY : undefined}
-          surfaceClassName="h-11 w-11"
+          surfaceClassName="size-11"
           tintColor={isFloating ? FLOATING_HEADER_TINT : undefined}
           tone={buttonTone}
         />

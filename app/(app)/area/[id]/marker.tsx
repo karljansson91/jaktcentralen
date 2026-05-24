@@ -1,11 +1,8 @@
 import { Button, Input, Text } from '@/components/ui';
-import {
-  CATEGORY_ICONS,
-  ChoiceChip,
-  ColorSwatch,
-  ImageGrid,
-  MAX_MARKER_IMAGES,
-} from '@/components/area/marker-form-controls';
+import { ColorSwatch } from '@/components/area/color-swatch';
+import { ImageGrid } from '@/components/area/image-grid';
+import { ChoiceChip } from '@/components/area/marker-form-controls';
+import { CATEGORY_ICONS, MAX_MARKER_IMAGES } from '@/components/area/marker-form-constants';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import {
@@ -44,9 +41,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+function shouldClearDraft(
+  draftId: string | undefined,
+  preserveDraftRef: { current: boolean }
+): draftId is string {
+  return Boolean(draftId && !preserveDraftRef.current);
+}
+
 export default function MarkerFormScreen() {
   const { id, draftId } = useLocalSearchParams<{ id: string; draftId?: string }>();
-  const router = useRouter();
+  const { back } = useRouter();
   const insets = useSafeAreaInsets();
 
   const saveFeature = useMutation(api.areaFeatures.save);
@@ -62,7 +66,7 @@ export default function MarkerFormScreen() {
 
   useEffect(() => {
     return () => {
-      if (draftId && !preserveDraftRef.current) {
+      if (shouldClearDraft(draftId, preserveDraftRef)) {
         clearAreaFeatureDraft(draftId);
       }
     };
@@ -132,7 +136,7 @@ export default function MarkerFormScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Stäng"
                 hitSlop={12}
-                onPress={() => router.back()}>
+                onPress={() => back()}>
                 <Ionicons name="close" size={24} color={APP_COLORS.text} />
               </Pressable>
             ),
@@ -154,13 +158,13 @@ export default function MarkerFormScreen() {
   function completeAndClose() {
     clearAreaFeatureDraft(activeDraftId);
     preserveDraftRef.current = true;
-    router.back();
+    back();
   }
 
   function discardAndClose() {
     clearAreaFeatureDraft(activeDraftId);
     preserveDraftRef.current = true;
-    router.back();
+    back();
   }
 
   async function submitFeature(
@@ -252,8 +256,7 @@ export default function MarkerFormScreen() {
   }
 
   async function uploadImage(asset: ImagePicker.ImagePickerAsset) {
-    const uploadUrl = await generateUploadUrl();
-    const imageResponse = await fetch(asset.uri);
+    const [uploadUrl, imageResponse] = await Promise.all([generateUploadUrl(), fetch(asset.uri)]);
     const blob = await imageResponse.blob();
     const uploadResponse = await fetch(uploadUrl, {
       body: blob,
@@ -286,6 +289,7 @@ export default function MarkerFormScreen() {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Behörighet krävs', 'Ge appen åtkomst till bilder för att ladda upp.');
+        setIsUploadingImages(false);
         return;
       }
 
@@ -297,6 +301,7 @@ export default function MarkerFormScreen() {
       });
 
       if (result.canceled) {
+        setIsUploadingImages(false);
         return;
       }
 
@@ -312,9 +317,8 @@ export default function MarkerFormScreen() {
         'Kunde inte lägga till bild',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setIsUploadingImages(false);
     }
+    setIsUploadingImages(false);
   }
 
   return (
@@ -356,10 +360,12 @@ export default function MarkerFormScreen() {
             <ScrollView
               className="flex-1 bg-background"
               contentContainerStyle={{
-                paddingBottom: Math.max(insets.bottom, 24) + 16,
+                paddingBottom: 16,
                 paddingHorizontal: 24,
                 paddingTop: 24,
               }}
+              contentInset={{ bottom: Math.max(insets.bottom, 24) }}
+              scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
               keyboardShouldPersistTaps="handled">
               <Text className="mb-2 font-medium">Typ</Text>
               <View className="mb-5 flex-row flex-wrap justify-between gap-y-3">

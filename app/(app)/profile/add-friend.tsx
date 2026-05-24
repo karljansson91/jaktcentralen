@@ -36,15 +36,19 @@ export default function AddFriendSheet() {
   const sendFriendRequest = useMutation(api.friends.sendRequest);
 
   const existingFriendUserIds = useMemo(
-    () => new Set((friends ?? []).map((friend) => friend.user?._id).filter(Boolean)),
+    () => new Set((friends ?? []).flatMap((friend) => (friend.user?._id ? [friend.user._id] : []))),
     [friends]
   );
   const pendingSentUserIds = useMemo(
-    () => new Set((pendingSent ?? []).map((request) => request.user?._id).filter(Boolean)),
+    () =>
+      new Set((pendingSent ?? []).flatMap((request) => (request.user?._id ? [request.user._id] : []))),
     [pendingSent]
   );
   const pendingReceivedUserIds = useMemo(
-    () => new Set((pendingReceived ?? []).map((request) => request.user?._id).filter(Boolean)),
+    () =>
+      new Set(
+        (pendingReceived ?? []).flatMap((request) => (request.user?._id ? [request.user._id] : []))
+      ),
     [pendingReceived]
   );
 
@@ -58,9 +62,8 @@ export default function AddFriendSheet() {
         'Kunde inte skicka förfrågan',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setPendingUserId(null);
     }
+    setPendingUserId(null);
   }
 
   return (
@@ -120,10 +123,10 @@ export default function AddFriendSheet() {
                 accessibilityRole="button"
                 accessibilityLabel={`Lägg till ${user.name || 'användare'}`}
                 disabled={disabled}
-                className="rounded-3xl border border-border bg-card px-4 py-4 active:bg-accent"
+                className="rounded-3xl border border-border bg-card p-4 active:bg-accent"
                 onPress={() => void handleSendFriendRequest(user._id)}>
                 <View className="flex-row items-center gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
                     <Text className="text-sm font-semibold text-primary">
                       {getInitials(user.name)}
                     </Text>
@@ -152,7 +155,7 @@ export default function AddFriendSheet() {
           })
         ) : (
           <Card className="border-border/70 bg-card/90 py-0">
-            <CardContent className="gap-2 px-5 py-5">
+            <CardContent className="gap-2 p-5">
               <Text className="text-base font-semibold text-foreground">Inga träffar</Text>
               <Text className="text-sm leading-5 text-muted-foreground">
                 Testa ett annat namn. E-postsök kan vi lägga till när vi bygger ut vänflödet mer.

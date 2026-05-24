@@ -14,12 +14,20 @@ import {
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
+import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type MarkerSheetMode = 'create' | 'actions';
+
+function shouldClearDraft(
+  draftId: string | undefined,
+  preserveDraftRef: { current: boolean }
+): draftId is string {
+  return Boolean(draftId && !preserveDraftRef.current);
+}
 
 type MarkerOptionCardProps = {
   label: string;
@@ -33,12 +41,12 @@ function MarkerOptionCard({ label, icon, onPress, fullWidth }: MarkerOptionCardP
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className="min-h-24 items-center justify-center gap-3 rounded-3xl border border-border bg-card px-4 py-4 active:bg-muted"
+      className="min-h-24 items-center justify-center gap-3 rounded-3xl border border-border bg-card p-4 active:bg-muted"
       style={{
         width: fullWidth ? '100%' : '48%',
         boxShadow: '0 7px 18px rgba(49, 52, 68, 0.08)',
       }}>
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+      <View className="size-10 items-center justify-center rounded-full bg-primary/10">
         <Ionicons name={icon} size={20} color={APP_COLORS.primary} />
       </View>
       <Text className="text-center text-sm font-semibold">{label}</Text>
@@ -74,7 +82,7 @@ export default function MarkerSheetScreen() {
     draftId?: string;
     mode?: MarkerSheetMode;
   }>();
-  const router = useRouter();
+  const { back, replace } = useRouter();
   const removeFeature = useMutation(api.areaFeatures.remove);
   const preserveDraftRef = useRef(false);
   const insets = useSafeAreaInsets();
@@ -84,7 +92,7 @@ export default function MarkerSheetScreen() {
 
   useEffect(() => {
     return () => {
-      if (draftId && !preserveDraftRef.current) {
+      if (shouldClearDraft(draftId, preserveDraftRef)) {
         clearAreaFeatureDraft(draftId);
       }
     };
@@ -95,7 +103,7 @@ export default function MarkerSheetScreen() {
       clearAreaFeatureDraft(draftId);
     }
     preserveDraftRef.current = true;
-    router.back();
+    back();
   }
 
   function goToDraft(route: 'marker' | 'marker-geometry', nextDraft: AreaFeatureDraft) {
@@ -105,7 +113,7 @@ export default function MarkerSheetScreen() {
 
     saveAreaFeatureDraft(nextDraft, draftId);
     preserveDraftRef.current = true;
-    router.replace(`/area/${id}/${route}?draftId=${draftId}`);
+    replace(`/area/${id}/${route}?draftId=${draftId}`);
   }
 
   function openPointMarker(category: AreaFeatureCategory) {
@@ -155,7 +163,7 @@ export default function MarkerSheetScreen() {
         <Text variant="h3">Markörer</Text>
         <Text className="mt-2 text-muted-foreground">Markörutkastet kunde inte hittas.</Text>
         <View className="mt-6">
-          <Button variant="outline" onPress={() => router.back()} className="rounded-2xl">
+          <Button variant="outline" onPress={() => back()} className="rounded-2xl">
             <Text>Stäng</Text>
           </Button>
         </View>
@@ -219,7 +227,7 @@ export default function MarkerSheetScreen() {
                     <Image
                       key={image.fileId}
                       source={{ uri: image.url }}
-                      className="h-24 w-24 rounded-2xl bg-muted"
+                      className="size-24 rounded-2xl bg-muted"
                     />
                   ))}
                 </View>

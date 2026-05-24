@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('sv-SE');
@@ -36,7 +36,7 @@ function getEventStatus(startDate: number, endDate: number) {
 }
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const { push } = useRouter();
   const insets = useSafeAreaInsets();
   const user = useQuery(api.users.getCurrentUserProfile);
   const areas = useQuery(api.areas.listMyAreas, user ? {} : 'skip');
@@ -59,32 +59,34 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <View className="items-center gap-4">
-          <View className="h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+          <View className="size-14 items-center justify-center rounded-full bg-primary/10">
             <Ionicons name="trail-sign-outline" size={28} color="#35523b" />
           </View>
           <ActivityIndicator size="small" color="#35523b" />
-          <Text className="text-sm text-muted-foreground">Laddar...</Text>
+          <Text className="text-sm text-muted-foreground">Laddar…</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <View className="absolute left-[-72] top-[-12] h-56 w-56 rounded-full bg-primary/10" />
-      <View className="absolute bottom-24 right-[-64] h-52 w-52 rounded-full bg-secondary/80" />
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="absolute left-[-72] top-[-12] size-56 rounded-full bg-primary/10" />
+      <View className="absolute bottom-24 right-[-64] size-52 rounded-full bg-secondary/80" />
 
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         contentContainerClassName="gap-7 px-4 pb-8"
-        contentContainerStyle={{ paddingTop: 14, paddingBottom: insets.bottom + 96 }}>
+        contentContainerStyle={{ paddingTop: 14, paddingBottom: 96 }}
+        contentInset={{ bottom: insets.bottom }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}>
         <View className="flex-row justify-end">
           <IconButton
             accessibilityLabel="Öppna profil"
             variant="outline"
-            onPress={() => router.push('/profile' as Href)}
+            onPress={() => push('/profile' as Href)}
             className="relative border border-border/70 bg-card">
             {profileInitial ? (
               <Text className="text-sm font-semibold text-primary">{profileInitial}</Text>
@@ -108,7 +110,7 @@ export default function HomeScreen() {
             addAccessibilityLabel="Gå med i jakt"
             actionIcon="enter-outline"
             actionLabel="Gå med"
-            onAddPress={() => router.push('/join')}
+            onAddPress={() => push('/join')}
           />
 
           {events.length + endedEvents.length > 0 ? (
@@ -120,11 +122,11 @@ export default function HomeScreen() {
                   <Pressable
                     key={event._id}
                     accessibilityRole="button"
-                    onPress={() => router.push(`/event/${event._id}`)}>
+                    onPress={() => push(`/event/${event._id}`)}>
                     <Card className="border-border/70 py-0">
                       <CardContent className="px-5 py-4">
                         <View className="flex-row items-center gap-4">
-                          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                          <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
                             <Ionicons name="compass-outline" size={22} color="#35523b" />
                           </View>
                           <View className="flex-1 gap-1">
@@ -159,11 +161,11 @@ export default function HomeScreen() {
                 <Pressable
                   key={event._id}
                   accessibilityRole="button"
-                  onPress={() => router.push(`/event/${event._id}`)}>
+                  onPress={() => push(`/event/${event._id}`)}>
                   <Card className="border-border/70 bg-card/80 py-0">
                     <CardContent className="px-5 py-4">
                       <View className="flex-row items-center gap-4">
-                        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-secondary">
+                        <View className="size-12 items-center justify-center rounded-2xl bg-secondary">
                           <Ionicons name="archive-outline" size={22} color="#35523b" />
                         </View>
                         <View className="flex-1 gap-1">
@@ -190,9 +192,9 @@ export default function HomeScreen() {
             </View>
           ) : (
             <Card className="overflow-hidden border-border/70 bg-card/95 py-0">
-              <CardContent className="gap-4 px-5 py-5">
+              <CardContent className="gap-4 p-5">
                 <View className="flex-row items-start gap-4">
-                  <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
                     <Ionicons name="enter-outline" size={22} color="#35523b" />
                   </View>
                   <View className="min-w-0 flex-1 gap-1">
@@ -206,7 +208,7 @@ export default function HomeScreen() {
                 </View>
                 <Button
                   className="h-12 rounded-xl"
-                  onPress={() => router.push('/join')}
+                  onPress={() => push('/join')}
                   accessibilityLabel="Gå med i jakt med kod">
                   <Ionicons name="key-outline" size={18} color="#f8f4ea" />
                   <Text>Gå med i jakt</Text>
@@ -221,7 +223,7 @@ export default function HomeScreen() {
             title="Mina områden"
             count={areas.length}
             addAccessibilityLabel="Skapa område"
-            onAddPress={() => router.push('/area/create')}
+            onAddPress={() => push('/area/create')}
           />
 
           {areas.length > 0 ? (
@@ -230,11 +232,11 @@ export default function HomeScreen() {
                 <Pressable
                   key={area._id}
                   accessibilityRole="button"
-                  onPress={() => router.push(`/area/${area._id}`)}>
+                  onPress={() => push(`/area/${area._id}`)}>
                   <Card className="border-border/70 py-0">
                     <CardContent className="px-5 py-4">
                       <View className="flex-row items-center gap-4">
-                        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-secondary">
+                        <View className="size-12 items-center justify-center rounded-2xl bg-secondary">
                           <Ionicons name="map-outline" size={22} color="#35523b" />
                         </View>
                         <View className="flex-1 gap-1">
@@ -255,9 +257,9 @@ export default function HomeScreen() {
             </View>
           ) : (
             <Card className="overflow-hidden border-border/70 bg-card/95 py-0">
-              <CardContent className="gap-4 px-5 py-5">
+              <CardContent className="gap-4 p-5">
                 <View className="flex-row items-start gap-4">
-                  <View className="h-12 w-12 items-center justify-center rounded-2xl bg-secondary">
+                  <View className="size-12 items-center justify-center rounded-2xl bg-secondary">
                     <Ionicons name="map-outline" size={22} color="#35523b" />
                   </View>
                   <View className="min-w-0 flex-1 gap-1">
@@ -272,7 +274,7 @@ export default function HomeScreen() {
                 <Button
                   variant="outline"
                   className="h-12 rounded-xl bg-background/80"
-                  onPress={() => router.push('/area/create')}
+                  onPress={() => push('/area/create')}
                   accessibilityLabel="Skapa område">
                   <Ionicons name="add-circle-outline" size={18} color="#35523b" />
                   <Text>Skapa område</Text>
@@ -283,6 +285,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-    </SafeAreaView>
+    </View>
   );
 }

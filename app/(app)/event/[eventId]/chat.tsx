@@ -74,7 +74,7 @@ export default function EventChatScreen() {
               <View className="items-center gap-3">
                 <ActivityIndicator size="small" color={APP_COLORS.primary} />
                 <Text className="text-center text-sm text-muted-foreground">
-                  Laddar meddelanden...
+                  Laddar meddelanden…
                 </Text>
               </View>
             ) : (
@@ -116,7 +116,7 @@ export default function EventChatScreen() {
         collapsable={false}>
         <TextInput
           className="min-h-[44px] flex-1 rounded-[22px] bg-card px-4 py-3 text-base text-foreground"
-          placeholder="Skriv ett meddelande..."
+          placeholder="Skriv ett meddelande…"
           placeholderTextColor={APP_COLORS.textMuted}
           value={body}
           onChangeText={setBody}
@@ -128,7 +128,7 @@ export default function EventChatScreen() {
         />
         <Pressable
           onPress={handleSend}
-          className="h-11 w-11 items-center justify-center rounded-full bg-primary"
+          className="size-11 items-center justify-center rounded-full bg-primary"
           disabled={!body.trim()}>
           <Ionicons name="send" size={18} color={APP_COLORS.surface} />
         </Pressable>

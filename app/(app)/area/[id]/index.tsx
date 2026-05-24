@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ViewAreaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
@@ -133,8 +133,8 @@ export default function ViewAreaScreen() {
   }, []);
 
   const handleOpenAreaActions = useCallback(() => {
-    router.push(`/area/${id}/actions`);
-  }, [id, router]);
+    push(`/area/${id}/actions`);
+  }, [id, push]);
 
   if (area === undefined || areaFeatures === undefined) {
     return (
@@ -212,7 +212,7 @@ export default function ViewAreaScreen() {
           <GlassTopNav
             appearance="floating"
             title={area.name}
-            onBack={() => router.back()}
+            onBack={() => back()}
             onRightPress={handleOpenAreaActions}
             rightAccessibilityLabel="Områdesåtgärder"
           />
@@ -225,7 +225,7 @@ export default function ViewAreaScreen() {
             icon="locate"
             onPress={handleGoToMyPosition}
             accessibilityLabel="Gå till min position"
-            surfaceClassName="h-12 w-12"
+            surfaceClassName="size-12"
             tone="dark"
           />
         </View>

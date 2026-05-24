@@ -44,7 +44,7 @@ export function GlassIconButton({
           overlayColor={overlayColor}
           tone={tone}
           tintColor={tintColor}
-          className={cn('h-12 w-12 rounded-full', surfaceClassName)}
+          className={cn('size-12 rounded-full', surfaceClassName)}
           contentClassName="h-full w-full items-center justify-center"
           style={[
             pressed && !disabled ? { transform: [{ scale: 1.07 }] } : null,
@@ -61,7 +61,7 @@ export function GlassFloatingButton({ surfaceClassName, ...props }: GlassIconBut
   return (
     <GlassIconButton
       iconSize={24}
-      surfaceClassName={cn('h-14 w-14', surfaceClassName)}
+      surfaceClassName={cn('size-14', surfaceClassName)}
       {...props}
     />
   );

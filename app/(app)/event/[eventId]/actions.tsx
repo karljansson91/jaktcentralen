@@ -56,7 +56,7 @@ function EventActionButton({
 
 export default function EventActionsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const router = useRouter();
+  const { back, push, replace } = useRouter();
   const insets = useSafeAreaInsets();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -68,23 +68,22 @@ export default function EventActionsScreen() {
   const endEvent = useMutation(api.events.end);
 
   function closeAndNavigate(path: Href) {
-    router.back();
-    setTimeout(() => router.push(path), 100);
+    back();
+    setTimeout(() => push(path), 100);
   }
 
   async function handleLeaveEvent() {
     setIsSubmitting(true);
     try {
       await leaveEvent({ eventId: eventId as Id<'events'> });
-      router.replace('/' as Href);
+      replace('/' as Href);
     } catch (error) {
       Alert.alert(
         'Kunde inte lämna jakten',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   }
 
   async function handleEndEvent() {
@@ -93,15 +92,14 @@ export default function EventActionsScreen() {
     setIsSubmitting(true);
     try {
       await endEvent({ eventId: eventId as Id<'events'> });
-      router.replace(`/event/${eventId}` as Href);
+      replace(`/event/${eventId}` as Href);
     } catch (error) {
       Alert.alert(
         'Kunde inte avsluta jakten',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   }
 
   function confirmLeaveOrRemove() {

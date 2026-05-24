@@ -65,7 +65,7 @@ function SectionHeader({ title, subtitle, actionLabel, onActionPress }: SectionH
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { push, replace } = useRouter();
   const { user: clerkUser } = useUser();
 
   const user = useQuery(api.users.getCurrentUserProfile);
@@ -90,7 +90,7 @@ export default function ProfileScreen() {
     try {
       await acceptInvite({ memberId });
       if (eventId) {
-        router.replace(`/event/${eventId}` as Href);
+        replace(`/event/${eventId}` as Href);
       }
     } catch (error) {
       Alert.alert(
@@ -160,12 +160,14 @@ export default function ProfileScreen() {
       contentContainerClassName="gap-5 px-4"
       contentContainerStyle={{
         paddingTop: 12,
-        paddingBottom: Math.max(insets.bottom, 16) + 24,
-      }}>
+        paddingBottom: 24,
+      }}
+      contentInset={{ bottom: Math.max(insets.bottom, 16) }}
+      scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}>
       <Card className="overflow-hidden border-border/70 bg-card py-0">
-        <CardContent className="gap-5 px-5 py-5">
+        <CardContent className="gap-5 p-5">
           <View className="flex-row items-center gap-4">
-            <View className="h-16 w-16 items-center justify-center rounded-full bg-primary">
+            <View className="size-16 items-center justify-center rounded-full bg-primary">
               <Text className="text-xl font-semibold text-primary-foreground">
                 {profileInitials}
               </Text>
@@ -193,9 +195,9 @@ export default function ProfileScreen() {
 
           {invitations?.map((invitation) => (
             <Card key={invitation._id} className="border-border/70 bg-card py-0">
-              <CardContent className="gap-4 px-5 py-5">
+              <CardContent className="gap-4 p-5">
                 <View className="flex-row items-start gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-secondary">
+                  <View className="size-11 items-center justify-center rounded-2xl bg-secondary">
                     <Ionicons name="compass-outline" size={22} color={APP_COLORS.primary} />
                   </View>
                   <View className="min-w-0 flex-1 gap-1">
@@ -232,9 +234,9 @@ export default function ProfileScreen() {
 
           {friendRequests?.map((request) => (
             <Card key={request.friendshipId} className="border-border/70 bg-card py-0">
-              <CardContent className="gap-4 px-5 py-5">
+              <CardContent className="gap-4 p-5">
                 <View className="flex-row items-center gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
                     <Text className="text-sm font-semibold text-primary">
                       {getInitials(request.user?.name)}
                     </Text>
@@ -276,7 +278,7 @@ export default function ProfileScreen() {
             <Card key={request.friendshipId} className="border-border/70 bg-card py-0">
               <CardContent className="px-5 py-4">
                 <View className="flex-row items-center gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
                     <Text className="text-sm font-semibold text-primary">
                       {getInitials(request.user?.name)}
                     </Text>
@@ -308,7 +310,7 @@ export default function ProfileScreen() {
           title="Vänner"
           subtitle="Håll in en vän för att ta bort."
           actionLabel="Lägg till vän"
-          onActionPress={() => router.push('/profile/add-friend' as Href)}
+          onActionPress={() => push('/profile/add-friend' as Href)}
         />
 
         {friends && friends.length > 0 ? (
@@ -321,7 +323,7 @@ export default function ProfileScreen() {
               <Card className="border-border/70 bg-card py-0">
                 <CardContent className="px-5 py-4">
                   <View className="flex-row items-center gap-3">
-                    <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                    <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
                       <Text className="text-sm font-semibold text-primary">
                         {getInitials(friend.user?.name)}
                       </Text>

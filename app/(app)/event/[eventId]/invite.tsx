@@ -71,7 +71,7 @@ function InviteUserRow({ user, status, isPending, onInvite }: InviteUserRowProps
 
   return (
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-      <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+      <View className="size-10 items-center justify-center rounded-2xl bg-primary/10">
         <Text className="text-sm font-semibold text-primary">
           {getMemberInitials(name)}
         </Text>
@@ -134,9 +134,7 @@ export default function EventInviteScreen() {
 
   const friendRows = useMemo(
     () =>
-      (friends ?? [])
-        .map((friend) => friend.user)
-        .filter(isInviteUser),
+      (friends ?? []).flatMap((friend) => (isInviteUser(friend.user) ? [friend.user] : [])),
     [friends]
   );
   const searchRows = useMemo(
@@ -158,9 +156,8 @@ export default function EventInviteScreen() {
           'Kunde inte bjuda in',
           error instanceof Error ? error.message : 'Försök igen om en stund.'
         );
-      } finally {
-        setPendingUserId(null);
       }
+      setPendingUserId(null);
     },
     [eventId, inviteMember]
   );
@@ -242,7 +239,7 @@ export default function EventInviteScreen() {
             <Card>
               <CardContent className="gap-4 p-4">
                 <View className="flex-row items-center gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
                     <Ionicons name="key-outline" size={22} color={APP_COLORS.primary} />
                   </View>
                   <View className="min-w-0 flex-1">
@@ -291,7 +288,7 @@ export default function EventInviteScreen() {
                 />
               ))
             ) : (
-              <Text className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
+              <Text className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
                 Inga användare hittades.
               </Text>
             )}
@@ -315,7 +312,7 @@ export default function EventInviteScreen() {
               />
             ))
           ) : (
-            <Text className="rounded-2xl border border-border bg-card px-4 py-4 text-sm leading-5 text-muted-foreground">
+            <Text className="rounded-2xl border border-border bg-card p-4 text-sm leading-5 text-muted-foreground">
               Inga vänner ännu. Sök användare ovan eller kopiera jaktkoden.
             </Text>
           )}

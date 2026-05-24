@@ -47,7 +47,7 @@ const buttonVariants = cva(
         ),
         lg: cn('h-11 rounded-md px-6 sm:h-10', Platform.select({ web: 'has-[>svg]:px-4' })),
         xl: cn('h-12 rounded-2xl px-6 py-3', Platform.select({ web: 'has-[>svg]:px-5' })),
-        icon: 'h-10 w-10 sm:h-9 sm:w-9',
+        icon: 'size-10 sm:h-9 sm:w-9',
       },
     },
     defaultVariants: {
@@ -109,5 +109,5 @@ function Button({ className, variant, size, ...props }: ButtonProps) {
   );
 }
 
-export { Button, buttonTextVariants, buttonVariants };
+export { Button };
 export type { ButtonProps };

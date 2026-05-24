@@ -1,5 +1,5 @@
-export const JOIN_CODE_MIN_LENGTH = 3;
-export const JOIN_CODE_MAX_LENGTH = 32;
+const JOIN_CODE_MIN_LENGTH = 3;
+const JOIN_CODE_MAX_LENGTH = 32;
 
 const SAFE_JOIN_CODE_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
@@ -32,7 +32,7 @@ export function validateJoinCode(value: string): string | undefined {
   return undefined;
 }
 
-export function normalizeJoinCodeForDisplay(value: string): string {
+function normalizeJoinCodeForDisplay(value: string): string {
   return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

@@ -49,7 +49,7 @@ function AreaActionButton({
 
 export default function AreaActionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const [selectedMapStyleId, setSelectedMapStyleId] = useState(DEFAULT_MAP_STYLE.id);
 
@@ -68,8 +68,8 @@ export default function AreaActionsScreen() {
   }, []);
 
   function closeAndNavigate(path: Href) {
-    router.back();
-    setTimeout(() => router.push(path), 100);
+    back();
+    setTimeout(() => push(path), 100);
   }
 
   const handleSelectMapStyle = useCallback(() => {

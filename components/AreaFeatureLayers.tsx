@@ -76,12 +76,11 @@ function buildPointFeatureCollection(features: AreaFeatureListItem[]): GeoJSON.F
 function buildPolygonFeatureCollection(features: AreaFeatureListItem[]): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: features
-      .filter(
-        (feature): feature is AreaFeatureListItem & { polygon: NonNullable<AreaFeatureListItem["polygon"]> } =>
-          feature.geometryType === "polygon" && Boolean(feature.polygon)
-      )
-      .flatMap((feature) => {
+    features: features.flatMap((feature) => {
+        if (feature.geometryType !== "polygon" || !feature.polygon) {
+          return [];
+        }
+
         const outlineCoordinates = feature.polygon.map(areaFeaturePointToLngLat);
         return [
           {

@@ -7,7 +7,7 @@ export const AREA_FEATURE_CATEGORY_LABELS = {
   custom: "Anpassad",
 } as const;
 
-export const AREA_FEATURE_CATEGORY_COLORS = {
+const AREA_FEATURE_CATEGORY_COLORS = {
   tower: "#8b5cf6",
   parking: "#6b7280",
   meeting: "#3b82f6",
@@ -74,20 +74,6 @@ export function getDefaultColorForCategory(category: AreaFeatureCategory) {
 
 export function areaFeaturePointToLngLat(point: LatLngPoint): [number, number] {
   return [point.longitude, point.latitude];
-}
-
-export function areaPolygonToBounds(points: LatLngPoint[]) {
-  if (points.length < 2) {
-    return null;
-  }
-
-  const lngs = points.map((point) => point.longitude);
-  const lats = points.map((point) => point.latitude);
-
-  return {
-    ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
-    sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-  };
 }
 
 export function polygonCentroid(points: LatLngPoint[]): [number, number] {

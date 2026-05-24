@@ -25,6 +25,10 @@ if (!convexUrl) {
 
 const convex = new ConvexReactClient(convexUrl);
 
+function useClerkAuthBridge() {
+  return useAuth();
+}
+
 function LightModeLock() {
   const { colorScheme, setColorScheme } = useColorScheme();
 
@@ -40,7 +44,7 @@ function LightModeLock() {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      <ConvexProviderWithClerk client={convex} useAuth={useClerkAuthBridge}>
         <LightModeLock />
         <StatusBar style="dark" />
         <Stack screenOptions={{ headerShown: false }} />

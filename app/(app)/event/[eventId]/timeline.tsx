@@ -85,7 +85,7 @@ function buildPointShape(group: ReplayGroup, point: ReplayPoint) {
 
 export default function EventTimelineScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const router = useRouter();
+  const { back } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
@@ -160,7 +160,7 @@ export default function EventTimelineScreen() {
   const timeline = useMemo(() => {
     if (!replay) return null;
 
-    const sorted = [...replay].sort((a, b) => a.timestamp - b.timestamp);
+    const sorted = replay.toSorted((a, b) => a.timestamp - b.timestamp);
     const groups = new Map<string, ReplayGroup>();
 
     for (const point of sorted) {
@@ -237,7 +237,7 @@ export default function EventTimelineScreen() {
           pointerEvents="box-none"
           className="absolute left-4 right-4 z-10"
           style={{ top: Math.max(insets.top, 8) + 8 }}>
-          <GlassTopNav appearance="screen" title="Jakt tidslinje" onBack={() => router.back()} />
+          <GlassTopNav appearance="screen" title="Jakt tidslinje" onBack={() => back()} />
         </View>
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-center text-base text-muted-foreground">
@@ -342,7 +342,7 @@ export default function EventTimelineScreen() {
             appearance="floating"
             title={event.title}
             titleBackground
-            onBack={() => router.back()}
+            onBack={() => back()}
             rightIcon="time-outline"
           />
         </View>
@@ -397,7 +397,7 @@ export default function EventTimelineScreen() {
                     key={group.userId}
                     className="flex-row items-center gap-2 rounded-full bg-background/75 px-3 py-2">
                     <View
-                      className="h-2.5 w-2.5 rounded-full"
+                      className="size-2.5 rounded-full"
                       style={{ backgroundColor: group.color }}
                     />
                     <Text className="text-xs font-semibold text-foreground" numberOfLines={1}>

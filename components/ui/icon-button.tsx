@@ -5,9 +5,9 @@ import { cva, type VariantProps } from 'class-variance-authority';
 const iconButtonVariants = cva('rounded-full p-0', {
   variants: {
     size: {
-      sm: 'h-9 w-9',
-      default: 'h-11 w-11',
-      lg: 'h-14 w-14',
+      sm: 'size-9',
+      default: 'size-11',
+      lg: 'size-14',
     },
   },
   defaultVariants: {
@@ -22,5 +22,5 @@ function IconButton({ className, size, ...props }: IconButtonProps) {
   return <Button size="icon" className={cn(iconButtonVariants({ size }), className)} {...props} />;
 }
 
-export { IconButton, iconButtonVariants };
+export { IconButton };
 export type { IconButtonProps };

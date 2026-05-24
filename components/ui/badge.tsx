@@ -43,5 +43,5 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
-export { Badge, badgeTextVariants, badgeVariants };
+export { Badge };
 export type { BadgeProps };

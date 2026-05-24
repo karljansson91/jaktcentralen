@@ -9,7 +9,7 @@ import { ActivityIndicator, Alert, View } from 'react-native';
 
 export default function RedrawAreaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const { back } = useRouter();
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
   const updateArea = useMutation(api.areas.update);
 
@@ -25,12 +25,12 @@ export default function RedrawAreaScreen() {
           areaId: id as Id<'areas'>,
           polygon: points.map(([longitude, latitude]) => ({ latitude, longitude })),
         });
-        router.back();
+        back();
       } catch (error: any) {
         Alert.alert('Fel', error.message ?? 'Kunde inte uppdatera området');
       }
     },
-    [id, router, updateArea]
+    [back, id, updateArea]
   );
 
   if (area === undefined) {
@@ -56,7 +56,7 @@ export default function RedrawAreaScreen() {
         point.latitude,
       ])}
       onComplete={handleComplete}
-      onCancel={() => router.back()}
+      onCancel={() => back()}
     />
   );
 }

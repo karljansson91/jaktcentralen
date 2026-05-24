@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useSSO, type StartSSOFlowParams } from '@clerk/expo';
+import { Image, type ImageSource } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
-import { Alert, Image, Platform, View, type ImageSourcePropType } from 'react-native';
+import { Alert, Platform, View } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -15,7 +16,7 @@ type SocialConnectionStrategy = Extract<
 
 const SOCIAL_CONNECTION_STRATEGIES: {
   type: SocialConnectionStrategy;
-  source: ImageSourcePropType;
+  source: ImageSource;
   useTint?: boolean;
   label: string;
 }[] = [
@@ -48,10 +49,9 @@ export function SocialConnections() {
 
         if (result.createdSessionId && result.setActive) {
           await result.setActive({ session: result.createdSessionId });
-          return;
+        } else {
+          Alert.alert('Inloggning misslyckades', `${label}-inloggning kunde inte slutföras.`);
         }
-
-        Alert.alert('Inloggning misslyckades', `${label}-inloggning kunde inte slutföras.`);
       } catch (error) {
         console.error('Social login error:', JSON.stringify(error, null, 2));
 
@@ -66,9 +66,8 @@ export function SocialConnections() {
           'Inloggning misslyckades',
           message || `Ett fel uppstod vid ${label}-inloggning. Försök igen.`,
         );
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
   }
 

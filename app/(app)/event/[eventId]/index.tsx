@@ -127,10 +127,9 @@ const styles = StyleSheet.create({
 
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const router = useRouter();
+  const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
-  const watchRef = useRef<Location.LocationSubscription | null>(null);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
 
   const event = useQuery(api.events.get, {
@@ -182,12 +181,13 @@ export default function EventMapScreen() {
     if (event.endedAt !== undefined) return;
 
     let cancelled = false;
+    let subscription: Location.LocationSubscription | null = null;
 
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted' || cancelled) return;
 
-      watchRef.current = await Location.watchPositionAsync(
+      const nextSubscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
           distanceInterval: 10,
@@ -204,6 +204,13 @@ export default function EventMapScreen() {
           });
         }
       );
+
+      if (cancelled) {
+        nextSubscription.remove();
+        return;
+      }
+
+      subscription = nextSubscription;
     })().catch((error) => {
       if (!cancelled) {
         console.error('Failed to start location tracking:', error);
@@ -212,8 +219,7 @@ export default function EventMapScreen() {
 
     return () => {
       cancelled = true;
-      watchRef.current?.remove();
-      watchRef.current = null;
+      subscription?.remove();
     };
   }, [event, eventId, updatePosition]);
 
@@ -277,31 +283,32 @@ export default function EventMapScreen() {
     const assignmentsByTargetKey = new Map(
       assignments.map((assignment) => [assignment.targetKey, assignment])
     );
-    const features = areaFeatures
-      .filter((feature) => feature.geometryType === 'point' && feature.point)
-      .map((feature) => {
+    const features = areaFeatures.flatMap((feature) => {
+        if (feature.geometryType !== 'point' || !feature.point) {
+          return [];
+        }
+
         const assignment = assignmentsByTargetKey.get(getAreaFeatureTargetKey(feature));
         if (!assignment) {
-          return null;
+          return [];
         }
 
         const name = assignment.assignedUser?.name?.trim() || 'Okänd';
-        return {
-          coordinates: [feature.point!.longitude, feature.point!.latitude] as [number, number],
+        return [{
+          coordinates: [feature.point.longitude, feature.point.latitude] as [number, number],
           initials: getMemberInitials(name),
           targetKey: getAreaFeatureTargetKey(feature),
-        } satisfies AssignedStationMarkerItem;
-      })
-      .filter((feature) => feature !== null);
+        } satisfies AssignedStationMarkerItem];
+      });
 
     return features;
   }, [areaFeatures, assignments]);
 
   const handlePressStationTarget = useCallback(
     (targetKey: string) => {
-      router.push(`/event/${eventId}/station?targetKey=${encodeURIComponent(targetKey)}`);
+      push(`/event/${eventId}/station?targetKey=${encodeURIComponent(targetKey)}`);
     },
-    [eventId, router]
+    [eventId, push]
   );
 
   const handlePressPointFeature = useCallback(
@@ -444,8 +451,8 @@ export default function EventMapScreen() {
             appearance="floating"
             title={event.title}
             titleBackground
-            onBack={() => router.back()}
-            onRightPress={() => router.push(`/event/${eventId}/actions`)}
+            onBack={() => back()}
+            onRightPress={() => push(`/event/${eventId}/actions`)}
             rightAccessibilityLabel="Jaktåtgärder"
           />
         </View>
@@ -457,7 +464,7 @@ export default function EventMapScreen() {
             icon="locate"
             onPress={handleGoToMyPosition}
             accessibilityLabel="Gå till min position"
-            surfaceClassName="h-12 w-12"
+            surfaceClassName="size-12"
             tone="dark"
           />
         </View>
@@ -467,9 +474,9 @@ export default function EventMapScreen() {
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
           <IconButton
             size="lg"
-            onPress={() => router.push(`/event/${eventId}/chat`)}
+            onPress={() => push(`/event/${eventId}/chat`)}
             accessibilityLabel="Öppna chat"
-            className="h-16 w-16 bg-primary"
+            className="size-16 bg-primary"
             style={{
               backgroundColor: APP_COLORS.primary,
               borderColor: 'rgba(254, 253, 251, 0.7)',

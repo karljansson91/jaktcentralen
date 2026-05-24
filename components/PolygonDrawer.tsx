@@ -121,18 +121,23 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
       try {
         const hitRadius = 40 * 40;
+        const map = mapRef.current;
+        if (!map) return;
 
-        for (let i = 0; i < polygonPoints.length; i++) {
-          const map = mapRef.current;
-          if (!map) return;
+        const vertexScreenPoints = await Promise.all(
+          polygonPoints.map(async (point, index) => ({
+            index,
+            screenPt: await map.getPointInView(point),
+          }))
+        );
 
-          const screenPt = await map.getPointInView(polygonPoints[i]);
+        for (const { index, screenPt } of vertexScreenPoints) {
           const dx = pageX - screenPt[0];
           const dy = pageY - screenPt[1];
           if (dx * dx + dy * dy < hitRadius) {
-            draggingRef.current = i;
+            draggingRef.current = index;
             suppressMapPress.current = true;
-            setDraggingVertex(i);
+            setDraggingVertex(index);
             return;
           }
         }
@@ -141,31 +146,41 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
           ? polygonPoints.length
           : Math.max(polygonPoints.length - 1, 0);
 
-        for (let i = 0; i < segmentCount; i++) {
-          const map = mapRef.current;
-          if (!map) return;
+        const segmentScreenPoints = await Promise.all(
+          Array.from({ length: segmentCount }, async (_, index) => {
+            const a = polygonPoints[index];
+            const b = polygonPoints[(index + 1) % polygonPoints.length];
+            const midpoint: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+            return {
+              index,
+              screenPt: await map.getPointInView(midpoint),
+            };
+          })
+        );
 
-          const a = polygonPoints[i];
-          const b = polygonPoints[(i + 1) % polygonPoints.length];
-          const midpoint: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-          const screenPt = await map.getPointInView(midpoint);
+        let hitSegmentIndex: number | null = null;
+        for (const { index, screenPt } of segmentScreenPoints) {
           const dx = pageX - screenPt[0];
           const dy = pageY - screenPt[1];
 
           if (dx * dx + dy * dy < hitRadius) {
-            const droppedAt = await map.getCoordinateFromView([pageX, pageY]) as LngLat;
-            const insertIndex = i + 1;
-
-            draggingRef.current = insertIndex;
-            suppressMapPress.current = true;
-            setDraggingVertex(insertIndex);
-            setPolygonPoints((prev) => {
-              const updated = [...prev];
-              updated.splice(insertIndex, 0, droppedAt);
-              return updated;
-            });
-            return;
+            hitSegmentIndex = index;
+            break;
           }
+        }
+
+        if (hitSegmentIndex !== null) {
+          const droppedAt = await map.getCoordinateFromView([pageX, pageY]) as LngLat;
+          const insertIndex = hitSegmentIndex + 1;
+
+          draggingRef.current = insertIndex;
+          suppressMapPress.current = true;
+          setDraggingVertex(insertIndex);
+          setPolygonPoints((prev) => {
+            const updated = [...prev];
+            updated.splice(insertIndex, 0, droppedAt);
+            return updated;
+          });
         }
       } catch {
         // Mapbox can reject if the drawer unmounts while a toolbar tap is bubbling.
@@ -361,7 +376,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         accessibilityLabel="Stäng"
         hitSlop={12}
         onPress={onCancel}
-        className="absolute right-4 h-11 w-11 items-center justify-center rounded-full bg-background/95"
+        className="absolute right-4 size-11 items-center justify-center rounded-full bg-background/95"
         style={{
           top: Math.max(insets.top, 12) + 8,
           boxShadow: '0 8px 22px rgba(49, 52, 68, 0.18)',

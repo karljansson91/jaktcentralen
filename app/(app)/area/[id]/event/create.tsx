@@ -25,7 +25,7 @@ function isValidDate(date: Date | undefined): date is Date {
 
 export default function CreateEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const { back } = useRouter();
   const { insets } = useGlassHeaderSpacing();
 
   const [selectedFriends, setSelectedFriends] = useState<Set<Id<'users'>>>(new Set());
@@ -74,20 +74,21 @@ export default function CreateEventScreen() {
           joinCode: value.joinCode.trim() || undefined,
         });
 
-        for (const friendUserId of selectedFriends) {
-          try {
-            await inviteMember({ eventId, userId: friendUserId });
-          } catch {
-            // Skip if invite fails
-          }
-        }
+        await Promise.all(
+          [...selectedFriends].map(async (friendUserId) => {
+            try {
+              await inviteMember({ eventId, userId: friendUserId });
+            } catch {
+              // Skip if invite fails
+            }
+          })
+        );
 
-        router.back();
+        back();
       } catch (e: any) {
         Alert.alert('Fel', e.message ?? 'Kunde inte skapa jakt');
-      } finally {
-        setIsSubmitting(false);
       }
+      setIsSubmitting(false);
     },
   });
 
@@ -105,7 +106,7 @@ export default function CreateEventScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <GlassScreenHeader title="Skapa jakt" onBack={() => router.back()} />
+      <GlassScreenHeader title="Skapa jakt" onBack={() => back()} />
 
       <ScrollView
         className="flex-1 bg-background"
@@ -271,7 +272,7 @@ export default function CreateEventScreen() {
         {/* Friends list */}
         <Text className="mb-3 font-medium">Bjud in vänner</Text>
         {friends === undefined ? (
-          <Text className="mb-4 text-muted-foreground">Laddar...</Text>
+          <Text className="mb-4 text-muted-foreground">Laddar…</Text>
         ) : friends.length === 0 ? (
           <Text className="mb-4 text-muted-foreground">Inga vänner att bjuda in</Text>
         ) : (
@@ -285,7 +286,7 @@ export default function CreateEventScreen() {
                   <Card className={isSelected ? 'border-primary' : ''}>
                     <CardHeader className="flex-row items-center gap-3 py-3">
                       <View
-                        className={`h-6 w-6 items-center justify-center rounded ${
+                        className={`size-6 items-center justify-center rounded ${
                           isSelected ? 'bg-primary' : 'border border-muted-foreground/30'
                         }`}>
                         {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
@@ -307,13 +308,13 @@ export default function CreateEventScreen() {
         <Button
           variant="outline"
           className="flex-1"
-          onPress={() => router.back()}
+          onPress={() => back()}
           disabled={isSubmitting}>
           <Text>Avbryt</Text>
         </Button>
 
         <Button onPress={() => form.handleSubmit()} className="flex-1" disabled={isSubmitting}>
-          <Text>{isSubmitting ? 'Skapar...' : 'Skapa jakt'}</Text>
+          <Text>{isSubmitting ? 'Skapar…' : 'Skapa jakt'}</Text>
         </Button>
       </View>
     </View>

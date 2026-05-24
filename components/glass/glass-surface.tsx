@@ -23,8 +23,6 @@ type GlassSurfaceProps = ViewProps & {
 const canUseLiquidGlass =
   Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
-export { canUseLiquidGlass };
-
 export function GlassSurface({
   children,
   className,

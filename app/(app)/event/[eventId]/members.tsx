@@ -118,7 +118,7 @@ function getStatusTone(status: MemberStatus) {
 
 export default function EventInfoScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const router = useRouter();
+  const { push } = useRouter();
   const insets = useSafeAreaInsets();
   const { user: clerkUser } = useUser();
   const [pendingUserId, setPendingUserId] = useState<Id<'users'> | null>(null);
@@ -162,9 +162,8 @@ export default function EventInfoScreen() {
         'Kunde inte ta bort deltagaren',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
-      setPendingUserId(null);
     }
+    setPendingUserId(null);
   }
 
   function confirmRemoveMember(userId: Id<'users'>, name: string, status: MemberStatus) {
@@ -220,15 +219,17 @@ export default function EventInfoScreen() {
         className="flex-1 bg-background"
         contentContainerClassName="gap-4 px-4"
         contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, 16) + 16,
+          paddingBottom: 16,
           paddingTop: 0,
         }}
+        contentInset={{ bottom: Math.max(insets.bottom, 16) }}
+        scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}
         showsVerticalScrollIndicator={false}>
         <Card>
           <CardContent className="gap-4 p-5">
             <View className="gap-2">
               <View className="flex-row items-start gap-3">
-                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <Ionicons name="trail-sign-outline" size={24} color={APP_COLORS.primary} />
                 </View>
                 <View className="min-w-0 flex-1 gap-1">
@@ -280,7 +281,7 @@ export default function EventInfoScreen() {
               <Button
                 variant="outline"
                 onPress={() =>
-                  router.push({
+                  push({
                     pathname: '/event/[eventId]/invite',
                     params: { eventId },
                   } as Href)
@@ -321,7 +322,7 @@ export default function EventInfoScreen() {
                 <Card key={member._id}>
                   <CardContent className="gap-3 p-4">
                     <View className="flex-row items-center gap-3">
-                      <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                      <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
                         <Text className="text-sm font-semibold text-primary">
                           {getMemberInitials(name)}
                         </Text>

@@ -7,7 +7,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "doctor": "react-doctor .",
+    "doctor:staged": "react-doctor --staged --fail-on error --no-score"
   },
   "dependencies": {
     "@clerk/expo": "3.1.2",
@@ -30,6 +32,7 @@
     "expo-dev-client": "~56.0.15",
     "expo-font": "~56.0.5",
     "expo-glass-effect": "~56.0.4",
+    "expo-image": "~56.0.9",
     "expo-image-picker": "~56.0.13",
     "expo-linking": "~56.0.11",
     "expo-location": "~56.0.13",
@@ -55,6 +58,7 @@
     "babel-preset-expo": "~56.0.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~56.0.4",
+    "react-doctor": "^0.2.4",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~6.0.3"
