@@ -18,7 +18,7 @@ export default function AreaLayout() {
       <Stack.Screen
         name="edit"
         options={{
-          presentation: 'fullScreenModal',
+          presentation: 'modal',
           headerShown: true,
           title: 'Uppdatera info',
           headerLargeTitle: false,
