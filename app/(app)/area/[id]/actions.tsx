@@ -96,10 +96,12 @@ export default function AreaActionsScreen() {
 
   return (
     <View
-      className="flex-1 bg-background px-4 pt-5"
+      className="flex-1 items-center bg-background"
       style={{
         backgroundColor: APP_COLORS.background,
-        paddingBottom: Math.max(insets.bottom, 16),
+        paddingBottom: Math.max(insets.bottom, 24),
+        paddingHorizontal: 20,
+        paddingTop: 20,
       }}>
       <Stack.Screen
         options={{
@@ -108,7 +110,7 @@ export default function AreaActionsScreen() {
         }}
       />
 
-      <View className="gap-3">
+      <View className="w-full max-w-[560px] gap-3">
         <AreaActionButton
           onPress={() => closeAndNavigate(`/area/${id}/event/create`)}
           accessibilityLabel="Skapa jakt"
