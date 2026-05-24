@@ -1,12 +1,14 @@
 import { Button, Text } from '@/components/ui';
+import { useInitialPolygonCamera } from '@/hooks/use-initial-polygon-camera';
+import { usePolygonEditing } from '@/hooks/use-polygon-editing';
+import type { LngLat } from '@/lib/geo';
 import { APP_COLORS } from '@/lib/theme';
 import {
-  DEFAULT_MAP_STYLE,
+  getCachedMapStyle,
   getSavedMapStyle,
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import {
   Camera,
   CircleLayer,
@@ -16,11 +18,11 @@ import {
   MapView,
   ShapeSource,
 } from '@rnmapbox/maps';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export type LngLat = [number, number];
+export type { LngLat } from '@/lib/geo';
 
 function buildShapeGeoJSON(points: LngLat[]): GeoJSON.Feature {
   if (points.length >= 3) {
@@ -37,7 +39,10 @@ function buildShapeGeoJSON(points: LngLat[]): GeoJSON.Feature {
   };
 }
 
-function buildVerticesGeoJSON(points: LngLat[], draggingIndex: number | null): GeoJSON.FeatureCollection {
+function buildVerticesGeoJSON(
+  points: LngLat[],
+  draggingIndex: number | null
+): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: points.map((p, i) => ({
@@ -56,7 +61,10 @@ function buildMidpointsGeoJSON(points: LngLat[]): GeoJSON.FeatureCollection {
       properties: { insertAfter: i },
       geometry: {
         type: 'Point',
-        coordinates: [(points[i][0] + points[i + 1][0]) / 2, (points[i][1] + points[i + 1][1]) / 2],
+        coordinates: [
+          (points[i][0] + points[i + 1][0]) / 2,
+          (points[i][1] + points[i + 1][1]) / 2,
+        ],
       },
     });
   }
@@ -75,10 +83,6 @@ function buildMidpointsGeoJSON(points: LngLat[]): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features };
 }
 
-function hasPointChanges(current: LngLat[], initial: LngLat[] = []) {
-  return JSON.stringify(current) !== JSON.stringify(initial);
-}
-
 interface PolygonDrawerProps {
   initialPoints?: LngLat[];
   onComplete: (points: LngLat[]) => void;
@@ -86,15 +90,22 @@ interface PolygonDrawerProps {
 }
 
 export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDrawerProps) {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapView | null>(null);
   const insets = useSafeAreaInsets();
-  const [polygonPoints, setPolygonPoints] = useState<LngLat[]>(initialPoints ?? []);
-  const [draggingVertex, setDraggingVertex] = useState<number | null>(null);
-  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
-  const [userCoordinate, setUserCoordinate] = useState<LngLat | null>(null);
-
-  const draggingRef = useRef<number | null>(null);
-  const suppressMapPress = useRef(false);
+  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
+  const initialCamera = useInitialPolygonCamera(initialPoints);
+  const {
+    draggingVertex,
+    handleDone,
+    handleMapPress,
+    handleTouchEnd,
+    handleTouchMove,
+    handleTouchStart,
+    handleUndo,
+    hasChanges,
+    isDragging,
+    polygonPoints,
+  } = usePolygonEditing({ initialPoints, mapRef, onComplete });
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +115,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
     void getSavedMapStyle().then((style) => {
       if (!cancelled) {
-        setMapStyleURL(style.styleURL);
+        setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
       }
     });
 
@@ -113,179 +124,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (initialPoints?.length) return;
-
-    let cancelled = false;
-
-    async function centerOnUserLocation() {
-      try {
-        const currentPermission = await Location.getForegroundPermissionsAsync();
-        const permission =
-          currentPermission.status === 'granted'
-            ? currentPermission
-            : await Location.requestForegroundPermissionsAsync();
-
-        if (permission.status !== 'granted') return;
-
-        const lastKnownPosition = await Location.getLastKnownPositionAsync();
-        if (lastKnownPosition && !cancelled) {
-          setUserCoordinate([
-            lastKnownPosition.coords.longitude,
-            lastKnownPosition.coords.latitude,
-          ]);
-        }
-
-        const currentPosition = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        if (!cancelled) {
-          setUserCoordinate([
-            currentPosition.coords.longitude,
-            currentPosition.coords.latitude,
-          ]);
-        }
-      } catch {
-        // Keep the Sweden-wide fallback if the simulator has no usable location.
-      }
-    }
-
-    void centerOnUserLocation();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialPoints?.length]);
-
-  // --- Touch handlers for vertex dragging ---
-
-  const handleTouchStart = useCallback(
-    async (e: any) => {
-      if (!mapRef.current || polygonPoints.length === 0) return;
-      const { pageX, pageY } = e.nativeEvent;
-
-      try {
-        const hitRadius = 40 * 40;
-        const map = mapRef.current;
-        if (!map) return;
-
-        const vertexScreenPoints = await Promise.all(
-          polygonPoints.map(async (point, index) => ({
-            index,
-            screenPt: await map.getPointInView(point),
-          }))
-        );
-
-        for (const { index, screenPt } of vertexScreenPoints) {
-          const dx = pageX - screenPt[0];
-          const dy = pageY - screenPt[1];
-          if (dx * dx + dy * dy < hitRadius) {
-            draggingRef.current = index;
-            suppressMapPress.current = true;
-            setDraggingVertex(index);
-            return;
-          }
-        }
-
-        const segmentCount = polygonPoints.length >= 3
-          ? polygonPoints.length
-          : Math.max(polygonPoints.length - 1, 0);
-
-        const segmentScreenPoints = await Promise.all(
-          Array.from({ length: segmentCount }, async (_, index) => {
-            const a = polygonPoints[index];
-            const b = polygonPoints[(index + 1) % polygonPoints.length];
-            const midpoint: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-            return {
-              index,
-              screenPt: await map.getPointInView(midpoint),
-            };
-          })
-        );
-
-        let hitSegmentIndex: number | null = null;
-        for (const { index, screenPt } of segmentScreenPoints) {
-          const dx = pageX - screenPt[0];
-          const dy = pageY - screenPt[1];
-
-          if (dx * dx + dy * dy < hitRadius) {
-            hitSegmentIndex = index;
-            break;
-          }
-        }
-
-        if (hitSegmentIndex !== null) {
-          const droppedAt = await map.getCoordinateFromView([pageX, pageY]) as LngLat;
-          const insertIndex = hitSegmentIndex + 1;
-
-          draggingRef.current = insertIndex;
-          suppressMapPress.current = true;
-          setDraggingVertex(insertIndex);
-          setPolygonPoints((prev) => {
-            const updated = [...prev];
-            updated.splice(insertIndex, 0, droppedAt);
-            return updated;
-          });
-        }
-      } catch {
-        // Mapbox can reject if the drawer unmounts while a toolbar tap is bubbling.
-      }
-    },
-    [polygonPoints],
-  );
-
-  const handleTouchMove = useCallback(async (e: any) => {
-    if (draggingRef.current === null || !mapRef.current) return;
-    const { pageX, pageY } = e.nativeEvent;
-
-    try {
-      const coords = await mapRef.current.getCoordinateFromView([pageX, pageY]);
-      const idx = draggingRef.current;
-      setPolygonPoints((prev) => {
-        const updated = [...prev];
-        updated[idx] = coords as LngLat;
-        return updated;
-      });
-    } catch {
-      // The native map view can disappear mid-gesture when the drawer is dismissed.
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (draggingRef.current !== null) {
-      draggingRef.current = null;
-      setDraggingVertex(null);
-      setTimeout(() => {
-        suppressMapPress.current = false;
-      }, 50);
-    }
-  }, []);
-
-  const handleMapPress = useCallback(
-    (feature: GeoJSON.Feature) => {
-      if (suppressMapPress.current) {
-        suppressMapPress.current = false;
-        return;
-      }
-      const coords = (feature.geometry as GeoJSON.Point).coordinates as LngLat;
-      setPolygonPoints((prev) => [...prev, coords]);
-    },
-    [],
-  );
-
-  const handleUndo = useCallback(() => {
-    setDraggingVertex(null);
-    draggingRef.current = null;
-    setPolygonPoints((prev) => prev.slice(0, -1));
-  }, []);
-
-  const handleDone = useCallback(() => {
-    if (polygonPoints.length < 3) return;
-    setDraggingVertex(null);
-    draggingRef.current = null;
-    onComplete(polygonPoints);
-  }, [polygonPoints, onComplete]);
 
   // --- Derived data ---
 
@@ -301,43 +139,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
     () => buildMidpointsGeoJSON(polygonPoints),
     [polygonPoints],
   );
-
-  const isDragging = draggingVertex !== null;
-  const hasChanges = hasPointChanges(polygonPoints, initialPoints);
-
-  // Camera: fit polygon bounds when available, otherwise center on the first draft point.
-  const initialCamera = useMemo(() => {
-    if (initialPoints && initialPoints.length >= 2) {
-      const lngs = initialPoints.map((p) => p[0]);
-      const lats = initialPoints.map((p) => p[1]);
-      return {
-        bounds: {
-          ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
-          sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-          paddingTop: 80,
-          paddingBottom: 120,
-          paddingLeft: 40,
-          paddingRight: 40,
-        },
-      };
-    }
-    if (initialPoints && initialPoints.length === 1) {
-      return {
-        zoomLevel: 15,
-        centerCoordinate: initialPoints[0],
-      };
-    }
-    if (userCoordinate) {
-      return {
-        zoomLevel: 14,
-        centerCoordinate: userCoordinate,
-      };
-    }
-    return {
-      zoomLevel: 4,
-      centerCoordinate: [16, 62] as [number, number],
-    };
-  }, [initialPoints, userCoordinate]);
 
   return (
     <View
@@ -360,7 +161,10 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         {'bounds' in initialCamera ? (
           <Camera bounds={initialCamera.bounds} animationDuration={0} />
         ) : (
-          <Camera zoomLevel={initialCamera.zoomLevel} centerCoordinate={initialCamera.centerCoordinate} />
+          <Camera
+            zoomLevel={initialCamera.zoomLevel}
+            centerCoordinate={initialCamera.centerCoordinate}
+          />
         )}
         <LocationPuck puckBearingEnabled puckBearing="heading" />
 

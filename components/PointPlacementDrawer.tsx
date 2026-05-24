@@ -1,6 +1,6 @@
 import { Button, Text } from '@/components/ui';
 import {
-  DEFAULT_MAP_STYLE,
+  getCachedMapStyle,
   getSavedMapStyle,
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
@@ -33,7 +33,7 @@ export function PointPlacementDrawer({
 }) {
   const insets = useSafeAreaInsets();
   const [point, setPoint] = useState<LngLat | undefined>(initialPoint);
-  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
+  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +43,7 @@ export function PointPlacementDrawer({
 
     void getSavedMapStyle().then((style) => {
       if (!cancelled) {
-        setMapStyleURL(style.styleURL);
+        setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
       }
     });
 

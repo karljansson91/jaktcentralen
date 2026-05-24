@@ -5,7 +5,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { getMemberInitials } from '@/lib/event-formatting';
 import {
-  DEFAULT_MAP_STYLE,
+  getCachedMapStyle,
   getSavedMapStyle,
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
@@ -88,7 +88,7 @@ export default function EventTimelineScreen() {
   const { back } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
-  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
+  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
 
   const event = useQuery(api.events.get, {
@@ -119,7 +119,7 @@ export default function EventTimelineScreen() {
 
       void getSavedMapStyle().then((style) => {
         if (!cancelled) {
-          setMapStyleURL(style.styleURL);
+          setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
         }
       });
 

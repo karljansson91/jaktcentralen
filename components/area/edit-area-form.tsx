@@ -78,8 +78,8 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
           flexGrow: 1,
           paddingHorizontal: 24,
           paddingTop: 24,
-          paddingBottom: Math.max(insets.bottom, 24),
         }}
+        contentInset={{ bottom: Math.max(insets.bottom, 24) }}
         scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
         keyboardShouldPersistTaps="handled">
         <View className="flex-1">

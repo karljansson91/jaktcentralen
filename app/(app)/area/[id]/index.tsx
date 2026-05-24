@@ -8,7 +8,7 @@ import { getAreaFeatureTargetKey } from '@/lib/area-features';
 import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
-  DEFAULT_MAP_STYLE,
+  getCachedMapStyle,
   getSavedMapStyle,
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
@@ -32,7 +32,7 @@ export default function ViewAreaScreen() {
   const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
-  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
+  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
   const areaFeatures = useQuery(api.areaFeatures.listByArea, { areaId: id as Id<'areas'> });
   const {
@@ -57,7 +57,7 @@ export default function ViewAreaScreen() {
 
       void getSavedMapStyle().then((style) => {
         if (!cancelled) {
-          setMapStyleURL(style.styleURL);
+          setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
         }
       });
 

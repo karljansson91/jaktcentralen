@@ -1,6 +1,12 @@
 import { HomeSectionHeader } from '@/components/home/home-section-header';
 import { Badge, Button, Card, CardContent, IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
+import { useCurrentTime } from '@/hooks/use-current-time';
+import {
+  getEventLifecycle,
+  getEventLifecycleLabel,
+  type EventLifecycle,
+} from '@/lib/event-lifecycle';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
@@ -21,23 +27,14 @@ function getDateRangeLabel(startDate: number, endDate: number) {
   return `${start} till ${formatDate(endDate)}`;
 }
 
-function getEventStatus(startDate: number, endDate: number) {
-  const now = Date.now();
-
-  if (startDate > now) {
-    return { label: 'Kommande', tone: 'upcoming' as const };
-  }
-
-  if (endDate < now) {
-    return { label: 'Avslutad', tone: 'ended' as const };
-  }
-
-  return { label: 'Pågår nu', tone: 'live' as const };
+function getEventStatusTone(lifecycle: EventLifecycle) {
+  return lifecycle === 'active' ? 'live' : lifecycle;
 }
 
 export default function HomeScreen() {
   const { push } = useRouter();
   const insets = useSafeAreaInsets();
+  const currentTime = useCurrentTime(60_000);
   const user = useQuery(api.users.getCurrentUserProfile);
   const areas = useQuery(api.areas.listMyAreas, user ? {} : 'skip');
   const events = useQuery(api.events.listMyEvents, user ? {} : 'skip');
@@ -116,7 +113,11 @@ export default function HomeScreen() {
           {events.length + endedEvents.length > 0 ? (
             <View className="gap-2">
               {events.map((event) => {
-                const status = getEventStatus(event.startDate, event.endDate);
+                const lifecycle = getEventLifecycle(event, currentTime);
+                const status = {
+                  label: getEventLifecycleLabel(lifecycle),
+                  tone: getEventStatusTone(lifecycle),
+                };
 
                 return (
                   <Pressable

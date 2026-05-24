@@ -62,8 +62,14 @@ export const DEFAULT_MAP_STYLE = MAP_STYLE_OPTIONS.find(
   (option) => option.id === 'outdoors'
 ) ?? MAP_STYLE_OPTIONS[0];
 
+let cachedMapStyle = DEFAULT_MAP_STYLE;
+
 function getMapStyleById(styleId?: string | null) {
   return MAP_STYLE_OPTIONS.find((option) => option.id === styleId) ?? DEFAULT_MAP_STYLE;
+}
+
+export function getCachedMapStyle() {
+  return cachedMapStyle;
 }
 
 export function subscribeToMapStyleChanges(listener: MapStyleListener) {
@@ -82,15 +88,17 @@ function notifyMapStyleChange(style: MapStyleOption) {
 export async function getSavedMapStyle() {
   try {
     const savedStyleId = await SecureStore.getItemAsync(MAP_STYLE_STORAGE_KEY);
-    return getMapStyleById(savedStyleId);
+    cachedMapStyle = getMapStyleById(savedStyleId);
+    return cachedMapStyle;
   } catch (error) {
     console.error('Failed to load saved map style:', error);
-    return DEFAULT_MAP_STYLE;
+    return cachedMapStyle;
   }
 }
 
 export async function saveMapStyle(styleId: string) {
   const nextStyle = getMapStyleById(styleId);
+  cachedMapStyle = nextStyle;
 
   try {
     await SecureStore.setItemAsync(MAP_STYLE_STORAGE_KEY, nextStyle.id);

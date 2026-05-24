@@ -1,17 +1,24 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
-import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
+import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
+import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
+import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
+import { GlassFloatingButton } from '@/components/glass';
 import { IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
+import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
+import type { AssignmentTrail } from '@/lib/hunt-navigation';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
-  DEFAULT_MAP_STYLE,
+  getCachedMapStyle,
   getSavedMapStyle,
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
+import { useAssignmentRoute } from '@/hooks/use-assignment-route';
+import { useCurrentTime } from '@/hooks/use-current-time';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
@@ -20,7 +27,6 @@ import {
   LineLayer,
   LocationPuck,
   MapView,
-  MarkerView,
   ShapeSource,
   SymbolLayer,
 } from '@rnmapbox/maps';
@@ -28,268 +34,20 @@ import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-type AssignedStationMarkerItem = {
-  coordinates: [number, number];
-  initials: string;
-  targetKey: string;
-};
-
-type AssignmentTrail = {
-  endCoordinate: [number, number];
-  startCoordinate: [number, number];
-  targetKey: string;
-};
-
-type AssignmentTrailMode = 'walking' | 'direct';
-
-type AssignmentRoute = {
-  coordinates: [number, number][];
-  distanceMeters: number;
-  durationSeconds: number;
-  mode: AssignmentTrailMode;
-};
-
-type MapboxDirectionsResponse = {
-  code?: string;
-  message?: string;
-  routes?: {
-    distance?: number;
-    duration?: number;
-    geometry?: {
-      coordinates?: [number, number][];
-      type?: string;
-    };
-  }[];
-};
-
-const HUNT_WALKING_SPEED_MPS = 1.1;
-
-function toCoordinateKey(coordinate: [number, number]) {
-  return `${coordinate[0].toFixed(5)},${coordinate[1].toFixed(5)}`;
-}
-
-function toDirectionsCoordinate(coordinate: [number, number]) {
-  return `${coordinate[0]},${coordinate[1]}`;
-}
-
-function getDistanceMeters(from: [number, number], to: [number, number]) {
-  const earthRadiusMeters = 6_371_000;
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-  const deltaLatitude = toRadians(to[1] - from[1]);
-  const deltaLongitude = toRadians(to[0] - from[0]);
-  const fromLatitude = toRadians(from[1]);
-  const toLatitude = toRadians(to[1]);
-  const haversine =
-    Math.sin(deltaLatitude / 2) ** 2 +
-    Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(deltaLongitude / 2) ** 2;
-
-  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-}
-
-function buildDirectAssignmentRoute(trail: AssignmentTrail): AssignmentRoute {
-  const distanceMeters = getDistanceMeters(trail.startCoordinate, trail.endCoordinate);
-
-  return {
-    coordinates: [trail.startCoordinate, trail.endCoordinate],
-    distanceMeters,
-    durationSeconds: distanceMeters / HUNT_WALKING_SPEED_MPS,
-    mode: 'direct',
-  };
-}
-
-async function fetchWalkingAssignmentRoute(
-  trail: AssignmentTrail,
-  signal: AbortSignal
-): Promise<AssignmentRoute> {
-  const accessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
-  if (!accessToken) {
-    throw new Error('Mapbox token saknas.');
-  }
-
-  const coordinates = `${toDirectionsCoordinate(trail.startCoordinate)};${toDirectionsCoordinate(
-    trail.endCoordinate
-  )}`;
-  const params = new URLSearchParams({
-    access_token: accessToken,
-    geometries: 'geojson',
-    overview: 'full',
-    steps: 'false',
-    walking_speed: String(HUNT_WALKING_SPEED_MPS),
-  });
-  const response = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?${params.toString()}`,
-    { signal }
-  );
-  const body = (await response.json()) as MapboxDirectionsResponse;
-
-  if (!response.ok || body.code !== 'Ok') {
-    throw new Error(body.message || 'Kunde inte beräkna gångväg.');
-  }
-
-  const route = body.routes?.[0];
-  const routeCoordinates = route?.geometry?.coordinates;
-
-  if (
-    !route ||
-    route.geometry?.type !== 'LineString' ||
-    !Array.isArray(routeCoordinates) ||
-    routeCoordinates.length < 2 ||
-    typeof route.distance !== 'number' ||
-    typeof route.duration !== 'number'
-  ) {
-    throw new Error('Mapbox gav ingen användbar gångväg.');
-  }
-
-  return {
-    coordinates: routeCoordinates,
-    distanceMeters: route.distance,
-    durationSeconds: route.duration,
-    mode: 'walking',
-  };
-}
-
-function formatTrailDistance(distanceMeters: number) {
-  if (distanceMeters < 950) {
-    return `${Math.max(10, Math.round(distanceMeters / 10) * 10)} m`;
-  }
-
-  const kilometers = distanceMeters / 1000;
-  const decimals = kilometers < 10 ? 1 : 0;
-  return `${kilometers.toFixed(decimals).replace('.', ',')} km`;
-}
-
-function formatTrailDuration(durationSeconds: number) {
-  const minutes = Math.max(1, Math.round(durationSeconds / 60));
-
-  if (minutes < 60) {
-    return `ca ${minutes} min`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `ca ${hours} h ${remainingMinutes} min` : `ca ${hours} h`;
-}
-
-function AssignedStationMarker({
-  marker,
-  onPress,
-}: {
-  marker: AssignedStationMarkerItem;
-  onPress: (targetKey: string) => void;
-}) {
-  return (
-    <MarkerView
-      key={marker.targetKey}
-      coordinate={marker.coordinates}
-      anchor={{ x: 0.5, y: 1 }}
-      allowOverlap
-      allowOverlapWithPuck>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Öppna tilldelning för ${marker.initials}`}
-        onPress={() => onPress(marker.targetKey)}
-        style={styles.assignedStationPin}>
-        <View style={styles.assignedStationPinHeadOutline} />
-        <View style={styles.assignedStationPinTailOutline} />
-        <View style={styles.assignedStationPinHead} />
-        <View style={styles.assignedStationPinTail} />
-        <Text style={styles.assignedStationPinText}>
-          {marker.initials}
-        </Text>
-      </Pressable>
-    </MarkerView>
-  );
-}
-
-const styles = StyleSheet.create({
-  assignedStationPin: {
-    alignItems: 'center',
-    height: 40,
-    justifyContent: 'flex-start',
-    width: 34,
-  },
-  assignedStationPinHead: {
-    backgroundColor: APP_COLORS.primary,
-    borderRadius: 13,
-    height: 26,
-    position: 'absolute',
-    top: 2,
-    width: 26,
-  },
-  assignedStationPinHeadOutline: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 15,
-    height: 30,
-    position: 'absolute',
-    top: 0,
-    width: 30,
-  },
-  assignedStationPinTail: {
-    borderLeftColor: 'transparent',
-    borderLeftWidth: 8,
-    borderRightColor: 'transparent',
-    borderRightWidth: 8,
-    borderTopColor: APP_COLORS.primary,
-    borderTopWidth: 12,
-    height: 0,
-    position: 'absolute',
-    top: 24,
-    width: 0,
-  },
-  assignedStationPinTailOutline: {
-    borderLeftColor: 'transparent',
-    borderLeftWidth: 10,
-    borderRightColor: 'transparent',
-    borderRightWidth: 10,
-    borderTopColor: APP_COLORS.surface,
-    borderTopWidth: 15,
-    height: 0,
-    position: 'absolute',
-    top: 23,
-    width: 0,
-  },
-  assignedStationPinText: {
-    color: APP_COLORS.surface,
-    fontSize: 10,
-    fontWeight: '800',
-    lineHeight: 26,
-    textAlign: 'center',
-    width: 30,
-  },
-  routeTitleSurface: {
-    minHeight: 68,
-    width: 278,
-  },
-  trailSummaryRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 28,
-    paddingHorizontal: 6,
-  },
-});
 
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
-  const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
-  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const currentTime = useCurrentTime();
+  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
   const [visibleAssignmentTrailTargetKey, setVisibleAssignmentTrailTargetKey] = useState<
     string | null
   >(null);
-  const [assignmentTrailMode, setAssignmentTrailMode] = useState<AssignmentTrailMode>('walking');
-  const [walkingRouteResult, setWalkingRouteResult] = useState<{
-    error: string | null;
-    key: string;
-    route: AssignmentRoute | null;
-  } | null>(null);
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -313,12 +71,7 @@ export default function EventMapScreen() {
   );
 
   const updatePosition = useMutation(api.eventMembers.updatePosition);
-  const isActiveHunt = Boolean(
-    event &&
-      event.endedAt === undefined &&
-      event.startDate <= currentTime &&
-      event.endDate >= currentTime
-  );
+  const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
 
   useEffect(() => {
@@ -327,23 +80,13 @@ export default function EventMapScreen() {
     });
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 30_000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
 
       void getSavedMapStyle().then((style) => {
         if (!cancelled) {
-          setMapStyleURL(style.styleURL);
+          setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
         }
       });
 
@@ -539,74 +282,15 @@ export default function EventMapScreen() {
     isActiveHunt,
   ]);
 
-  const assignmentTrailKey = useMemo(() => {
-    if (!assignmentTrail) return null;
-
-    return [
-      assignmentTrail.targetKey,
-      toCoordinateKey(assignmentTrail.startCoordinate),
-      toCoordinateKey(assignmentTrail.endCoordinate),
-    ].join(':');
-  }, [assignmentTrail]);
-
-  const directAssignmentRoute = useMemo(() => {
-    return assignmentTrail ? buildDirectAssignmentRoute(assignmentTrail) : null;
-  }, [assignmentTrail]);
-
-  useEffect(() => {
-    if (!assignmentTrail || !assignmentTrailKey || assignmentTrailMode !== 'walking') return;
-    if (walkingRouteResult?.key === assignmentTrailKey) return;
-
-    const controller = new AbortController();
-
-    fetchWalkingAssignmentRoute(assignmentTrail, controller.signal)
-      .then((route) => {
-        setWalkingRouteResult({ error: null, key: assignmentTrailKey, route });
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return;
-
-        setWalkingRouteResult({
-          error: error instanceof Error ? error.message : 'Kunde inte beräkna gångväg.',
-          key: assignmentTrailKey,
-          route: null,
-        });
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [assignmentTrail, assignmentTrailKey, assignmentTrailMode, walkingRouteResult?.key]);
-
-  const walkingRoute =
-    walkingRouteResult?.key === assignmentTrailKey ? walkingRouteResult.route : null;
-  const walkingRouteError =
-    walkingRouteResult?.key === assignmentTrailKey ? walkingRouteResult.error : null;
-  const isWalkingRouteLoading = Boolean(
-    assignmentTrailMode === 'walking' &&
-      assignmentTrailKey &&
-      walkingRouteResult?.key !== assignmentTrailKey
-  );
-  const assignmentRoute = assignmentTrailMode === 'direct' ? directAssignmentRoute : walkingRoute;
-  const assignmentRouteStatus = isWalkingRouteLoading
-    ? 'loading'
-    : walkingRouteError
-      ? 'error'
-      : 'idle';
-  const assignmentRouteError = assignmentTrailMode === 'walking' ? walkingRouteError : null;
-
-  const assignmentTrailGeoJSON = useMemo(() => {
-    if (!assignmentRoute) return null;
-
-    return {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: {
-        type: 'LineString' as const,
-        coordinates: assignmentRoute.coordinates,
-      },
-    };
-  }, [assignmentRoute]);
+  const {
+    mode: assignmentRouteMode,
+    route: assignmentRoute,
+    routeError: assignmentRouteError,
+    routeGeoJSON: assignmentRouteGeoJSON,
+    routeStatus: assignmentRouteStatus,
+    setMode: setAssignmentRouteMode,
+    toggleMode: toggleAssignmentRouteMode,
+  } = useAssignmentRoute(assignmentTrail);
 
   const handlePressStationTarget = useCallback(
     (targetKey: string) => {
@@ -652,7 +336,7 @@ export default function EventMapScreen() {
       return;
     }
 
-    setAssignmentTrailMode('walking');
+    setAssignmentRouteMode('walking');
 
     if (currentCoordinate ?? currentUserMemberCoordinate) {
       setVisibleAssignmentTrailTargetKey(currentUserAssignedStation.targetKey);
@@ -672,12 +356,9 @@ export default function EventMapScreen() {
     currentUserAssignedStation,
     currentUserMemberCoordinate,
     isActiveHunt,
+    setAssignmentRouteMode,
     visibleAssignmentTrailTargetKey,
   ]);
-
-  const handleToggleAssignmentTrailMode = useCallback(() => {
-    setAssignmentTrailMode((current) => (current === 'walking' ? 'direct' : 'walking'));
-  }, []);
 
   if (event === undefined) {
     return (
@@ -749,31 +430,7 @@ export default function EventMapScreen() {
           />
         )}
 
-        {assignmentTrailGeoJSON && (
-          <ShapeSource id="event-assignment-trail" shape={assignmentTrailGeoJSON}>
-            <LineLayer
-              id="event-assignment-trail-outline"
-              style={{
-                lineColor: APP_COLORS.surface,
-                lineWidth: 8,
-                lineOpacity: 0.86,
-                lineCap: 'round',
-                lineJoin: 'round',
-              }}
-            />
-            <LineLayer
-              id="event-assignment-trail-line"
-              style={{
-                lineColor: APP_COLORS.primary,
-                lineWidth: 4,
-                lineOpacity: 0.92,
-                lineDasharray: assignmentRoute?.mode === 'direct' ? [0.2, 2.2] : undefined,
-                lineCap: 'round',
-                lineJoin: 'round',
-              }}
-            />
-          </ShapeSource>
-        )}
+        <AssignmentRouteLayer route={assignmentRoute} shape={assignmentRouteGeoJSON} />
 
         {memberPositionsGeoJSON && memberPositionsGeoJSON.features.length > 0 && (
           <ShapeSource id="event-member-positions" shape={memberPositionsGeoJSON}>
@@ -815,53 +472,20 @@ export default function EventMapScreen() {
           pointerEvents="box-none"
           className="absolute left-4 right-4"
           style={{ top: Math.max(insets.top, 8) + 8 }}>
-          <GlassTopNav
-            appearance="floating"
+          <HuntMapTopNav
             title={event.title}
-            titleBackground
-            titleSurfaceStyle={assignmentTrail ? styles.routeTitleSurface : undefined}
             onBack={() => back()}
-            onRightPress={() => push(`/event/${eventId}/actions`)}
-            rightAccessibilityLabel="Jaktåtgärder"
-            titleAccessory={
-              assignmentTrail ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    assignmentTrailMode === 'walking'
-                      ? 'Byt till riktning till pass'
-                      : 'Byt till gångväg till pass'
+            onMore={() => push(`/event/${eventId}/actions`)}
+            routeSummary={
+              assignmentTrail
+                ? {
+                    error: assignmentRouteError,
+                    mode: assignmentRouteMode,
+                    onToggleMode: toggleAssignmentRouteMode,
+                    route: assignmentRoute,
+                    status: assignmentRouteStatus,
                   }
-                  onPress={handleToggleAssignmentTrailMode}
-                  style={styles.trailSummaryRow}>
-                  <Ionicons
-                    name={assignmentTrailMode === 'walking' ? 'walk' : 'navigate'}
-                    size={16}
-                    color={APP_COLORS.surface}
-                  />
-                  {assignmentRouteStatus === 'loading' ? (
-                    <>
-                      <ActivityIndicator size="small" color={APP_COLORS.surface} />
-                      <Text className="text-xs font-semibold text-white">Beräknar...</Text>
-                    </>
-                  ) : assignmentRoute ? (
-                    <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-                      {assignmentTrailMode === 'walking' ? 'Gångväg' : 'Riktning'} ·{' '}
-                      {formatTrailDistance(assignmentRoute.distanceMeters)} ·{' '}
-                      {formatTrailDuration(assignmentRoute.durationSeconds)}
-                    </Text>
-                  ) : (
-                    <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-                      {assignmentRouteError ?? 'Ingen väg'}
-                    </Text>
-                  )}
-                  <Ionicons
-                    name="swap-horizontal"
-                    size={14}
-                    color="rgba(255, 255, 255, 0.78)"
-                  />
-                </Pressable>
-              ) : null
+                : null
             }
           />
         </View>

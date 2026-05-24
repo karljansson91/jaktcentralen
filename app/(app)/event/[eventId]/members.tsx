@@ -1,6 +1,12 @@
 import { Badge, Button, Card, CardContent, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useCurrentTime } from '@/hooks/use-current-time';
+import {
+  getEventLifecycle,
+  getEventLifecycleLabel,
+  type EventLifecycle,
+} from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import { APP_COLORS } from '@/lib/theme';
 import { useUser } from '@clerk/expo';
@@ -43,18 +49,20 @@ function formatDateRange(startDate: number, endDate?: number) {
   return `${date} kl. ${time} - ${endDateLabel} kl. ${endTime}`;
 }
 
-function getEventStatus(startDate: number, endDate?: number) {
-  const now = Date.now();
-  if (now < startDate) {
-    return 'Planerad';
-  }
-  if (endDate && now > endDate) {
-    return 'Avslutad';
-  }
-  return 'Pågår';
+const EVENT_INFO_STATUS_LABELS: Record<EventLifecycle, string> = {
+  active: 'Pågår',
+  ended: 'Avslutad',
+  upcoming: 'Planerad',
+};
+
+function getEventStatus(startDate: number, endDate: number, now: number, endedAt?: number) {
+  return getEventLifecycleLabel(
+    getEventLifecycle({ endedAt, endDate, startDate }, now),
+    EVENT_INFO_STATUS_LABELS
+  );
 }
 
-function formatTrackingStatus(status: MemberStatus, lastSeenAt?: number) {
+function formatTrackingStatus(status: MemberStatus, now: number, lastSeenAt?: number) {
   if (status === 'invited') {
     return 'Väntar på svar';
   }
@@ -65,7 +73,7 @@ function formatTrackingStatus(status: MemberStatus, lastSeenAt?: number) {
     return 'Ingen position ännu';
   }
 
-  const minutesAgo = Math.max(0, Math.round((Date.now() - lastSeenAt) / 60_000));
+  const minutesAgo = Math.max(0, Math.round((now - lastSeenAt) / 60_000));
   const time = new Date(lastSeenAt).toLocaleTimeString('sv-SE', {
     hour: '2-digit',
     minute: '2-digit',
@@ -120,6 +128,7 @@ export default function EventInfoScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { push } = useRouter();
   const insets = useSafeAreaInsets();
+  const currentTime = useCurrentTime(60_000);
   const { user: clerkUser } = useUser();
   const [pendingUserId, setPendingUserId] = useState<Id<'users'> | null>(null);
 
@@ -242,7 +251,7 @@ export default function EventInfoScreen() {
                 </View>
                 <Badge className="rounded-full bg-primary/10">
                   <Text className="text-xs font-semibold text-primary">
-                    {getEventStatus(event.startDate, event.endDate)}
+                    {getEventStatus(event.startDate, event.endDate, currentTime, event.endedAt)}
                   </Text>
                 </Badge>
               </View>
@@ -344,7 +353,7 @@ export default function EventInfoScreen() {
                           ) : null}
                         </View>
                         <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                          {formatTrackingStatus(status, member.lastSeenAt)}
+                          {formatTrackingStatus(status, currentTime, member.lastSeenAt)}
                         </Text>
                       </View>
 

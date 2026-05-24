@@ -5,6 +5,8 @@ import {
   AREA_FEATURE_CATEGORY_LABELS,
   getAreaFeatureTargetKey,
 } from '@/lib/area-features';
+import { useCurrentTime } from '@/hooks/use-current-time';
+import { isEventActive } from '@/lib/event-lifecycle';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
@@ -20,6 +22,7 @@ export default function EventStationAssignmentScreen() {
     targetKey?: string;
   }>();
   const insets = useSafeAreaInsets();
+  const currentTime = useCurrentTime(60_000);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const decodedTargetKey = typeof targetKey === 'string' ? decodeURIComponent(targetKey) : '';
@@ -138,7 +141,7 @@ export default function EventStationAssignmentScreen() {
   }
 
   const isCreator = event.creatorId === currentUser._id;
-  const canEdit = isCreator && event.endedAt === undefined;
+  const canEdit = isCreator && isEventActive(event, currentTime);
 
   return (
     <View

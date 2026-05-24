@@ -93,10 +93,11 @@ export default function CreateAreaScreen() {
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{
             flexGrow: 1,
-            paddingBottom: Math.max(insets.bottom, 24),
             paddingHorizontal: 24,
             paddingTop: 24,
           }}
+          contentInset={{ bottom: Math.max(insets.bottom, 24) }}
+          scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
           keyboardShouldPersistTaps="handled">
           <Text variant="h3" className="mb-2">
             Namnge ditt område
