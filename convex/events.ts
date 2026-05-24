@@ -1,6 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { deleteEventCascade } from "./eventCleanup";
+import { getEffectiveEndedAt, isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 import type { Id } from "./_generated/dataModel";
 
@@ -50,6 +52,13 @@ async function assertJoinCodeAvailable(
   }
 }
 
+async function scheduleAutoEnd(ctx: MutationCtx, eventId: Id<"events">, endDate: number) {
+  await ctx.scheduler.runAt(Math.max(endDate, Date.now()), internal.events.autoEnd, {
+    eventId,
+    scheduledEndDate: endDate,
+  });
+}
+
 export const create = mutation({
   args: {
     areaId: v.id("areas"),
@@ -90,6 +99,8 @@ export const create = mutation({
       role: "admin",
       status: "accepted",
     });
+
+    await scheduleAutoEnd(ctx, eventId, args.endDate);
 
     return eventId;
   },
@@ -139,12 +150,17 @@ export const update = mutation({
       throw new Error("Creator access required");
     }
 
+    const previousEndDate = event.endDate;
     const { eventId, joinCode: rawJoinCode, ...updates } = args;
     const joinCode = validateJoinCodeForStorage(rawJoinCode);
     await assertJoinCodeAvailable(ctx, joinCode, eventId);
 
     const patch = rawJoinCode === undefined ? updates : { ...updates, joinCode };
     await ctx.db.patch(eventId, patch);
+
+    if (updates.endDate !== undefined && updates.endDate !== previousEndDate) {
+      await scheduleAutoEnd(ctx, eventId, updates.endDate);
+    }
   },
 });
 
@@ -177,13 +193,32 @@ export const end = mutation({
     if (event.creatorId !== user._id) {
       throw new Error("Creator access required");
     }
+    const now = Date.now();
     if (event.endedAt !== undefined) {
       return;
     }
 
     await ctx.db.patch(args.eventId, {
-      endedAt: Date.now(),
+      endedAt: event.endDate <= now ? event.endDate : now,
     });
+  },
+});
+
+export const autoEnd = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    scheduledEndDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event || event.endedAt !== undefined || event.endDate !== args.scheduledEndDate) {
+      return;
+    }
+    if (event.endDate > Date.now()) {
+      return;
+    }
+
+    await ctx.db.patch(args.eventId, { endedAt: event.endDate });
   },
 });
 
@@ -207,7 +242,8 @@ export const listMyEvents = query({
     );
     const existingEvents = events.filter((event) => event !== null);
 
-    return existingEvents.filter((event) => event.endedAt === undefined);
+    const now = Date.now();
+    return existingEvents.filter((event) => !isEventEnded(event, now));
   },
 });
 
@@ -231,9 +267,13 @@ export const listMyEndedEvents = query({
     );
     const existingEvents = events.filter((event) => event !== null);
 
+    const now = Date.now();
     return existingEvents
-      .filter((event) => event.endedAt !== undefined)
-      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0));
+      .filter((event) => isEventEnded(event, now))
+      .sort(
+        (a, b) =>
+          (getEffectiveEndedAt(b, now) ?? 0) - (getEffectiveEndedAt(a, now) ?? 0)
+      );
   },
 });
 
@@ -273,7 +313,7 @@ export const joinByCode = mutation({
     if (!event) {
       throw new Error("Invalid join code");
     }
-    if (event.endedAt !== undefined) {
+    if (isEventEnded(event)) {
       throw new Error("This hunt has ended");
     }
 

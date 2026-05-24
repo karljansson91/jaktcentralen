@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 import type { Id } from "./_generated/dataModel";
 
@@ -54,7 +55,7 @@ async function requireEventCreator(
   if (event.creatorId !== userId) {
     throw new Error("Creator access required");
   }
-  if (event.endedAt !== undefined) {
+  if (isEventEnded(event)) {
     throw new Error("Cannot edit assignments for an ended hunt");
   }
 

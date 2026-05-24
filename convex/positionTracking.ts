@@ -1,5 +1,6 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { isEventEnded } from "./eventLifecycle";
 
 const MIN_TRAIL_DISTANCE_METERS = 10;
 const STATIONARY_TRAIL_INTERVAL_MS = 30_000;
@@ -66,7 +67,7 @@ export async function writeMemberPosition(
   if (!event) {
     throw new Error("Event not found");
   }
-  if (event.endedAt !== undefined) {
+  if (isEventEnded(event, args.timestamp)) {
     return { recordedTrail: false, status: "ended" as const };
   }
 

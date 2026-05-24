@@ -1,6 +1,8 @@
 import { Button, ButtonProps, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useCurrentTime } from '@/hooks/use-current-time';
+import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
@@ -58,6 +60,7 @@ export default function EventActionsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { back, push, replace } = useRouter();
   const insets = useSafeAreaInsets();
+  const currentTime = useCurrentTime();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const event = useQuery(api.events.get, {
@@ -143,7 +146,7 @@ export default function EventActionsScreen() {
 
   const isCreator = event.creatorId === currentUser._id;
   const destructiveLabel = isCreator ? 'Avsluta jakt' : 'Lämna jakt';
-  const isEnded = event.endedAt !== undefined;
+  const isEnded = getEventLifecycle(event, currentTime) === 'ended';
 
   return (
     <View

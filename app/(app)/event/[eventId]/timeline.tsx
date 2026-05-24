@@ -3,6 +3,8 @@ import { GlassSurface, GlassTopNav } from '@/components/glass';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useCurrentTime } from '@/hooks/use-current-time';
+import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import {
   getCachedMapStyle,
@@ -88,6 +90,7 @@ export default function EventTimelineScreen() {
   const { back } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
+  const currentTime = useCurrentTime();
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
 
@@ -230,7 +233,7 @@ export default function EventTimelineScreen() {
     );
   }
 
-  if (event.endedAt === undefined) {
+  if (getEventLifecycle(event, currentTime) !== 'ended') {
     return (
       <View className="flex-1 bg-background">
         <View

@@ -13,7 +13,7 @@ const DEFAULT_EVENT_LIFECYCLE_LABELS: Record<EventLifecycle, string> = {
 };
 
 export function getEventLifecycle(event: EventLifecycleInput, now: number): EventLifecycle {
-  if (event.endedAt != null || event.endDate < now) {
+  if (event.endedAt != null || event.endDate <= now) {
     return 'ended';
   }
 

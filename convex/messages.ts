@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
+import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 
 export const send = mutation({
@@ -17,6 +18,11 @@ export const send = mutation({
 
     if (!membership || membership.status !== "accepted") {
       throw new Error("Not an accepted member");
+    }
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event || isEventEnded(event)) {
+      throw new Error("This hunt has ended");
     }
 
     return await ctx.db.insert("messages", {

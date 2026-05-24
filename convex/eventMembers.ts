@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 import { writeMemberPosition } from "./positionTracking";
 
@@ -15,7 +16,7 @@ export const invite = mutation({
     if (event.creatorId !== user._id) {
       throw new Error("Only the hunt creator can invite members");
     }
-    if (event.endedAt !== undefined) {
+    if (isEventEnded(event)) {
       throw new Error("Cannot invite members to an ended hunt");
     }
 
@@ -66,6 +67,10 @@ export const acceptInvite = mutation({
     }
     if (member.status !== "invited") {
       throw new Error("Not an invitation");
+    }
+    const event = await ctx.db.get(member.eventId);
+    if (!event || isEventEnded(event)) {
+      throw new Error("Cannot accept an invite to an ended hunt");
     }
     await ctx.db.patch(args.memberId, { status: "accepted" });
   },
@@ -258,7 +263,7 @@ export const listMyInvitations = query({
     const rows = await Promise.all(
       invitations.map(async (inv) => {
         const event = await ctx.db.get(inv.eventId);
-        return event?.endedAt === undefined
+        return event && !isEventEnded(event)
           ? {
               ...inv,
               event,
