@@ -9,6 +9,7 @@ import { useColorScheme } from 'nativewind';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '');
 
@@ -45,9 +46,11 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ConvexProviderWithClerk client={convex} useAuth={useClerkAuthBridge}>
-        <LightModeLock />
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <KeyboardProvider>
+          <LightModeLock />
+          <StatusBar style="dark" />
+          <Stack screenOptions={{ headerShown: false }} />
+        </KeyboardProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );
