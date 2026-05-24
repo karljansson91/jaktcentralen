@@ -119,15 +119,6 @@ export default function AreaActionsScreen() {
 
         <AreaActionButton
           variant="outline"
-          onPress={() => closeAndNavigate(`/area/${id}/events`)}
-          accessibilityLabel="Visa jakter"
-          icon="list-outline"
-          iconColor={APP_COLORS.text}
-          label="Visa jakter"
-        />
-
-        <AreaActionButton
-          variant="outline"
           onPress={() => closeAndNavigate(`/area/${id}/redraw` as Href)}
           accessibilityLabel="Rita om area"
           icon="shapes-outline"
