@@ -35,6 +35,8 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   View,
@@ -334,7 +336,9 @@ export default function MarkerFormScreen() {
         const screenTitle = activeDraft.mode === 'create' ? 'Ny markör' : 'Redigera markör';
 
         return (
-          <View className="flex-1 bg-background">
+          <KeyboardAvoidingView
+            className="flex-1 bg-background"
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <Stack.Screen
               options={{
                 contentStyle: { backgroundColor: APP_COLORS.background },
@@ -359,6 +363,7 @@ export default function MarkerFormScreen() {
 
             <ScrollView
               className="flex-1 bg-background"
+              contentInsetAdjustmentBehavior="automatic"
               contentContainerStyle={{
                 paddingBottom: 16,
                 paddingHorizontal: 24,
@@ -493,7 +498,7 @@ export default function MarkerFormScreen() {
 
               <View className="h-10" />
             </ScrollView>
-          </View>
+          </KeyboardAvoidingView>
         );
       }}
     </form.Subscribe>

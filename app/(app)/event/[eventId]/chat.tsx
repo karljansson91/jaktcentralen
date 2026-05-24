@@ -6,7 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('sv-SE', {
@@ -17,6 +26,7 @@ function formatTime(ts: number): string {
 
 export default function EventChatScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const [body, setBody] = useState('');
   const sendMessage = useMutation(api.messages.send);
@@ -44,7 +54,10 @@ export default function EventChatScreen() {
   }, [body, eventId, sendMessage]);
 
   return (
-    <View className="flex-1 bg-background" collapsable={false}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      collapsable={false}>
       <ScrollView
         ref={scrollViewRef}
         className="min-h-0 flex-1"
@@ -112,7 +125,8 @@ export default function EventChatScreen() {
       </ScrollView>
 
       <View
-        className="shrink-0 flex-row items-end gap-2 border-t border-border bg-background px-5 pb-5 pt-3"
+        className="shrink-0 flex-row items-end gap-2 border-t border-border bg-background px-5 pt-3"
+        style={{ paddingBottom: Math.max(insets.bottom, 20) }}
         collapsable={false}>
         <TextInput
           className="min-h-[44px] flex-1 rounded-[22px] bg-card px-4 py-3 text-base text-foreground"
@@ -133,6 +147,6 @@ export default function EventChatScreen() {
           <Ionicons name="send" size={18} color={APP_COLORS.surface} />
         </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui';
-import { cn } from '@/lib/utils';
 import { useSSO, type StartSSOFlowParams } from '@clerk/expo';
 import { Image, type ImageSource } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
@@ -80,13 +79,15 @@ export function SocialConnections() {
           size="sm"
           className="sm:flex-1"
           disabled={loading}
+          accessibilityLabel={`Fortsätt med ${strategy.label}`}
           onPress={onSocialLoginPress(strategy.type, strategy.label)}>
           <Image
-            className={cn('size-4', strategy.useTint && Platform.select({ web: 'dark:invert' }))}
+            source={strategy.source}
+            contentFit="contain"
+            style={{ height: 18, width: 18 }}
             tintColor={Platform.select({
               native: strategy.useTint ? (colorScheme === 'dark' ? 'white' : 'black') : undefined,
             })}
-            source={strategy.source}
           />
         </Button>
       ))}

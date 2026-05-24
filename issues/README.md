@@ -27,6 +27,17 @@ These issue test plans must be runnable by Codex without human supervision.
 - `06-hunt-ending-and-history-replay.md`: archive ended hunts, history section, replay map, read-only chat.
 - `07-station-assignment-and-marker-media.md`: assign participants to point markers, restore marker images.
 - `08-live-background-tracking.md`: background-capable tracking, pause/resume, stale state, trail recording.
+- `09-hide-current-user-map-label.md`: hide the current user's map initials/name overlay and rely on the blue location indicator.
+- `10-area-more-sheet-padding.md`: align the area more sheet with app padding, safe areas, and rounded sheet styling.
+- `11-chat-keyboard-composer.md`: fix chat keyboard/composer behavior with a proven keyboard package and chat-template-inspired layout.
+- `12-homepage-visual-refresh.md`: redesign the authenticated homepage so it feels polished and uniform with area/hunt pages.
+- `13-marker-image-upload-fix.md`: repair marker image upload, persistence, display, and removal.
+- `14-remove-area-more-view-hunts.md`: remove `Visa jakter` from area more options.
+- `15-remove-manage-markers-from-update-info.md`: remove `Hantera markörer` from the update-info form.
+- `16-area-update-info-modal.md`: make area update-info use a modal presentation consistent with other flows.
+- `17-auto-end-past-hunts.md`: automatically treat hunts as ended when their end date has passed.
+- `18-chat-unread-indicator.md`: show unread chat message counts when other participants send messages.
+- `19-hunt-animal-sighting-reports.md`: long-press hunt map to report animal sightings, mirror them to chat, acknowledge live markers, and replay them in history.
 
 ## Product Decisions Already Made
 - Areas remain owner-only for editing.

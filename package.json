@@ -8,6 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "postinstall": "patch-package",
     "doctor": "react-doctor .",
     "doctor:staged": "react-doctor --staged --fail-on error --no-score"
   },
@@ -58,6 +59,7 @@
     "babel-preset-expo": "~56.0.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~56.0.4",
+    "patch-package": "^8.0.1",
     "react-doctor": "^0.2.4",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",

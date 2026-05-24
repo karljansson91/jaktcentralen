@@ -6,6 +6,7 @@ import {
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import {
   Camera,
   CircleLayer,
@@ -90,6 +91,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
   const [polygonPoints, setPolygonPoints] = useState<LngLat[]>(initialPoints ?? []);
   const [draggingVertex, setDraggingVertex] = useState<number | null>(null);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
+  const [userCoordinate, setUserCoordinate] = useState<LngLat | null>(null);
 
   const draggingRef = useRef<number | null>(null);
   const suppressMapPress = useRef(false);
@@ -111,6 +113,50 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (initialPoints?.length) return;
+
+    let cancelled = false;
+
+    async function centerOnUserLocation() {
+      try {
+        const currentPermission = await Location.getForegroundPermissionsAsync();
+        const permission =
+          currentPermission.status === 'granted'
+            ? currentPermission
+            : await Location.requestForegroundPermissionsAsync();
+
+        if (permission.status !== 'granted') return;
+
+        const lastKnownPosition = await Location.getLastKnownPositionAsync();
+        if (lastKnownPosition && !cancelled) {
+          setUserCoordinate([
+            lastKnownPosition.coords.longitude,
+            lastKnownPosition.coords.latitude,
+          ]);
+        }
+
+        const currentPosition = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (!cancelled) {
+          setUserCoordinate([
+            currentPosition.coords.longitude,
+            currentPosition.coords.latitude,
+          ]);
+        }
+      } catch {
+        // Keep the Sweden-wide fallback if the simulator has no usable location.
+      }
+    }
+
+    void centerOnUserLocation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPoints?.length]);
 
   // --- Touch handlers for vertex dragging ---
 
@@ -281,11 +327,17 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         centerCoordinate: initialPoints[0],
       };
     }
+    if (userCoordinate) {
+      return {
+        zoomLevel: 14,
+        centerCoordinate: userCoordinate,
+      };
+    }
     return {
       zoomLevel: 4,
       centerCoordinate: [16, 62] as [number, number],
     };
-  }, [initialPoints]);
+  }, [initialPoints, userCoordinate]);
 
   return (
     <View

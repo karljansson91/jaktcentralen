@@ -5,7 +5,7 @@ import { useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function JoinEventScreen() {
@@ -36,8 +36,9 @@ export default function JoinEventScreen() {
   });
 
   return (
-    <View
+    <KeyboardAvoidingView
       className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       collapsable={false}
       style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
       <ScrollView
@@ -100,6 +101,6 @@ export default function JoinEventScreen() {
           )}
         </form.Subscribe>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

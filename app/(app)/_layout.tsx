@@ -108,7 +108,14 @@ export default function AppLayout() {
           sheetCornerRadius: 28,
         }}
       />
-      <Stack.Screen name="area/create" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="area/create"
+        options={{
+          presentation: 'fullScreenModal',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+        }}
+      />
       <Stack.Screen
         name="join"
         options={{

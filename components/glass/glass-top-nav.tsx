@@ -3,6 +3,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { Text } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,6 +25,8 @@ type GlassTopNavProps = {
   rightIcon?: keyof typeof Ionicons.glyphMap;
   title: string;
   titleBackground?: boolean;
+  titleAccessory?: ReactNode;
+  titleSurfaceStyle?: ViewStyle | ViewStyle[];
 };
 
 function getGlassHeaderTop(topInset: number) {
@@ -49,7 +52,9 @@ export function GlassTopNav({
   rightAccessibilityLabel = 'Fler alternativ',
   rightIcon = 'ellipsis-horizontal',
   title,
+  titleAccessory,
   titleBackground,
+  titleSurfaceStyle,
 }: GlassTopNavProps) {
   const isFloating = appearance === 'floating';
   const buttonTone = isFloating ? 'dark' : 'light';
@@ -87,12 +92,22 @@ export function GlassTopNav({
             tone={buttonTone}
             overlayColor={isFloating ? FLOATING_HEADER_OVERLAY : undefined}
             tintColor={isFloating ? FLOATING_HEADER_TINT : undefined}
-            className="h-10 max-w-full rounded-full"
-            contentClassName="h-full items-center justify-center px-5">
-            {titleContent}
+            className="max-w-full rounded-[28px]"
+            style={[
+              titleSurfaceStyle ??
+                (titleAccessory ? expandedTitleSurfaceStyle : compactTitleSurfaceStyle),
+            ]}
+            contentClassName="h-full items-center justify-center gap-2 px-4 py-2">
+            <View className="min-h-6 items-center justify-center">
+              {titleContent}
+            </View>
+            {titleAccessory}
           </GlassSurface>
         ) : (
-          titleContent
+          <>
+            {titleContent}
+            {titleAccessory}
+          </>
         )}
       </View>
 
@@ -121,9 +136,18 @@ export function GlassTopNav({
 }
 
 const glassTopNavRowStyle: ViewStyle = {
-  alignItems: 'center',
+  alignItems: 'flex-start',
   flexDirection: 'row',
   gap: GLASS_NAV_HORIZONTAL_GAP,
+};
+
+const compactTitleSurfaceStyle: ViewStyle = {
+  height: 40,
+};
+
+const expandedTitleSurfaceStyle: ViewStyle = {
+  minHeight: 40,
+  width: 278,
 };
 
 const floatingTitleStyle: TextStyle = {

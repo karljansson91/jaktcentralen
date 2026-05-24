@@ -166,10 +166,16 @@ function getNativeGlassClassStyle(className: string | undefined): ViewStyle | un
   }
 
   const style: ViewStyle = {};
+  const sizeMatch = getLastClassMatch(className, /\bsize-(10|11|12|14|16)\b/g);
   const heightMatch = getLastClassMatch(className, /\bh-(10|11|12|14)\b/g);
   const widthMatch = getLastClassMatch(className, /\bw-(10|11|12|14)\b/g);
   const roundedPixelMatch = className.match(/\brounded-\[(\d+)px\]/);
 
+  if (sizeMatch) {
+    const size = Number(sizeMatch[1]) * 4;
+    style.height = size;
+    style.width = size;
+  }
   if (heightMatch) {
     style.height = Number(heightMatch[1]) * 4;
   }

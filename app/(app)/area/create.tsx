@@ -1,13 +1,16 @@
 import { Button, Input, Text } from '@/components/ui';
 import { LngLat, PolygonDrawer } from '@/components/PolygonDrawer';
 import { api } from '@/convex/_generated/api';
+import { APP_COLORS } from '@/lib/theme';
 import { useMutation } from 'convex/react';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, ScrollView } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CreateAreaScreen() {
   const { back, replace } = useRouter();
+  const insets = useSafeAreaInsets();
   const [polygonPoints, setPolygonPoints] = useState<LngLat[] | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -57,50 +60,80 @@ export default function CreateAreaScreen() {
   // Step 1: Draw polygon
   if (!polygonPoints) {
     return (
-      <PolygonDrawer
-        onComplete={handlePolygonComplete}
-        onCancel={() => back()}
-      />
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <PolygonDrawer
+          onComplete={handlePolygonComplete}
+          onCancel={() => back()}
+        />
+      </>
     );
   }
 
   // Step 2: Enter details
   return (
-    <ScrollView className="flex-1 bg-background p-6" keyboardShouldPersistTaps="handled">
-      <Text variant="h3" className="mb-2">
-        Namnge ditt område
-      </Text>
-      <Text className="mb-6 text-muted-foreground">
-        {polygonPoints.length} punkter ritade
-      </Text>
-
-      <Text className="mb-1 font-medium">Namn *</Text>
-      <Input
-        value={name}
-        onChangeText={setName}
-        placeholder="Områdesnamn"
-        className="mb-4"
-        autoFocus
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Skapa område',
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: APP_COLORS.background },
+          headerTintColor: APP_COLORS.text,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+        }}
       />
+      <KeyboardAvoidingView
+        className="flex-1 bg-background"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          className="flex-1 bg-background"
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: Math.max(insets.bottom, 24),
+            paddingHorizontal: 24,
+            paddingTop: 24,
+          }}
+          keyboardShouldPersistTaps="handled">
+          <Text variant="h3" className="mb-2">
+            Namnge ditt område
+          </Text>
+          <Text className="mb-6 text-muted-foreground">
+            {polygonPoints.length} punkter ritade
+          </Text>
 
-      <Text className="mb-1 font-medium">Beskrivning</Text>
-      <Input
-        value={description}
-        onChangeText={setDescription}
-        placeholder="Valfri beskrivning"
-        multiline
-        numberOfLines={3}
-        className="mb-6 h-20"
-        textAlignVertical="top"
-      />
+          <Text className="mb-1 font-medium">Namn *</Text>
+          <Input
+            value={name}
+            onChangeText={setName}
+            placeholder="Områdesnamn"
+            className="mb-4"
+            autoFocus
+          />
 
-      <Button onPress={handleSubmit} className="mb-3">
-        <Text>Skapa område</Text>
-      </Button>
+          <Text className="mb-1 font-medium">Beskrivning</Text>
+          <Input
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Valfri beskrivning"
+            multiline
+            numberOfLines={3}
+            className="mb-6 h-20"
+            textAlignVertical="top"
+          />
 
-      <Button variant="outline" onPress={handleCancel}>
-        <Text>Tillbaka till ritning</Text>
-      </Button>
-    </ScrollView>
+          <Button onPress={handleSubmit} className="mb-3">
+            <Text>Skapa område</Text>
+          </Button>
+
+          <Button variant="outline" onPress={handleCancel}>
+            <Text>Tillbaka till ritning</Text>
+          </Button>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </>
   );
 }

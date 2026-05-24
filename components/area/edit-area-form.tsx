@@ -1,11 +1,11 @@
-import { GlassScreenHeader, useGlassHeaderSpacing } from '@/components/glass';
 import { Button, Input, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Doc, Id } from '@/convex/_generated/dataModel';
 import { useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { useCallback, useReducer } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type EditAreaFormProps = {
   area: Doc<'areas'>;
@@ -41,7 +41,7 @@ function editAreaFormReducer(
 
 export function EditAreaForm({ area }: EditAreaFormProps) {
   const { back, replace } = useRouter();
-  const { insets } = useGlassHeaderSpacing();
+  const insets = useSafeAreaInsets();
   const updateArea = useMutation(api.areas.update);
   const [formState, dispatch] = useReducer(
     editAreaFormReducer,
@@ -68,17 +68,18 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
   }, [area._id, back, formState.description, formState.name, updateArea]);
 
   return (
-    <View className="flex-1 bg-background">
-      <GlassScreenHeader title="Uppdatera info" onBack={() => back()} />
-
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         className="flex-1 bg-background"
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 24,
-          paddingTop: 0,
+          paddingTop: 24,
+          paddingBottom: Math.max(insets.bottom, 24),
         }}
-        contentInset={{ bottom: Math.max(insets.bottom, 24) }}
         scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
         keyboardShouldPersistTaps="handled">
         <View className="flex-1">
@@ -121,6 +122,6 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

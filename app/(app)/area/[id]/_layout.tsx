@@ -18,8 +18,15 @@ export default function AreaLayout() {
       <Stack.Screen
         name="edit"
         options={{
-          presentation: 'modal',
-          headerShown: false,
+          presentation: 'fullScreenModal',
+          headerShown: true,
+          title: 'Uppdatera info',
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: APP_COLORS.background },
+          headerTintColor: APP_COLORS.text,
+          contentStyle: { backgroundColor: APP_COLORS.background },
         }}
       />
       <Stack.Screen
@@ -73,8 +80,15 @@ export default function AreaLayout() {
       <Stack.Screen
         name="event/create"
         options={{
-          presentation: 'modal',
-          headerShown: false,
+          presentation: 'fullScreenModal',
+          headerShown: true,
+          title: 'Skapa jakt',
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: APP_COLORS.background },
+          headerTintColor: APP_COLORS.text,
+          contentStyle: { backgroundColor: APP_COLORS.background },
         }}
       />
     </Stack>

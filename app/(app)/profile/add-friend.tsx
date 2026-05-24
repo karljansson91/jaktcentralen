@@ -4,7 +4,15 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { APP_COLORS } from '@/lib/theme';
 import { useMutation, useQuery } from 'convex/react';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function getInitials(name?: string | null) {
@@ -67,8 +75,9 @@ export default function AddFriendSheet() {
   }
 
   return (
-    <View
+    <KeyboardAvoidingView
       className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       collapsable={false}
       style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
       <ScrollView
@@ -165,6 +174,6 @@ export default function AddFriendSheet() {
         )}
       </ScrollView>
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }

@@ -37,6 +37,142 @@ type AssignedStationMarkerItem = {
   targetKey: string;
 };
 
+type AssignmentTrail = {
+  endCoordinate: [number, number];
+  startCoordinate: [number, number];
+  targetKey: string;
+};
+
+type AssignmentTrailMode = 'walking' | 'direct';
+
+type AssignmentRoute = {
+  coordinates: [number, number][];
+  distanceMeters: number;
+  durationSeconds: number;
+  mode: AssignmentTrailMode;
+};
+
+type MapboxDirectionsResponse = {
+  code?: string;
+  message?: string;
+  routes?: {
+    distance?: number;
+    duration?: number;
+    geometry?: {
+      coordinates?: [number, number][];
+      type?: string;
+    };
+  }[];
+};
+
+const HUNT_WALKING_SPEED_MPS = 1.1;
+
+function toCoordinateKey(coordinate: [number, number]) {
+  return `${coordinate[0].toFixed(5)},${coordinate[1].toFixed(5)}`;
+}
+
+function toDirectionsCoordinate(coordinate: [number, number]) {
+  return `${coordinate[0]},${coordinate[1]}`;
+}
+
+function getDistanceMeters(from: [number, number], to: [number, number]) {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const deltaLatitude = toRadians(to[1] - from[1]);
+  const deltaLongitude = toRadians(to[0] - from[0]);
+  const fromLatitude = toRadians(from[1]);
+  const toLatitude = toRadians(to[1]);
+  const haversine =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(deltaLongitude / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function buildDirectAssignmentRoute(trail: AssignmentTrail): AssignmentRoute {
+  const distanceMeters = getDistanceMeters(trail.startCoordinate, trail.endCoordinate);
+
+  return {
+    coordinates: [trail.startCoordinate, trail.endCoordinate],
+    distanceMeters,
+    durationSeconds: distanceMeters / HUNT_WALKING_SPEED_MPS,
+    mode: 'direct',
+  };
+}
+
+async function fetchWalkingAssignmentRoute(
+  trail: AssignmentTrail,
+  signal: AbortSignal
+): Promise<AssignmentRoute> {
+  const accessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('Mapbox token saknas.');
+  }
+
+  const coordinates = `${toDirectionsCoordinate(trail.startCoordinate)};${toDirectionsCoordinate(
+    trail.endCoordinate
+  )}`;
+  const params = new URLSearchParams({
+    access_token: accessToken,
+    geometries: 'geojson',
+    overview: 'full',
+    steps: 'false',
+    walking_speed: String(HUNT_WALKING_SPEED_MPS),
+  });
+  const response = await fetch(
+    `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?${params.toString()}`,
+    { signal }
+  );
+  const body = (await response.json()) as MapboxDirectionsResponse;
+
+  if (!response.ok || body.code !== 'Ok') {
+    throw new Error(body.message || 'Kunde inte beräkna gångväg.');
+  }
+
+  const route = body.routes?.[0];
+  const routeCoordinates = route?.geometry?.coordinates;
+
+  if (
+    !route ||
+    route.geometry?.type !== 'LineString' ||
+    !Array.isArray(routeCoordinates) ||
+    routeCoordinates.length < 2 ||
+    typeof route.distance !== 'number' ||
+    typeof route.duration !== 'number'
+  ) {
+    throw new Error('Mapbox gav ingen användbar gångväg.');
+  }
+
+  return {
+    coordinates: routeCoordinates,
+    distanceMeters: route.distance,
+    durationSeconds: route.duration,
+    mode: 'walking',
+  };
+}
+
+function formatTrailDistance(distanceMeters: number) {
+  if (distanceMeters < 950) {
+    return `${Math.max(10, Math.round(distanceMeters / 10) * 10)} m`;
+  }
+
+  const kilometers = distanceMeters / 1000;
+  const decimals = kilometers < 10 ? 1 : 0;
+  return `${kilometers.toFixed(decimals).replace('.', ',')} km`;
+}
+
+function formatTrailDuration(durationSeconds: number) {
+  const minutes = Math.max(1, Math.round(durationSeconds / 60));
+
+  if (minutes < 60) {
+    return `ca ${minutes} min`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `ca ${hours} h ${remainingMinutes} min` : `ca ${hours} h`;
+}
+
 function AssignedStationMarker({
   marker,
   onPress,
@@ -123,6 +259,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: 30,
   },
+  routeTitleSurface: {
+    minHeight: 68,
+    width: 278,
+  },
+  trailSummaryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 28,
+    paddingHorizontal: 6,
+  },
 });
 
 export default function EventMapScreen() {
@@ -131,6 +279,17 @@ export default function EventMapScreen() {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const [mapStyleURL, setMapStyleURL] = useState(DEFAULT_MAP_STYLE.styleURL);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
+  const [visibleAssignmentTrailTargetKey, setVisibleAssignmentTrailTargetKey] = useState<
+    string | null
+  >(null);
+  const [assignmentTrailMode, setAssignmentTrailMode] = useState<AssignmentTrailMode>('walking');
+  const [walkingRouteResult, setWalkingRouteResult] = useState<{
+    error: string | null;
+    key: string;
+    route: AssignmentRoute | null;
+  } | null>(null);
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -143,6 +302,7 @@ export default function EventMapScreen() {
     api.eventMembers.listMembers,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
+  const currentUser = useQuery(api.users.getCurrentUserProfile);
   const areaFeatures = useQuery(
     api.areaFeatures.listForEvent,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
@@ -153,11 +313,28 @@ export default function EventMapScreen() {
   );
 
   const updatePosition = useMutation(api.eventMembers.updatePosition);
+  const isActiveHunt = Boolean(
+    event &&
+      event.endedAt === undefined &&
+      event.startDate <= currentTime &&
+      event.endDate >= currentTime
+  );
+  const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
 
   useEffect(() => {
     return subscribeToMapStyleChanges((style) => {
       setMapStyleURL(style.styleURL);
     });
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 30_000);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   useFocusEffect(
@@ -177,8 +354,7 @@ export default function EventMapScreen() {
   );
 
   useEffect(() => {
-    if (!event) return;
-    if (event.endedAt !== undefined) return;
+    if (!event || !isActiveHunt) return;
 
     let cancelled = false;
     let subscription: Location.LocationSubscription | null = null;
@@ -194,6 +370,7 @@ export default function EventMapScreen() {
           timeInterval: 10_000,
         },
         (loc) => {
+          setCurrentCoordinate([loc.coords.longitude, loc.coords.latitude]);
           void updatePosition({
             eventId: eventId as Id<'events'>,
             latitude: loc.coords.latitude,
@@ -221,7 +398,7 @@ export default function EventMapScreen() {
       cancelled = true;
       subscription?.remove();
     };
-  }, [event, eventId, updatePosition]);
+  }, [event, eventId, isActiveHunt, updatePosition]);
 
   const polygonGeoJSON = useMemo(() => {
     if (!area) return null;
@@ -304,6 +481,133 @@ export default function EventMapScreen() {
     return features;
   }, [areaFeatures, assignments]);
 
+  const currentUserAssignedStation = useMemo(() => {
+    if (!currentUser || !assignments || !areaFeatures) return null;
+
+    const assignment = assignments.find(
+      (candidate) => candidate.assignedUserId === currentUser._id
+    );
+    if (!assignment) return null;
+
+    const feature = areaFeatures.find(
+      (candidate) =>
+        candidate.geometryType === 'point' &&
+        candidate.point &&
+        getAreaFeatureTargetKey(candidate) === assignment.targetKey
+    );
+    if (!feature?.point) return null;
+
+    return {
+      coordinate: [feature.point.longitude, feature.point.latitude] as [number, number],
+      targetKey: assignment.targetKey,
+    };
+  }, [areaFeatures, assignments, currentUser]);
+
+  const currentUserMemberCoordinate = useMemo(() => {
+    if (!currentUser || !members) return null;
+
+    const member = members.find((candidate) => candidate.userId === currentUser._id);
+    if (member?.lastLatitude == null || member.lastLongitude == null) {
+      return null;
+    }
+
+    return [member.lastLongitude, member.lastLatitude] as [number, number];
+  }, [currentUser, members]);
+
+  const assignmentTrail = useMemo<AssignmentTrail | null>(() => {
+    if (
+      !isActiveHunt ||
+      !currentUserAssignedStation ||
+      activeAssignmentTrailTargetKey !== currentUserAssignedStation.targetKey
+    ) {
+      return null;
+    }
+
+    const startCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
+    if (!startCoordinate) return null;
+
+    return {
+      startCoordinate,
+      endCoordinate: currentUserAssignedStation.coordinate,
+      targetKey: currentUserAssignedStation.targetKey,
+    };
+  }, [
+    activeAssignmentTrailTargetKey,
+    currentCoordinate,
+    currentUserAssignedStation,
+    currentUserMemberCoordinate,
+    isActiveHunt,
+  ]);
+
+  const assignmentTrailKey = useMemo(() => {
+    if (!assignmentTrail) return null;
+
+    return [
+      assignmentTrail.targetKey,
+      toCoordinateKey(assignmentTrail.startCoordinate),
+      toCoordinateKey(assignmentTrail.endCoordinate),
+    ].join(':');
+  }, [assignmentTrail]);
+
+  const directAssignmentRoute = useMemo(() => {
+    return assignmentTrail ? buildDirectAssignmentRoute(assignmentTrail) : null;
+  }, [assignmentTrail]);
+
+  useEffect(() => {
+    if (!assignmentTrail || !assignmentTrailKey || assignmentTrailMode !== 'walking') return;
+    if (walkingRouteResult?.key === assignmentTrailKey) return;
+
+    const controller = new AbortController();
+
+    fetchWalkingAssignmentRoute(assignmentTrail, controller.signal)
+      .then((route) => {
+        setWalkingRouteResult({ error: null, key: assignmentTrailKey, route });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+
+        setWalkingRouteResult({
+          error: error instanceof Error ? error.message : 'Kunde inte beräkna gångväg.',
+          key: assignmentTrailKey,
+          route: null,
+        });
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [assignmentTrail, assignmentTrailKey, assignmentTrailMode, walkingRouteResult?.key]);
+
+  const walkingRoute =
+    walkingRouteResult?.key === assignmentTrailKey ? walkingRouteResult.route : null;
+  const walkingRouteError =
+    walkingRouteResult?.key === assignmentTrailKey ? walkingRouteResult.error : null;
+  const isWalkingRouteLoading = Boolean(
+    assignmentTrailMode === 'walking' &&
+      assignmentTrailKey &&
+      walkingRouteResult?.key !== assignmentTrailKey
+  );
+  const assignmentRoute = assignmentTrailMode === 'direct' ? directAssignmentRoute : walkingRoute;
+  const assignmentRouteStatus = isWalkingRouteLoading
+    ? 'loading'
+    : walkingRouteError
+      ? 'error'
+      : 'idle';
+  const assignmentRouteError = assignmentTrailMode === 'walking' ? walkingRouteError : null;
+
+  const assignmentTrailGeoJSON = useMemo(() => {
+    if (!assignmentRoute) return null;
+
+    return {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: assignmentRoute.coordinates,
+      },
+    };
+  }, [assignmentRoute]);
+
   const handlePressStationTarget = useCallback(
     (targetKey: string) => {
       push(`/event/${eventId}/station?targetKey=${encodeURIComponent(targetKey)}`);
@@ -326,6 +630,7 @@ export default function EventMapScreen() {
         return;
       }
 
+      setCurrentCoordinate(coordinate);
       cameraRef.current?.setCamera({
         centerCoordinate: coordinate,
         zoomLevel: 15,
@@ -336,6 +641,42 @@ export default function EventMapScreen() {
       console.error('Failed to center on user position:', error);
       Alert.alert('Kunde inte hitta position', 'Försök igen om en stund.');
     }
+  }, []);
+
+  const handleToggleAssignmentTrail = useCallback(async () => {
+    if (!isActiveHunt) return;
+    if (!currentUserAssignedStation) return;
+
+    if (visibleAssignmentTrailTargetKey === currentUserAssignedStation.targetKey) {
+      setVisibleAssignmentTrailTargetKey(null);
+      return;
+    }
+
+    setAssignmentTrailMode('walking');
+
+    if (currentCoordinate ?? currentUserMemberCoordinate) {
+      setVisibleAssignmentTrailTargetKey(currentUserAssignedStation.targetKey);
+      return;
+    }
+
+    const coordinate = await getCurrentUserCoordinate();
+    if (!coordinate) {
+      Alert.alert('Plats saknas', 'Ge appen platsbehörighet för att visa vägen till ditt pass.');
+      return;
+    }
+
+    setCurrentCoordinate(coordinate);
+    setVisibleAssignmentTrailTargetKey(currentUserAssignedStation.targetKey);
+  }, [
+    currentCoordinate,
+    currentUserAssignedStation,
+    currentUserMemberCoordinate,
+    isActiveHunt,
+    visibleAssignmentTrailTargetKey,
+  ]);
+
+  const handleToggleAssignmentTrailMode = useCallback(() => {
+    setAssignmentTrailMode((current) => (current === 'walking' ? 'direct' : 'walking'));
   }, []);
 
   if (event === undefined) {
@@ -357,6 +698,7 @@ export default function EventMapScreen() {
   if (
     area === undefined ||
     members === undefined ||
+    currentUser === undefined ||
     assignments === undefined ||
     cameraBounds === null
   ) {
@@ -407,6 +749,32 @@ export default function EventMapScreen() {
           />
         )}
 
+        {assignmentTrailGeoJSON && (
+          <ShapeSource id="event-assignment-trail" shape={assignmentTrailGeoJSON}>
+            <LineLayer
+              id="event-assignment-trail-outline"
+              style={{
+                lineColor: APP_COLORS.surface,
+                lineWidth: 8,
+                lineOpacity: 0.86,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+            <LineLayer
+              id="event-assignment-trail-line"
+              style={{
+                lineColor: APP_COLORS.primary,
+                lineWidth: 4,
+                lineOpacity: 0.92,
+                lineDasharray: assignmentRoute?.mode === 'direct' ? [0.2, 2.2] : undefined,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </ShapeSource>
+        )}
+
         {memberPositionsGeoJSON && memberPositionsGeoJSON.features.length > 0 && (
           <ShapeSource id="event-member-positions" shape={memberPositionsGeoJSON}>
             <CircleLayer
@@ -451,22 +819,84 @@ export default function EventMapScreen() {
             appearance="floating"
             title={event.title}
             titleBackground
+            titleSurfaceStyle={assignmentTrail ? styles.routeTitleSurface : undefined}
             onBack={() => back()}
             onRightPress={() => push(`/event/${eventId}/actions`)}
             rightAccessibilityLabel="Jaktåtgärder"
+            titleAccessory={
+              assignmentTrail ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    assignmentTrailMode === 'walking'
+                      ? 'Byt till riktning till pass'
+                      : 'Byt till gångväg till pass'
+                  }
+                  onPress={handleToggleAssignmentTrailMode}
+                  style={styles.trailSummaryRow}>
+                  <Ionicons
+                    name={assignmentTrailMode === 'walking' ? 'walk' : 'navigate'}
+                    size={16}
+                    color={APP_COLORS.surface}
+                  />
+                  {assignmentRouteStatus === 'loading' ? (
+                    <>
+                      <ActivityIndicator size="small" color={APP_COLORS.surface} />
+                      <Text className="text-xs font-semibold text-white">Beräknar...</Text>
+                    </>
+                  ) : assignmentRoute ? (
+                    <Text className="text-xs font-semibold text-white" numberOfLines={1}>
+                      {assignmentTrailMode === 'walking' ? 'Gångväg' : 'Riktning'} ·{' '}
+                      {formatTrailDistance(assignmentRoute.distanceMeters)} ·{' '}
+                      {formatTrailDuration(assignmentRoute.durationSeconds)}
+                    </Text>
+                  ) : (
+                    <Text className="text-xs font-semibold text-white" numberOfLines={1}>
+                      {assignmentRouteError ?? 'Ingen väg'}
+                    </Text>
+                  )}
+                  <Ionicons
+                    name="swap-horizontal"
+                    size={14}
+                    color="rgba(255, 255, 255, 0.78)"
+                  />
+                </Pressable>
+              ) : null
+            }
           />
         </View>
 
         <View
           className="absolute left-6"
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
-          <GlassFloatingButton
-            icon="locate"
-            onPress={handleGoToMyPosition}
-            accessibilityLabel="Gå till min position"
-            surfaceClassName="size-12"
-            tone="dark"
-          />
+          <View className="gap-3">
+            {isActiveHunt && currentUserAssignedStation ? (
+              <GlassFloatingButton
+                icon="navigate"
+                onPress={handleToggleAssignmentTrail}
+                accessibilityLabel={
+                  activeAssignmentTrailTargetKey === currentUserAssignedStation.targetKey
+                    ? 'Dölj väg till tilldelat pass'
+                    : 'Visa väg till tilldelat pass'
+                }
+                color={APP_COLORS.surface}
+                surfaceClassName="size-12"
+                tone="dark"
+                tintColor={
+                  activeAssignmentTrailTargetKey === currentUserAssignedStation.targetKey
+                    ? 'rgba(57, 128, 72, 0.92)'
+                    : 'rgba(49, 52, 68, 0.82)'
+                }
+              />
+            ) : null}
+            <GlassFloatingButton
+              icon="locate"
+              onPress={handleGoToMyPosition}
+              accessibilityLabel="Gå till min position"
+              surfaceClassName="size-12"
+              tone="dark"
+            />
+          </View>
         </View>
 
         <View

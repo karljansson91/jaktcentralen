@@ -1,6 +1,5 @@
 import { Button, Card, CardHeader, CardTitle, Input, Text } from '@/components/ui';
 import { EventDatePickerField } from '@/components/event/event-date-picker-field';
-import { GlassScreenHeader, useGlassHeaderSpacing } from '@/components/glass';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import {
@@ -13,7 +12,8 @@ import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function normalizeDate(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -26,7 +26,7 @@ function isValidDate(date: Date | undefined): date is Date {
 export default function CreateEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { back } = useRouter();
-  const { insets } = useGlassHeaderSpacing();
+  const insets = useSafeAreaInsets();
 
   const [selectedFriends, setSelectedFriends] = useState<Set<Id<'users'>>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,15 +105,16 @@ export default function CreateEventScreen() {
   }, []);
 
   return (
-    <View className="flex-1 bg-background">
-      <GlassScreenHeader title="Skapa jakt" onBack={() => back()} />
-
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         className="flex-1 bg-background"
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           paddingBottom: 24,
           paddingHorizontal: 24,
-          paddingTop: 0,
+          paddingTop: 24,
         }}
         keyboardShouldPersistTaps="handled">
         {/* Title */}
@@ -317,6 +318,6 @@ export default function CreateEventScreen() {
           <Text>{isSubmitting ? 'Skapar…' : 'Skapa jakt'}</Text>
         </Button>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
