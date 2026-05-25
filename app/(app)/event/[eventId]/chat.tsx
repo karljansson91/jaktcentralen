@@ -16,10 +16,11 @@ import {
 import {
   KeyboardAvoidingView,
   KeyboardGestureArea,
+  useKeyboardState,
 } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const COMPOSER_GESTURE_OFFSET = 76;
+const COMPOSER_GESTURE_OFFSET = 52;
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('sv-SE', {
@@ -31,6 +32,7 @@ function formatTime(ts: number): string {
 export default function EventChatScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scrollViewRef = useRef<ScrollView>(null);
   const [body, setBody] = useState('');
   const sendMessage = useMutation(api.messages.send);
@@ -153,7 +155,7 @@ export default function EventChatScreen() {
 
       <View
         className="shrink-0 flex-row items-end gap-2 border-t border-border bg-background px-5 pt-3"
-        style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+        style={{ paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 20) }}
         collapsable={false}>
         <TextInput
           nativeID="event-chat-composer"
@@ -165,9 +167,9 @@ export default function EventChatScreen() {
           multiline
           maxLength={2000}
           enablesReturnKeyAutomatically
-          returnKeyType="send"
-          submitBehavior="submit"
-          onSubmitEditing={handleSend}
+          enterKeyHint="enter"
+          returnKeyType="default"
+          submitBehavior="newline"
         />
         <Pressable
           onPress={handleSend}
