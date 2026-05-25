@@ -1,40 +1,21 @@
 import { HomeSectionHeader } from '@/components/home/home-section-header';
+import { HomeHuntCard } from '@/components/home/hunt-card';
 import { Badge, Button, Card, CardContent, IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { useCurrentTime } from '@/hooks/use-current-time';
-import {
-  getEventLifecycle,
-  getEventLifecycleLabel,
-  type EventLifecycle,
-} from '@/lib/event-lifecycle';
+import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, LayoutAnimation, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('sv-SE');
-}
-
-function getDateRangeLabel(startDate: number, endDate: number) {
-  const start = formatDate(startDate);
-
-  if (endDate === startDate) {
-    return start;
-  }
-
-  return `${start} till ${formatDate(endDate)}`;
-}
-
-function getEventStatusTone(lifecycle: EventLifecycle) {
-  return lifecycle === 'active' ? 'live' : lifecycle;
-}
 
 export default function HomeScreen() {
   const { push } = useRouter();
   const insets = useSafeAreaInsets();
   const currentTime = useCurrentTime(60_000);
+  const [showEndedHunts, setShowEndedHunts] = useState(false);
   const user = useQuery(api.users.getCurrentUserProfile);
   const areas = useQuery(api.areas.listMyAreas, user ? {} : 'skip');
   const events = useQuery(api.events.listMyEvents, user ? {} : 'skip');
@@ -42,6 +23,18 @@ export default function HomeScreen() {
   const pendingInvitations = useQuery(api.eventMembers.listMyInvitations, user ? {} : 'skip');
   const pendingFriendRequests = useQuery(api.friends.listPendingReceived, user ? {} : 'skip');
   const inboxCount = (pendingInvitations?.length ?? 0) + (pendingFriendRequests?.length ?? 0);
+  const sortedCurrentHunts = useMemo(
+    () =>
+      (events ?? []).toSorted((a, b) => {
+        const lifecycleA = getEventLifecycle(a, currentTime);
+        const lifecycleB = getEventLifecycle(b, currentTime);
+        const rankA = lifecycleA === 'active' ? 0 : 1;
+        const rankB = lifecycleB === 'active' ? 0 : 1;
+
+        return rankA - rankB || a.startDate - b.startDate;
+      }),
+    [currentTime, events]
+  );
 
   const profileInitial =
     user?.name
@@ -109,84 +102,67 @@ export default function HomeScreen() {
 
           {events.length + endedEvents.length > 0 ? (
             <View className="gap-2">
-              {events.map((event) => {
-                const lifecycle = getEventLifecycle(event, currentTime);
-                const status = {
-                  label: getEventLifecycleLabel(lifecycle),
-                  tone: getEventStatusTone(lifecycle),
-                };
-
-                return (
-                  <Pressable
-                    key={event._id}
-                    accessibilityRole="button"
-                    onPress={() => push(`/event/${event._id}`)}>
-                    <Card className="border-border/70 py-0">
-                      <CardContent className="px-5 py-4">
-                        <View className="flex-row items-center gap-4">
-                          <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
-                            <Ionicons name="compass-outline" size={22} color="#35523b" />
-                          </View>
-                          <View className="flex-1 gap-1">
-                            <View className="flex-row items-center justify-between gap-3">
-                              <Text className="flex-1 text-base font-semibold text-foreground">
-                                {event.title}
-                              </Text>
-                              <Badge
-                                variant={
-                                  status.tone === 'live'
-                                    ? 'default'
-                                    : status.tone === 'upcoming'
-                                      ? 'secondary'
-                                      : 'muted'
-                                }>
-                                <Text>{status.label}</Text>
-                              </Badge>
-                            </View>
-                            <Text className="text-sm text-muted-foreground">
-                              {getDateRangeLabel(event.startDate, event.endDate)}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={18} color="#8b948d" />
-                        </View>
-                      </CardContent>
-                    </Card>
-                  </Pressable>
-                );
-              })}
-
-              {endedEvents.map((event) => (
-                <Pressable
+              {sortedCurrentHunts.map((event) => (
+                <HomeHuntCard
                   key={event._id}
-                  accessibilityRole="button"
-                  onPress={() => push(`/event/${event._id}`)}>
-                  <Card className="border-border/70 bg-card/80 py-0">
-                    <CardContent className="px-5 py-4">
-                      <View className="flex-row items-center gap-4">
-                        <View className="size-12 items-center justify-center rounded-2xl bg-secondary">
-                          <Ionicons name="archive-outline" size={22} color="#35523b" />
-                        </View>
-                        <View className="flex-1 gap-1">
-                          <View className="flex-row items-center justify-between gap-3">
-                            <Text className="flex-1 text-base font-semibold text-foreground">
-                              {event.title}
-                            </Text>
-                            <Badge variant="muted">
-                              <Text>Avslutad</Text>
-                            </Badge>
-                          </View>
-                          <Text className="text-sm text-muted-foreground">
-                            {event.endedAt
-                              ? `Avslutad ${formatDate(event.endedAt)}`
-                              : getDateRangeLabel(event.startDate, event.endDate)}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color="#8b948d" />
-                      </View>
-                    </CardContent>
-                  </Card>
-                </Pressable>
+                  event={event}
+                  lifecycle={getEventLifecycle(event, currentTime)}
+                  onPress={() => push(`/event/${event._id}`)}
+                />
               ))}
+
+              {events.length === 0 ? (
+                <Card className="border-border/70 bg-card/95 py-0">
+                  <CardContent className="gap-2 p-5">
+                    <Text className="text-base font-semibold text-foreground">
+                      Inga aktuella jakter
+                    </Text>
+                    <Text className="text-sm leading-5 text-muted-foreground">
+                      Gå med i en ny jakt med kod, eller öppna avslutade jakter nedan.
+                    </Text>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {endedEvents.length > 0 ? (
+                <View className="gap-2 pt-1">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showEndedHunts ? 'Dölj avslutade jakter' : 'Visa avslutade jakter'
+                    }
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setShowEndedHunts((current) => !current);
+                    }}
+                    className="flex-row items-center justify-between rounded-2xl px-1 py-2">
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-sm font-semibold text-muted-foreground">
+                        Avslutade
+                      </Text>
+                      <Badge variant="muted">
+                        <Text>{endedEvents.length}</Text>
+                      </Badge>
+                    </View>
+                    <Ionicons
+                      name={showEndedHunts ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color="#8b948d"
+                    />
+                  </Pressable>
+
+                  {showEndedHunts
+                    ? endedEvents.map((event) => (
+                        <HomeHuntCard
+                          key={event._id}
+                          event={event}
+                          lifecycle="ended"
+                          onPress={() => push(`/event/${event._id}`)}
+                        />
+                      ))
+                    : null}
+                </View>
+              ) : null}
             </View>
           ) : (
             <Card className="overflow-hidden border-border/70 bg-card/95 py-0">
