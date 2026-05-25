@@ -4,6 +4,10 @@ import { AnimalSightingPicker } from '@/components/event/animal-sighting-picker'
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
+import {
+  LiveMemberPositionMarker,
+  type LiveMemberPositionMarkerItem,
+} from '@/components/event/live-member-position-marker';
 import { GlassFloatingButton } from '@/components/glass';
 import { IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
@@ -29,13 +33,11 @@ import { useCurrentTime } from '@/hooks/use-current-time';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
-  CircleLayer,
   FillLayer,
   LineLayer,
   LocationPuck,
   MapView,
   ShapeSource,
-  SymbolLayer,
 } from '@rnmapbox/maps';
 import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
@@ -203,9 +205,9 @@ export default function EventMapScreen() {
     };
   }, [area, insets.bottom, insets.top]);
 
-  const memberPositionsGeoJSON = useMemo(() => {
+  const liveMemberMarkers = useMemo(() => {
     if (!members || !currentUser) return null;
-    const features = [];
+    const markers: LiveMemberPositionMarkerItem[] = [];
 
     for (const member of members) {
       if (
@@ -217,24 +219,16 @@ export default function EventMapScreen() {
       }
 
       const name = member.user?.name?.trim() || 'Okänd';
-      features.push({
-        type: 'Feature' as const,
-        properties: {
-          id: member._id,
-          name,
-          initials: getMemberInitials(name),
-        },
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [member.lastLongitude, member.lastLatitude],
-        },
+      markers.push({
+        coordinates: [member.lastLongitude, member.lastLatitude],
+        id: member._id,
+        imageUrl: member.user?.imageUrl ?? null,
+        initials: getMemberInitials(name),
+        name,
       });
     }
 
-    return {
-      type: 'FeatureCollection' as const,
-      features,
-    };
+    return markers;
   }, [currentUser, members]);
 
   const assignedStationMarkers = useMemo(() => {
@@ -244,22 +238,24 @@ export default function EventMapScreen() {
       assignments.map((assignment) => [assignment.targetKey, assignment])
     );
     const features = areaFeatures.flatMap((feature) => {
-        if (feature.geometryType !== 'point' || !feature.point) {
-          return [];
-        }
+      if (feature.geometryType !== 'point' || !feature.point) {
+        return [];
+      }
 
-        const assignment = assignmentsByTargetKey.get(getAreaFeatureTargetKey(feature));
-        if (!assignment) {
-          return [];
-        }
+      const assignment = assignmentsByTargetKey.get(getAreaFeatureTargetKey(feature));
+      if (!assignment) {
+        return [];
+      }
 
-        const name = assignment.assignedUser?.name?.trim() || 'Okänd';
-        return [{
+      const name = assignment.assignedUser?.name?.trim() || 'Okänd';
+      return [
+        {
           coordinates: [feature.point.longitude, feature.point.latitude] as [number, number],
           initials: getMemberInitials(name),
           targetKey: getAreaFeatureTargetKey(feature),
-        } satisfies AssignedStationMarkerItem];
-      });
+        } satisfies AssignedStationMarkerItem,
+      ];
+    });
 
     return features;
   }, [areaFeatures, assignments]);
@@ -535,31 +531,9 @@ export default function EventMapScreen() {
 
         <AssignmentRouteLayer route={assignmentRoute} shape={assignmentRouteGeoJSON} />
 
-        {memberPositionsGeoJSON && memberPositionsGeoJSON.features.length > 0 && (
-          <ShapeSource id="event-member-positions" shape={memberPositionsGeoJSON}>
-            <CircleLayer
-              id="event-member-circle"
-              style={{
-                circleRadius: 27,
-                circleColor: APP_COLORS.primary,
-                circleStrokeColor: APP_COLORS.surface,
-                circleStrokeWidth: 2.5,
-              }}
-            />
-            <SymbolLayer
-              id="event-member-initials"
-              style={{
-                textField: ['get', 'initials'],
-                textSize: 21,
-                textAnchor: 'center',
-                textColor: APP_COLORS.surface,
-                textAllowOverlap: true,
-                textIgnorePlacement: true,
-                textFont: ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-              }}
-            />
-          </ShapeSource>
-        )}
+        {liveMemberMarkers?.map((marker) => (
+          <LiveMemberPositionMarker key={marker.id} marker={marker} />
+        ))}
 
         {assignedStationMarkers?.map((marker) => (
           <AssignedStationMarker

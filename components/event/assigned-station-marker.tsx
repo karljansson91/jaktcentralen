@@ -14,6 +14,8 @@ type AssignedStationMarkerProps = {
   onPress: (targetKey: string) => void;
 };
 
+const ASSIGNED_PIN_COLOR = APP_COLORS.text;
+
 export function AssignedStationMarker({ marker, onPress }: AssignedStationMarkerProps) {
   return (
     <MarkerView
@@ -27,13 +29,10 @@ export function AssignedStationMarker({ marker, onPress }: AssignedStationMarker
         accessibilityLabel={`Öppna tilldelning för ${marker.initials}`}
         onPress={() => onPress(marker.targetKey)}
         style={styles.assignedStationPin}>
-        <View style={styles.assignedStationPinHeadOutline} />
-        <View style={styles.assignedStationPinTailOutline} />
-        <View style={styles.assignedStationPinHead} />
-        <View style={styles.assignedStationPinTail} />
-        <Text style={styles.assignedStationPinText}>
-          {marker.initials}
-        </Text>
+        <View style={styles.assignedStationPinShape} />
+        <View style={styles.assignedStationPinFace}>
+          <Text style={styles.assignedStationPinText}>{marker.initials}</Text>
+        </View>
       </Pressable>
     </MarkerView>
   );
@@ -42,56 +41,38 @@ export function AssignedStationMarker({ marker, onPress }: AssignedStationMarker
 const styles = StyleSheet.create({
   assignedStationPin: {
     alignItems: 'center',
-    height: 40,
+    height: 50,
     justifyContent: 'flex-start',
-    width: 34,
+    width: 44,
   },
-  assignedStationPinHead: {
-    backgroundColor: APP_COLORS.primary,
+  assignedStationPinFace: {
+    alignItems: 'center',
+    backgroundColor: ASSIGNED_PIN_COLOR,
     borderRadius: 13,
     height: 26,
+    justifyContent: 'center',
     position: 'absolute',
-    top: 2,
+    top: 7,
     width: 26,
   },
-  assignedStationPinHeadOutline: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 15,
-    height: 30,
+  assignedStationPinShape: {
+    backgroundColor: ASSIGNED_PIN_COLOR,
+    borderColor: APP_COLORS.surface,
+    borderRadius: 19,
+    borderBottomRightRadius: 5,
+    borderWidth: 3,
+    boxShadow: '0 7px 16px rgba(49, 52, 68, 0.24)',
+    height: 38,
     position: 'absolute',
     top: 0,
-    width: 30,
-  },
-  assignedStationPinTail: {
-    borderLeftColor: 'transparent',
-    borderLeftWidth: 8,
-    borderRightColor: 'transparent',
-    borderRightWidth: 8,
-    borderTopColor: APP_COLORS.primary,
-    borderTopWidth: 12,
-    height: 0,
-    position: 'absolute',
-    top: 24,
-    width: 0,
-  },
-  assignedStationPinTailOutline: {
-    borderLeftColor: 'transparent',
-    borderLeftWidth: 10,
-    borderRightColor: 'transparent',
-    borderRightWidth: 10,
-    borderTopColor: APP_COLORS.surface,
-    borderTopWidth: 15,
-    height: 0,
-    position: 'absolute',
-    top: 23,
-    width: 0,
+    transform: [{ rotate: '45deg' }],
+    width: 38,
   },
   assignedStationPinText: {
     color: APP_COLORS.surface,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    lineHeight: 26,
+    lineHeight: 14,
     textAlign: 'center',
-    width: 30,
   },
 });
