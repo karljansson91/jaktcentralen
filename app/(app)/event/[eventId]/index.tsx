@@ -20,7 +20,13 @@ import {
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
+import { distanceMeters } from '@/lib/geo';
 import type { AssignmentTrail } from '@/lib/hunt-navigation';
+import {
+  IN_POSITION_RADIUS_METERS,
+  NEAR_ASSIGNED_POSITION_RADIUS_METERS,
+  isMemberEffectivelyInPosition,
+} from '@/lib/hunt-in-position';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
   getCachedMapStyle,
@@ -30,6 +36,7 @@ import {
 import { APP_COLORS } from '@/lib/theme';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
+import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
@@ -104,6 +111,8 @@ export default function EventMapScreen() {
   );
 
   const updatePosition = useMutation(api.eventMembers.updatePosition);
+  const markInPosition = useMutation(api.eventMembers.markInPosition);
+  const clearInPosition = useMutation(api.eventMembers.clearInPosition);
   const reportAnimalSighting = useMutation(api.animalSightings.report);
   const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
@@ -231,6 +240,47 @@ export default function EventMapScreen() {
     return markers;
   }, [currentUser, members]);
 
+  const assignmentPointByTargetKey = useMemo(() => {
+    const points = new Map<string, { latitude: number; longitude: number }>();
+
+    for (const feature of areaFeatures ?? []) {
+      if (feature.geometryType !== 'point' || !feature.point) {
+        continue;
+      }
+
+      points.set(getAreaFeatureTargetKey(feature), feature.point);
+    }
+
+    return points;
+  }, [areaFeatures]);
+
+  const memberByUserId = useMemo(
+    () => new Map((members ?? []).map((member) => [member.userId, member])),
+    [members]
+  );
+
+  const readinessSummary = useMemo(() => {
+    if (!assignments) return null;
+
+    let confirmed = 0;
+    let total = 0;
+
+    for (const assignment of assignments) {
+      const point = assignmentPointByTargetKey.get(assignment.targetKey);
+      const member = memberByUserId.get(assignment.assignedUserId);
+      if (!point || !member) {
+        continue;
+      }
+
+      total += 1;
+      if (isMemberEffectivelyInPosition(member, assignment, point, currentTime)) {
+        confirmed += 1;
+      }
+    }
+
+    return { confirmed, total };
+  }, [assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
+
   const assignedStationMarkers = useMemo(() => {
     if (!areaFeatures || !assignments) return null;
 
@@ -247,9 +297,14 @@ export default function EventMapScreen() {
         return [];
       }
 
+      const point = assignmentPointByTargetKey.get(assignment.targetKey);
+      const member = memberByUserId.get(assignment.assignedUserId);
       const name = assignment.assignedUser?.name?.trim() || 'Okänd';
       return [
         {
+          confirmed: point
+            ? isMemberEffectivelyInPosition(member, assignment, point, currentTime)
+            : false,
           coordinates: [feature.point.longitude, feature.point.latitude] as [number, number],
           initials: getMemberInitials(name),
           targetKey: getAreaFeatureTargetKey(feature),
@@ -258,40 +313,64 @@ export default function EventMapScreen() {
     });
 
     return features;
-  }, [areaFeatures, assignments]);
+  }, [areaFeatures, assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
 
   const currentUserAssignedStation = useMemo(() => {
-    if (!currentUser || !assignments || !areaFeatures) return null;
+    if (!currentUser || !assignments) return null;
 
     const assignment = assignments.find(
       (candidate) => candidate.assignedUserId === currentUser._id
     );
     if (!assignment) return null;
 
-    const feature = areaFeatures.find(
-      (candidate) =>
-        candidate.geometryType === 'point' &&
-        candidate.point &&
-        getAreaFeatureTargetKey(candidate) === assignment.targetKey
-    );
-    if (!feature?.point) return null;
+    const point = assignmentPointByTargetKey.get(assignment.targetKey);
+    if (!point) return null;
 
     return {
-      coordinate: [feature.point.longitude, feature.point.latitude] as [number, number],
+      assignedUserId: assignment.assignedUserId,
+      coordinate: [point.longitude, point.latitude] as [number, number],
+      point,
       targetKey: assignment.targetKey,
     };
-  }, [areaFeatures, assignments, currentUser]);
+  }, [assignmentPointByTargetKey, assignments, currentUser]);
+
+  const currentUserMember = useMemo(() => {
+    if (!currentUser) return null;
+    return memberByUserId.get(currentUser._id) ?? null;
+  }, [currentUser, memberByUserId]);
 
   const currentUserMemberCoordinate = useMemo(() => {
-    if (!currentUser || !members) return null;
-
-    const member = members.find((candidate) => candidate.userId === currentUser._id);
-    if (member?.lastLatitude == null || member.lastLongitude == null) {
+    if (currentUserMember?.lastLatitude == null || currentUserMember.lastLongitude == null) {
       return null;
     }
 
-    return [member.lastLongitude, member.lastLatitude] as [number, number];
-  }, [currentUser, members]);
+    return [currentUserMember.lastLongitude, currentUserMember.lastLatitude] as [number, number];
+  }, [currentUserMember]);
+
+  const currentUserMarkedInPosition = Boolean(
+    currentUserAssignedStation &&
+      currentUserMember?.inPositionTargetKey === currentUserAssignedStation.targetKey
+  );
+  const currentUserInPositionEffective = Boolean(
+    currentUserAssignedStation &&
+      currentUserMember &&
+      isMemberEffectivelyInPosition(
+        currentUserMember,
+        currentUserAssignedStation,
+        currentUserAssignedStation.point,
+        currentTime
+      )
+  );
+  const currentUserAssignmentDistance = useMemo(() => {
+    if (!currentCoordinate || !currentUserAssignedStation) {
+      return null;
+    }
+
+    return distanceMeters(
+      { latitude: currentCoordinate[1], longitude: currentCoordinate[0] },
+      currentUserAssignedStation.point
+    );
+  }, [currentCoordinate, currentUserAssignedStation]);
 
   const assignmentTrail = useMemo<AssignmentTrail | null>(() => {
     if (
@@ -403,6 +482,42 @@ export default function EventMapScreen() {
     [acknowledgeAnimalSighting]
   );
 
+  const handleMarkSelfInPosition = useCallback(async () => {
+    try {
+      await markInPosition({ eventId: eventId as Id<'events'> });
+    } catch (error) {
+      console.error('Failed to mark in position:', error);
+      Alert.alert('Kunde inte markera på plats', 'Försök igen om en stund.');
+    }
+  }, [eventId, markInPosition]);
+
+  const handleClearSelfInPosition = useCallback(async () => {
+    try {
+      await clearInPosition({ eventId: eventId as Id<'events'> });
+    } catch (error) {
+      console.error('Failed to clear in-position status:', error);
+      Alert.alert('Kunde inte ta bort status', 'Försök igen om en stund.');
+    }
+  }, [clearInPosition, eventId]);
+
+  const isCurrentUserPastInPositionRadius =
+    isActiveHunt &&
+    currentUserMarkedInPosition &&
+    currentUserAssignmentDistance != null &&
+    currentUserAssignmentDistance > IN_POSITION_RADIUS_METERS;
+  const isCurrentUserNearUnmarkedAssignment =
+    isActiveHunt &&
+    !currentUserMarkedInPosition &&
+    currentUserAssignmentDistance != null &&
+    currentUserAssignmentDistance <= NEAR_ASSIGNED_POSITION_RADIUS_METERS;
+
+  useInPositionPrompts({
+    isNearUnmarkedAssignment: isCurrentUserNearUnmarkedAssignment,
+    isPastInPositionRadius: isCurrentUserPastInPositionRadius,
+    onClearInPosition: handleClearSelfInPosition,
+    onMarkInPosition: handleMarkSelfInPosition,
+  });
+
   const handleGoToMyPosition = useCallback(async () => {
     try {
       const coordinate = await getCurrentUserCoordinate();
@@ -508,7 +623,9 @@ export default function EventMapScreen() {
         attributionEnabled={false}
         onLongPress={isActiveHunt ? handleMapLongPress : undefined}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
-        <LocationPuck puckBearingEnabled puckBearing="heading" />
+        {!currentUserInPositionEffective ? (
+          <LocationPuck puckBearingEnabled puckBearing="heading" />
+        ) : null}
 
         {polygonGeoJSON && (
           <ShapeSource id="event-area-polygon" shape={polygonGeoJSON}>
@@ -559,6 +676,11 @@ export default function EventMapScreen() {
             title={event.title}
             onBack={() => back()}
             onMore={() => push(`/event/${eventId}/actions`)}
+            readinessLabel={
+              isActiveHunt && readinessSummary?.total
+                ? `${readinessSummary.confirmed}/${readinessSummary.total} på plats`
+                : null
+            }
             routeSummary={
               assignmentTrail
                 ? {

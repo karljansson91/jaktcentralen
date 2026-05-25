@@ -32,3 +32,14 @@ type HuntMessageInput =
 export async function insertHuntMessage(ctx: MutationCtx, input: HuntMessageInput) {
   return await ctx.db.insert("messages", input);
 }
+
+export async function markMembershipReadThroughMessage(
+  ctx: MutationCtx,
+  membershipId: Id<"eventMembers">,
+  messageId: Id<"messages">
+) {
+  const message = await ctx.db.get(messageId);
+  if (message) {
+    await ctx.db.patch(membershipId, { lastReadMessageAt: message._creationTime });
+  }
+}

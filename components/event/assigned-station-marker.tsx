@@ -4,6 +4,7 @@ import { MarkerView } from '@rnmapbox/maps';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 export type AssignedStationMarkerItem = {
+  confirmed?: boolean;
   coordinates: [number, number];
   initials: string;
   targetKey: string;
@@ -15,8 +16,11 @@ type AssignedStationMarkerProps = {
 };
 
 const ASSIGNED_PIN_COLOR = APP_COLORS.text;
+const CONFIRMED_PIN_COLOR = APP_COLORS.primary;
 
 export function AssignedStationMarker({ marker, onPress }: AssignedStationMarkerProps) {
+  const pinColor = marker.confirmed ? CONFIRMED_PIN_COLOR : ASSIGNED_PIN_COLOR;
+
   return (
     <MarkerView
       key={marker.targetKey}
@@ -29,8 +33,8 @@ export function AssignedStationMarker({ marker, onPress }: AssignedStationMarker
         accessibilityLabel={`Öppna tilldelning för ${marker.initials}`}
         onPress={() => onPress(marker.targetKey)}
         style={styles.assignedStationPin}>
-        <View style={styles.assignedStationPinShape} />
-        <View style={styles.assignedStationPinFace}>
+        <View style={[styles.assignedStationPinShape, { backgroundColor: pinColor }]} />
+        <View style={[styles.assignedStationPinFace, { backgroundColor: pinColor }]}>
           <Text style={styles.assignedStationPinText}>{marker.initials}</Text>
         </View>
       </Pressable>
@@ -47,7 +51,6 @@ const styles = StyleSheet.create({
   },
   assignedStationPinFace: {
     alignItems: 'center',
-    backgroundColor: ASSIGNED_PIN_COLOR,
     borderRadius: 13,
     height: 26,
     justifyContent: 'center',
@@ -56,7 +59,6 @@ const styles = StyleSheet.create({
     width: 26,
   },
   assignedStationPinShape: {
-    backgroundColor: ASSIGNED_PIN_COLOR,
     borderColor: APP_COLORS.surface,
     borderRadius: 19,
     borderBottomRightRadius: 5,

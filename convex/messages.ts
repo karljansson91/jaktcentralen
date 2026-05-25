@@ -4,7 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 import { getAcceptedEventMembership } from "./eventAccess";
-import { insertHuntMessage } from "./messageHelpers";
+import { insertHuntMessage, markMembershipReadThroughMessage } from "./messageHelpers";
 
 export const send = mutation({
   args: { eventId: v.id("events"), body: v.string() },
@@ -23,10 +23,7 @@ export const send = mutation({
       body: args.body,
       type: "text",
     });
-    const message = await ctx.db.get(messageId);
-    if (message) {
-      await ctx.db.patch(membership._id, { lastReadMessageAt: message._creationTime });
-    }
+    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
 
     return messageId;
   },

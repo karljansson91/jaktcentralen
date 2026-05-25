@@ -16,11 +16,24 @@ const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
 type HuntMapTopNavProps = {
   onBack: () => void;
   onMore: () => void;
+  readinessLabel?: string | null;
   routeSummary?: AssignmentRouteSummaryProps | null;
   title: string;
 };
 
-export function HuntMapTopNav({ onBack, onMore, routeSummary, title }: HuntMapTopNavProps) {
+export function HuntMapTopNav({
+  onBack,
+  onMore,
+  readinessLabel,
+  routeSummary,
+  title,
+}: HuntMapTopNavProps) {
+  const titleSurfaceStyle = routeSummary
+    ? styles.expandedTitleSurface
+    : readinessLabel
+      ? styles.readinessTitleSurface
+      : styles.compactTitleSurface;
+
   return (
     <View className="w-full">
       <View style={styles.row}>
@@ -39,8 +52,8 @@ export function HuntMapTopNav({ onBack, onMore, routeSummary, title }: HuntMapTo
             overlayColor={FLOATING_HEADER_OVERLAY}
             tintColor={FLOATING_HEADER_TINT}
             className="max-w-full rounded-[28px]"
-            style={routeSummary ? styles.expandedTitleSurface : styles.compactTitleSurface}
-            contentClassName="h-full items-center justify-center gap-2 px-4 py-2">
+            style={titleSurfaceStyle}
+            contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
             <View className="min-h-6 items-center justify-center">
               <Text
                 className={cn('text-center text-[16px] font-semibold leading-[21px] text-white')}
@@ -51,6 +64,11 @@ export function HuntMapTopNav({ onBack, onMore, routeSummary, title }: HuntMapTo
                 {title}
               </Text>
             </View>
+            {readinessLabel ? (
+              <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
+                {readinessLabel}
+              </Text>
+            ) : null}
             {routeSummary ? <AssignmentRouteSummary {...routeSummary} /> : null}
           </GlassSurface>
         </View>
@@ -77,6 +95,10 @@ const styles = StyleSheet.create({
   expandedTitleSurface: {
     minHeight: 68,
     width: 278,
+  } satisfies ViewStyle,
+  readinessTitleSurface: {
+    height: 56,
+    width: 230,
   } satisfies ViewStyle,
   floatingTitle: {
     textShadowColor: 'rgba(0, 0, 0, 0.42)',

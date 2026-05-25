@@ -134,6 +134,8 @@ export default defineSchema({
     lastHeading: v.optional(v.number()),
     lastSeenAt: v.optional(v.number()),
     lastReadMessageAt: v.optional(v.number()),
+    inPositionTargetKey: v.optional(v.string()),
+    inPositionMarkedAt: v.optional(v.number()),
   })
     .index("by_eventId_and_status", ["eventId", "status"])
     .index("by_userId_and_status", ["userId", "status"])

@@ -1,8 +1,17 @@
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { getAcceptedEventMembership } from "./eventAccess";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
+import { insertHuntMessage, markMembershipReadThroughMessage } from "./messageHelpers";
 import { writeMemberPosition } from "./positionTracking";
+
+function assertEventIsActive(event: Doc<"events">, now: number) {
+  if (event.startDate > now || isEventEnded(event, now)) {
+    throw new Error("Hunt is not active");
+  }
+}
 
 export const invite = mutation({
   args: { eventId: v.id("events"), userId: v.id("users") },
@@ -293,5 +302,86 @@ export const updatePosition = mutation({
       heading: args.heading,
       timestamp: Date.now(),
     });
+  },
+});
+
+export const markInPosition = mutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const now = Date.now();
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    assertEventIsActive(event, now);
+
+    const membership = await getAcceptedEventMembership(ctx, args.eventId, user._id);
+    const assignment = await ctx.db
+      .query("eventPointAssignments")
+      .withIndex("by_eventId_and_assignedUserId", (q) =>
+        q.eq("eventId", args.eventId).eq("assignedUserId", user._id)
+      )
+      .unique();
+
+    if (!assignment) {
+      throw new Error("No assigned pass");
+    }
+
+    if (membership.inPositionTargetKey === assignment.targetKey) {
+      return membership._id;
+    }
+
+    await ctx.db.patch(membership._id, {
+      inPositionMarkedAt: now,
+      inPositionTargetKey: assignment.targetKey,
+    });
+
+    const messageId = await insertHuntMessage(ctx, {
+      body: `${user.name} är på plats.`,
+      eventId: args.eventId,
+      targetKey: assignment.targetKey,
+      type: "member_in_position",
+      userId: user._id,
+    });
+    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
+
+    return membership._id;
+  },
+});
+
+export const clearInPosition = mutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const now = Date.now();
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    assertEventIsActive(event, now);
+
+    const membership = await getAcceptedEventMembership(ctx, args.eventId, user._id);
+    const targetKey = membership.inPositionTargetKey;
+
+    if (!targetKey) {
+      return membership._id;
+    }
+
+    await ctx.db.patch(membership._id, {
+      inPositionMarkedAt: undefined,
+      inPositionTargetKey: undefined,
+    });
+
+    const messageId = await insertHuntMessage(ctx, {
+      body: `${user.name} är inte längre markerad på plats.`,
+      eventId: args.eventId,
+      targetKey,
+      type: "member_left_position",
+      userId: user._id,
+    });
+    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
+
+    return membership._id;
   },
 });

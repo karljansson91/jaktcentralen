@@ -100,6 +100,7 @@ async function deleteAssignmentsForTarget(
     .take(10);
 
   for (const assignment of existing) {
+    await clearInPositionForAssignment(ctx, eventId, assignment.assignedUserId, targetKey);
     await ctx.db.delete(assignment._id);
   }
 }
@@ -117,8 +118,37 @@ async function deleteAssignmentsForUser(
     .take(10);
 
   for (const assignment of existing) {
+    await clearInPositionForAssignment(
+      ctx,
+      eventId,
+      assignedUserId,
+      assignment.targetKey
+    );
     await ctx.db.delete(assignment._id);
   }
+}
+
+async function clearInPositionForAssignment(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  userId: Id<"users">,
+  targetKey: string
+) {
+  const membership = await ctx.db
+    .query("eventMembers")
+    .withIndex("by_eventId_and_userId", (q) =>
+      q.eq("eventId", eventId).eq("userId", userId)
+    )
+    .unique();
+
+  if (membership?.inPositionTargetKey !== targetKey) {
+    return;
+  }
+
+  await ctx.db.patch(membership._id, {
+    inPositionMarkedAt: undefined,
+    inPositionTargetKey: undefined,
+  });
 }
 
 export const listByEvent = query({

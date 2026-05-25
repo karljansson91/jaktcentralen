@@ -4,7 +4,7 @@ import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
-import { insertHuntMessage } from "./messageHelpers";
+import { insertHuntMessage, markMembershipReadThroughMessage } from "./messageHelpers";
 
 const animalValidator = v.union(
   v.literal("elk"),
@@ -74,10 +74,7 @@ export const report = mutation({
     });
     await ctx.db.patch(sightingId, { messageId });
 
-    const message = await ctx.db.get(messageId);
-    if (message) {
-      await ctx.db.patch(membership._id, { lastReadMessageAt: message._creationTime });
-    }
+    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
 
     return sightingId;
   },

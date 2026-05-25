@@ -42,6 +42,8 @@ export default function EventStationAssignmentScreen() {
   );
   const assign = useMutation(api.eventPointAssignments.assign);
   const clear = useMutation(api.eventPointAssignments.clear);
+  const markSelfInPosition = useMutation(api.eventMembers.markInPosition);
+  const clearSelfInPosition = useMutation(api.eventMembers.clearInPosition);
 
   const feature = useMemo(
     () =>
@@ -107,6 +109,32 @@ export default function EventStationAssignmentScreen() {
     setIsSubmitting(false);
   }
 
+  async function handleMarkSelfInPosition() {
+    setIsSubmitting(true);
+    try {
+      await markSelfInPosition({ eventId: eventId as Id<'events'> });
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte markera på plats',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    }
+    setIsSubmitting(false);
+  }
+
+  async function handleClearSelfInPosition() {
+    setIsSubmitting(true);
+    try {
+      await clearSelfInPosition({ eventId: eventId as Id<'events'> });
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte ta bort status',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    }
+    setIsSubmitting(false);
+  }
+
   function handleToggleAssignment(assignedUserId: Id<'users'>) {
     if (assignment?.assignedUserId === assignedUserId) {
       void handleClear();
@@ -141,7 +169,15 @@ export default function EventStationAssignmentScreen() {
   }
 
   const isCreator = event.creatorId === currentUser._id;
-  const canEdit = isCreator && isEventActive(event, currentTime);
+  const isActiveHunt = isEventActive(event, currentTime);
+  const canEdit = isCreator && isActiveHunt;
+  const currentUserMembership = members.find((member) => member.userId === currentUser._id);
+  const currentUserAssignment = assignments.find(
+    (candidate) => candidate.assignedUserId === currentUser._id
+  );
+  const isCurrentUserAssignedHere = currentUserAssignment?.targetKey === decodedTargetKey;
+  const isCurrentUserInPositionHere =
+    currentUserMembership?.inPositionTargetKey === decodedTargetKey;
 
   return (
     <View
@@ -174,6 +210,36 @@ export default function EventStationAssignmentScreen() {
               ))}
             </View>
           </ScrollView>
+        ) : null}
+
+        {isActiveHunt && isCurrentUserAssignedHere ? (
+          <View className="gap-3 rounded-3xl border border-border bg-card p-4">
+            <View className="gap-1">
+              <Text className="text-base font-semibold text-foreground">Din status</Text>
+              <Text className="text-sm leading-5 text-muted-foreground">
+                Du är tilldelad hit och kan markera när du är på plats.
+              </Text>
+            </View>
+            <Button
+              variant={isCurrentUserInPositionHere ? 'outline' : 'default'}
+              onPress={() => {
+                if (isCurrentUserInPositionHere) {
+                  void handleClearSelfInPosition();
+                  return;
+                }
+
+                void handleMarkSelfInPosition();
+              }}
+              disabled={isSubmitting}
+              className="h-12 rounded-xl">
+              <Ionicons
+                name={isCurrentUserInPositionHere ? 'close-circle-outline' : 'checkmark-circle'}
+                size={20}
+                color={isCurrentUserInPositionHere ? APP_COLORS.text : APP_COLORS.surface}
+              />
+              <Text>{isCurrentUserInPositionHere ? 'Ta bort på plats' : 'Markera mig på plats'}</Text>
+            </Button>
+          </View>
         ) : null}
 
         {canEdit ? (
