@@ -9,6 +9,30 @@ import type { Id } from "./_generated/dataModel";
 const JOIN_CODE_MIN_LENGTH = 3;
 const JOIN_CODE_MAX_LENGTH = 32;
 const SAFE_JOIN_CODE_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+const CUSTOM_ALLOWED_GAME_SPECIES_ID = "custom";
+
+const allowedGameRuleValidator = v.object({
+  customLabel: v.optional(v.string()),
+  mode: v.union(v.literal("all"), v.literal("selected")),
+  note: v.optional(v.string()),
+  optionIds: v.array(v.string()),
+  speciesId: v.string(),
+});
+
+type AllowedGameRuleInput = {
+  customLabel?: string;
+  mode: "all" | "selected";
+  note?: string;
+  optionIds: string[];
+  speciesId: string;
+};
+
+function isCustomAllowedGameSpeciesId(speciesId: string) {
+  return (
+    speciesId === CUSTOM_ALLOWED_GAME_SPECIES_ID ||
+    speciesId.startsWith(`${CUSTOM_ALLOWED_GAME_SPECIES_ID}:`)
+  );
+}
 
 function validateJoinCodeForStorage(joinCode: string | undefined): string | undefined {
   if (joinCode === undefined) {
@@ -59,6 +83,64 @@ async function scheduleAutoEnd(ctx: MutationCtx, eventId: Id<"events">, endDate:
   });
 }
 
+function normalizeAllowedGame(
+  rules: AllowedGameRuleInput[] | undefined
+): AllowedGameRuleInput[] | undefined {
+  if (!rules || rules.length === 0) {
+    return undefined;
+  }
+
+  const normalized = rules.flatMap((rule) => {
+    const speciesId = rule.speciesId.trim();
+    if (!speciesId) {
+      return [];
+    }
+
+    const customLabel = rule.customLabel?.trim();
+    if (isCustomAllowedGameSpeciesId(speciesId) && !customLabel) {
+      return [];
+    }
+
+    const optionIds =
+      rule.mode === "selected" ? Array.from(new Set(rule.optionIds.map((id) => id.trim()).filter(Boolean))) : [];
+
+    return [
+      {
+        speciesId,
+        mode: optionIds.length > 0 ? ("selected" as const) : ("all" as const),
+        optionIds,
+        ...(customLabel ? { customLabel } : {}),
+        ...(rule.note?.trim() ? { note: rule.note.trim() } : {}),
+      },
+    ];
+  });
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+async function requireEventAdmin(ctx: MutationCtx, eventId: Id<"events">, userId: Id<"users">) {
+  const event = await ctx.db.get(eventId);
+  if (!event) {
+    throw new Error("Event not found");
+  }
+  if (isEventEnded(event)) {
+    throw new Error("Cannot edit an ended hunt");
+  }
+
+  const membership = await ctx.db
+    .query("eventMembers")
+    .withIndex("by_eventId_and_userId", (q) =>
+      q.eq("eventId", eventId).eq("userId", userId)
+    )
+    .unique();
+
+  if (event.creatorId !== userId && membership?.role !== "admin") {
+    throw new Error("Admin access required");
+  }
+
+  return event;
+}
+
 export const create = mutation({
   args: {
     areaId: v.id("areas"),
@@ -67,6 +149,7 @@ export const create = mutation({
     joinCode: v.optional(v.string()),
     startDate: v.number(),
     endDate: v.number(),
+    allowedGame: v.optional(v.array(allowedGameRuleValidator)),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -91,6 +174,7 @@ export const create = mutation({
       joinCode,
       startDate: args.startDate,
       endDate: args.endDate,
+      allowedGame: normalizeAllowedGame(args.allowedGame),
     });
 
     await ctx.db.insert("eventMembers", {
@@ -103,6 +187,21 @@ export const create = mutation({
     await scheduleAutoEnd(ctx, eventId, args.endDate);
 
     return eventId;
+  },
+});
+
+export const updateAllowedGame = mutation({
+  args: {
+    allowedGame: v.optional(v.array(allowedGameRuleValidator)),
+    eventId: v.id("events"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    await requireEventAdmin(ctx, args.eventId, user._id);
+
+    await ctx.db.patch(args.eventId, {
+      allowedGame: normalizeAllowedGame(args.allowedGame),
+    });
   },
 });
 

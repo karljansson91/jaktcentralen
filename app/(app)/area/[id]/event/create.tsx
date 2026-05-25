@@ -1,7 +1,9 @@
 import { Button, Card, CardHeader, CardTitle, Input, Text } from '@/components/ui';
+import { AllowedGameEditor } from '@/components/event/allowed-game-editor';
 import { EventDatePickerField } from '@/components/event/event-date-picker-field';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import type { AllowedGameRule } from '@/lib/allowed-game';
 import {
   createJoinCodeSuggestions,
   formatJoinCodeInput,
@@ -29,6 +31,7 @@ export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
 
   const [selectedFriends, setSelectedFriends] = useState<Set<Id<'users'>>>(new Set());
+  const [allowedGame, setAllowedGame] = useState<AllowedGameRule[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
@@ -72,6 +75,7 @@ export default function CreateEventScreen() {
           startDate: value.startDate.getTime(),
           endDate: value.endDate.getTime(),
           joinCode: value.joinCode.trim() || undefined,
+          allowedGame,
         });
 
         await Promise.all(
@@ -269,6 +273,16 @@ export default function CreateEventScreen() {
             </View>
           )}
         </form.Field>
+
+        <View className="mb-6 gap-3">
+          <View className="gap-1">
+            <Text className="font-medium">Tillåtet vilt</Text>
+            <Text className="text-sm leading-5 text-muted-foreground">
+              Valfritt. Välj arter och eventuella urval för den här jakten.
+            </Text>
+          </View>
+          <AllowedGameEditor value={allowedGame} onChange={setAllowedGame} disabled={isSubmitting} />
+        </View>
 
         {/* Friends list */}
         <Text className="mb-3 font-medium">Bjud in vänner</Text>

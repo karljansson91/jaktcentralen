@@ -7,6 +7,14 @@ const messageBaseFields = {
   body: v.string(),
 };
 
+const allowedGameRuleValidator = v.object({
+  customLabel: v.optional(v.string()),
+  mode: v.union(v.literal("all"), v.literal("selected")),
+  note: v.optional(v.string()),
+  optionIds: v.array(v.string()),
+  speciesId: v.string(),
+});
+
 export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
@@ -115,6 +123,7 @@ export default defineSchema({
     startDate: v.number(),
     endDate: v.number(),
     endedAt: v.optional(v.number()),
+    allowedGame: v.optional(v.array(allowedGameRuleValidator)),
   })
     .index("by_areaId", ["areaId"])
     .index("by_creatorId", ["creatorId"])

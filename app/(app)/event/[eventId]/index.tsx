@@ -17,6 +17,7 @@ import {
   AnimalSightingType,
   getAnimalSightingLabel,
 } from '@/lib/animal-sightings';
+import { formatAllowedGameDetails, formatAllowedGameSummary } from '@/lib/allowed-game';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
@@ -294,6 +295,7 @@ export default function EventMapScreen() {
 
     return { confirmed, total };
   }, [assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
+  const allowedGameSummary = formatAllowedGameSummary(event?.allowedGame);
 
   const assignedStationMarkers = useMemo(() => {
     if (!areaFeatures || !assignments) return null;
@@ -500,6 +502,14 @@ export default function EventMapScreen() {
     },
     [acknowledgeAnimalSighting]
   );
+
+  function handleShowAllowedGame() {
+    if (!event?.allowedGame?.length) {
+      return;
+    }
+
+    Alert.alert('Tillåtet vilt', formatAllowedGameDetails(event.allowedGame));
+  }
 
   const handleMarkSelfInPosition = useCallback(async () => {
     try {
@@ -709,6 +719,8 @@ export default function EventMapScreen() {
           className="absolute left-4 right-4"
           style={{ top: Math.max(insets.top, 8) + 8 }}>
           <HuntMapTopNav
+            allowedGameLabel={allowedGameSummary}
+            onAllowedGamePress={handleShowAllowedGame}
             title={event.title}
             onBack={() => back()}
             onMore={() => push(`/event/${eventId}/actions`)}

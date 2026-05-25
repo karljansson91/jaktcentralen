@@ -1,4 +1,5 @@
 import { Badge, Card, CardContent, Text } from '@/components/ui';
+import { formatAllowedGameSummary, type AllowedGameRule } from '@/lib/allowed-game';
 import type { EventLifecycle } from '@/lib/event-lifecycle';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +9,7 @@ type HomeHuntCardEvent = {
   _id: string;
   endDate: number;
   endedAt?: number | null;
+  allowedGame?: AllowedGameRule[] | null;
   startDate: number;
   title: string;
 };
@@ -37,6 +39,7 @@ function getHuntDateLabel(event: HomeHuntCardEvent, lifecycle: EventLifecycle) {
 export function HomeHuntCard({ event, lifecycle, onPress }: HomeHuntCardProps) {
   const isActive = lifecycle === 'active';
   const isEnded = lifecycle === 'ended';
+  const allowedGameSummary = formatAllowedGameSummary(event.allowedGame);
 
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
@@ -65,6 +68,11 @@ export function HomeHuntCard({ event, lifecycle, onPress }: HomeHuntCardProps) {
               <Text className="text-sm text-muted-foreground" numberOfLines={1}>
                 {getHuntDateLabel(event, lifecycle)}
               </Text>
+              {allowedGameSummary ? (
+                <Text className="text-xs font-medium text-primary" numberOfLines={1}>
+                  {allowedGameSummary}
+                </Text>
+              ) : null}
             </View>
             <Ionicons name="chevron-forward" size={18} color="#8b948d" />
           </View>

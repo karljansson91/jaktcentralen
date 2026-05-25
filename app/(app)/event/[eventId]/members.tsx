@@ -1,6 +1,9 @@
 import { Badge, Button, Card, CardContent, Text } from '@/components/ui';
+import { AllowedGameDetails } from '@/components/event/allowed-game-details';
+import { AllowedGameEditor } from '@/components/event/allowed-game-editor';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import type { AllowedGameRule } from '@/lib/allowed-game';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import {
   getEventLifecycle,
@@ -124,6 +127,54 @@ function getStatusTone(status: MemberStatus) {
   return { container: 'bg-destructive/10', text: 'text-destructive' };
 }
 
+function AllowedGameEditCard({
+  eventId,
+  initialRules,
+}: {
+  eventId: Id<'events'>;
+  initialRules: AllowedGameRule[];
+}) {
+  const [allowedGameDraft, setAllowedGameDraft] = useState(initialRules);
+  const [isSavingAllowedGame, setIsSavingAllowedGame] = useState(false);
+  const updateAllowedGame = useMutation(api.events.updateAllowedGame);
+  const allowedGameDirty = JSON.stringify(allowedGameDraft) !== JSON.stringify(initialRules);
+
+  async function handleSaveAllowedGame() {
+    setIsSavingAllowedGame(true);
+    try {
+      await updateAllowedGame({
+        eventId,
+        allowedGame: allowedGameDraft,
+      });
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte spara tillåtet vilt',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    }
+    setIsSavingAllowedGame(false);
+  }
+
+  return (
+    <View className="gap-3 rounded-2xl border border-border bg-card p-4">
+      <Text className="text-sm font-semibold text-foreground">Redigera tillåtet vilt</Text>
+      <AllowedGameEditor
+        value={allowedGameDraft}
+        onChange={setAllowedGameDraft}
+        disabled={isSavingAllowedGame}
+      />
+      <Button
+        variant="outline"
+        disabled={!allowedGameDirty || isSavingAllowedGame}
+        onPress={() => void handleSaveAllowedGame()}
+        className="rounded-xl">
+        <Ionicons name="save-outline" size={18} color={APP_COLORS.text} />
+        <Text>{isSavingAllowedGame ? 'Sparar…' : 'Spara tillåtet vilt'}</Text>
+      </Button>
+    </View>
+  );
+}
+
 export default function EventInfoScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { push } = useRouter();
@@ -161,6 +212,11 @@ export default function EventInfoScreen() {
     clerkUser?.primaryEmailAddress?.emailAddress ||
     undefined;
   const acceptedCount = memberRows.filter((member) => member.status === 'accepted').length;
+  const currentUserMembership = acceptedMembers?.find((member) => member.userId === currentUser?._id);
+  const canEditAllowedGame =
+    Boolean(currentUserMembership?.role === 'admin') &&
+    getEventLifecycle(event ?? { startDate: 0, endDate: 0 }, currentTime) !== 'ended';
+  const eventAllowedGameJson = JSON.stringify(event?.allowedGame ?? []);
 
   async function handleRemoveMember(userId: Id<'users'>) {
     setPendingUserId(userId);
@@ -285,6 +341,16 @@ export default function EventInfoScreen() {
                 </View>
               ) : null}
             </View>
+
+            <AllowedGameDetails rules={event.allowedGame as AllowedGameRule[] | undefined} />
+
+            {canEditAllowedGame ? (
+              <AllowedGameEditCard
+                key={eventAllowedGameJson}
+                eventId={eventId as Id<'events'>}
+                initialRules={(event.allowedGame ?? []) as AllowedGameRule[]}
+              />
+            ) : null}
 
             {isCreator ? (
               <Button

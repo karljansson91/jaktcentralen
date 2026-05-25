@@ -6,7 +6,7 @@ import {
   type AssignmentRouteSummaryProps,
 } from '@/components/event/assignment-route-summary';
 import { cn } from '@/lib/utils';
-import { StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 
 const GLASS_NAV_HEIGHT = 44;
 const GLASS_NAV_HORIZONTAL_GAP = 8;
@@ -14,6 +14,8 @@ const FLOATING_HEADER_TINT = 'rgba(42, 108, 55, 0.84)';
 const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
 
 type HuntMapTopNavProps = {
+  allowedGameLabel?: string | null;
+  onAllowedGamePress?: () => void;
   onBack: () => void;
   onMore: () => void;
   readinessLabel?: string | null;
@@ -22,15 +24,20 @@ type HuntMapTopNavProps = {
 };
 
 export function HuntMapTopNav({
+  allowedGameLabel,
+  onAllowedGamePress,
   onBack,
   onMore,
   readinessLabel,
   routeSummary,
   title,
 }: HuntMapTopNavProps) {
+  const subtitleCount = Number(Boolean(readinessLabel)) + Number(Boolean(allowedGameLabel));
   const titleSurfaceStyle = routeSummary
     ? styles.expandedTitleSurface
-    : readinessLabel
+    : subtitleCount > 1
+      ? styles.doubleSubtitleTitleSurface
+      : subtitleCount === 1
       ? styles.readinessTitleSurface
       : styles.compactTitleSurface;
 
@@ -69,6 +76,18 @@ export function HuntMapTopNav({
                 {readinessLabel}
               </Text>
             ) : null}
+            {allowedGameLabel ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onAllowedGamePress}
+                className="max-w-full">
+                <Text
+                  className="text-center text-[11px] font-semibold leading-[14px] text-white/85"
+                  numberOfLines={1}>
+                  {allowedGameLabel}
+                </Text>
+              </Pressable>
+            ) : null}
             {routeSummary ? <AssignmentRouteSummary {...routeSummary} /> : null}
           </GlassSurface>
         </View>
@@ -95,6 +114,10 @@ const styles = StyleSheet.create({
   expandedTitleSurface: {
     minHeight: 68,
     width: 278,
+  } satisfies ViewStyle,
+  doubleSubtitleTitleSurface: {
+    height: 70,
+    width: 250,
   } satisfies ViewStyle,
   readinessTitleSurface: {
     height: 56,
