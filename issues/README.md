@@ -38,6 +38,20 @@ These issue test plans must be runnable by Codex without human supervision.
 - `17-auto-end-past-hunts.md`: automatically treat hunts as ended when their end date has passed.
 - `18-chat-unread-indicator.md`: show unread chat message counts when other participants send messages.
 - `19-hunt-animal-sighting-reports.md`: long-press hunt map to report animal sightings, mirror them to chat, acknowledge live markers, and replay them in history.
+- `21-friend-search-email-phone.md`: editable app profile fields and friend search by name, email, and phone using Convex app-profile search.
+- `22-home-upcoming-hunts-and-history-access.md`: keep current/future hunts visible by default and tuck ended hunts under an animated `Avslutade` toggle.
+- `23-hunt-map-style-selector.md`: expose the shared Swedish map style selector from hunt actions and limit selectable styles to standard, terrain, and satellite.
+- `24a-typed-hunt-system-messages.md`: add typed chat/system messages and refactor animal sighting messages onto that foundation.
+- `24b-hunt-marker-visual-clarity.md`: make live position markers and assigned destination pins visually distinct.
+- `24c-hunt-in-position-status.md`: sync self-reported in-position status, readiness count, prompts, and chat messages.
+- `24d-hunt-map-tools-menu-and-position-sharing.md`: replace map controls with an anchored native menu and add visibility/sharing toggles.
+- `26-hunt-allowed-game-rules.md`: define allowed game for a hunt with structured species options, title/home hints, popup details, and hunt info display.
+- `29-local-scent-plume-indicator.md`: add a local-only active hunt scent plume set by swipe and cleared from the map tools menu.
+
+Note: `20-chat-sheet-height-and-latest-message-visibility.md` was triaged as no longer needed and intentionally not created.
+Note: `25-hunt-drive-planning-and-pass-selection.md` needs more domain clarification and is intentionally deferred.
+Note: `27-crosshair-map-item-placement.md` is intentionally deferred for now.
+Note: `28-map-distance-measurement.md` is intentionally deferred for now.
 
 ## Product Decisions Already Made
 - Areas remain owner-only for editing.
