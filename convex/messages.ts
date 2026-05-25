@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 import { getAcceptedEventMembership } from "./eventAccess";
+import { insertHuntMessage } from "./messageHelpers";
 
 export const send = mutation({
   args: { eventId: v.id("events"), body: v.string() },
@@ -16,10 +17,11 @@ export const send = mutation({
       throw new Error("This hunt has ended");
     }
 
-    const messageId = await ctx.db.insert("messages", {
+    const messageId = await insertHuntMessage(ctx, {
       eventId: args.eventId,
       userId: user._id,
       body: args.body,
+      type: "text",
     });
     const message = await ctx.db.get(messageId);
     if (message) {
@@ -92,10 +94,15 @@ export const list = query({
 
     // Join user profiles
     const page = await Promise.all(
-      results.page.map(async (msg) => ({
-        ...msg,
-        user: await ctx.db.get(msg.userId),
-      }))
+      results.page.map(async (msg) => {
+        const type = msg.type ?? "text";
+
+        return {
+          ...msg,
+          type,
+          user: await ctx.db.get(msg.userId),
+        };
+      })
     );
 
     return { ...results, page };

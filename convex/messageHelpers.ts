@@ -1,0 +1,34 @@
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+type TextMessageInput = {
+  body: string;
+  eventId: Id<"events">;
+  type: "text";
+  userId: Id<"users">;
+};
+
+type AnimalSightingMessageInput = {
+  body: string;
+  eventId: Id<"events">;
+  sightingId: Id<"animalSightings">;
+  type: "animal_sighting";
+  userId: Id<"users">;
+};
+
+type PositionStatusMessageInput = {
+  body: string;
+  eventId: Id<"events">;
+  targetKey: string;
+  type: "member_in_position" | "member_left_position";
+  userId: Id<"users">;
+};
+
+type HuntMessageInput =
+  | TextMessageInput
+  | AnimalSightingMessageInput
+  | PositionStatusMessageInput;
+
+export async function insertHuntMessage(ctx: MutationCtx, input: HuntMessageInput) {
+  return await ctx.db.insert("messages", input);
+}

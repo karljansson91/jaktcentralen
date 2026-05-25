@@ -20,6 +20,7 @@ import type * as eventPointAssignments from "../eventPointAssignments.js";
 import type * as events from "../events.js";
 import type * as friends from "../friends.js";
 import type * as helpers from "../helpers.js";
+import type * as messageHelpers from "../messageHelpers.js";
 import type * as messages from "../messages.js";
 import type * as migrations from "../migrations.js";
 import type * as positionTracking from "../positionTracking.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   friends: typeof friends;
   helpers: typeof helpers;
+  messageHelpers: typeof messageHelpers;
   messages: typeof messages;
   migrations: typeof migrations;
   positionTracking: typeof positionTracking;

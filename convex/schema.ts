@@ -1,6 +1,12 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const messageBaseFields = {
+  eventId: v.id("events"),
+  userId: v.id("users"),
+  body: v.string(),
+};
+
 export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
@@ -189,9 +195,27 @@ export default defineSchema({
     .index("by_eventId_and_userId", ["eventId", "userId"])
     .index("by_sightingId_and_userId", ["sightingId", "userId"]),
 
-  messages: defineTable({
-    eventId: v.id("events"),
-    userId: v.id("users"),
-    body: v.string(),
-  }).index("by_eventId", ["eventId"]),
+  messages: defineTable(
+    v.union(
+      v.object({
+        ...messageBaseFields,
+        type: v.optional(v.literal("text")),
+      }),
+      v.object({
+        ...messageBaseFields,
+        type: v.literal("animal_sighting"),
+        sightingId: v.id("animalSightings"),
+      }),
+      v.object({
+        ...messageBaseFields,
+        type: v.literal("member_in_position"),
+        targetKey: v.string(),
+      }),
+      v.object({
+        ...messageBaseFields,
+        type: v.literal("member_left_position"),
+        targetKey: v.string(),
+      })
+    )
+  ).index("by_eventId", ["eventId"]),
 });

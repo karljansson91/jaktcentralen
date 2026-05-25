@@ -4,6 +4,7 @@ import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
+import { insertHuntMessage } from "./messageHelpers";
 
 const animalValidator = v.union(
   v.literal("elk"),
@@ -64,10 +65,12 @@ export const report = mutation({
       timestamp,
     });
 
-    const messageId = await ctx.db.insert("messages", {
+    const messageId = await insertHuntMessage(ctx, {
       eventId: args.eventId,
       userId: user._id,
       body: `Såg ${ANIMAL_SIGHTING_LABELS[args.animal].toLowerCase()} på kartan.`,
+      type: "animal_sighting",
+      sightingId,
     });
     await ctx.db.patch(sightingId, { messageId });
 
