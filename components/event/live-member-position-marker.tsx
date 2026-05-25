@@ -10,6 +10,7 @@ export type LiveMemberPositionMarkerItem = {
   imageUrl?: string | null;
   initials: string;
   name: string;
+  offline?: boolean;
 };
 
 type LiveMemberPositionMarkerProps = {
@@ -25,14 +26,19 @@ export function LiveMemberPositionMarker({ marker }: LiveMemberPositionMarkerPro
       allowOverlap
       allowOverlapWithPuck>
       <View
-        accessibilityLabel={`Position för ${marker.name}`}
+        accessibilityLabel={
+          marker.offline
+            ? `Senaste position för ${marker.name}`
+            : `Position för ${marker.name}`
+        }
         accessible
-        style={styles.liveMarker}>
+        style={[styles.liveMarker, marker.offline ? styles.liveMarkerOffline : null]}>
         {marker.imageUrl ? (
           <Image source={{ uri: marker.imageUrl }} style={styles.liveMarkerImage} />
         ) : (
           <Text style={styles.liveMarkerText}>{marker.initials}</Text>
         )}
+        {marker.offline ? <View style={styles.offlineBadge} /> : null}
       </View>
     </MarkerView>
   );
@@ -51,6 +57,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: 34,
   },
+  liveMarkerOffline: {
+    backgroundColor: APP_COLORS.textMuted,
+    opacity: 0.86,
+  },
   liveMarkerImage: {
     height: 30,
     width: 30,
@@ -61,5 +71,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 14,
     textAlign: 'center',
+  },
+  offlineBadge: {
+    backgroundColor: APP_COLORS.textMuted,
+    borderColor: APP_COLORS.surface,
+    borderRadius: 5,
+    borderWidth: 2,
+    bottom: 0,
+    height: 10,
+    position: 'absolute',
+    right: 0,
+    width: 10,
   },
 });

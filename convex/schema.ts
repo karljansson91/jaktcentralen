@@ -136,6 +136,7 @@ export default defineSchema({
     lastReadMessageAt: v.optional(v.number()),
     inPositionTargetKey: v.optional(v.string()),
     inPositionMarkedAt: v.optional(v.number()),
+    positionSharingDisabled: v.optional(v.boolean()),
   })
     .index("by_eventId_and_status", ["eventId", "status"])
     .index("by_userId_and_status", ["userId", "status"])

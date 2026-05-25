@@ -4,11 +4,11 @@ import { AnimalSightingPicker } from '@/components/event/animal-sighting-picker'
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
+import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import {
   LiveMemberPositionMarker,
   type LiveMemberPositionMarkerItem,
 } from '@/components/event/live-member-position-marker';
-import { GlassFloatingButton } from '@/components/glass';
 import { IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -36,6 +36,7 @@ import {
 import { APP_COLORS } from '@/lib/theme';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
+import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -49,7 +50,14 @@ import {
 import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ElementRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ActivityIndicator, Alert, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -61,12 +69,6 @@ function pointFromMapLongPress(event: GeoJSON.Feature) {
   };
 }
 
-type PendingAnimalSighting = {
-  isReporting: boolean;
-  latitude: number;
-  longitude: number;
-};
-
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { back, push } = useRouter();
@@ -75,11 +77,14 @@ export default function EventMapScreen() {
   const currentTime = useCurrentTime();
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
-  const [visibleAssignmentTrailTargetKey, setVisibleAssignmentTrailTargetKey] = useState<
-    string | null
-  >(null);
-  const [pendingAnimalSighting, setPendingAnimalSighting] =
-    useState<PendingAnimalSighting | null>(null);
+  const {
+    pendingAnimalSighting,
+    setPendingAnimalSighting,
+    setVisibleAssignmentTrailTargetKey,
+    showOtherUserPositions,
+    toggleOtherUserPositions,
+    visibleAssignmentTrailTargetKey,
+  } = useHuntMapUiState();
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -113,10 +118,14 @@ export default function EventMapScreen() {
   const updatePosition = useMutation(api.eventMembers.updatePosition);
   const markInPosition = useMutation(api.eventMembers.markInPosition);
   const clearInPosition = useMutation(api.eventMembers.clearInPosition);
+  const setPositionSharingDisabled = useMutation(
+    api.eventMembers.setPositionSharingDisabled
+  );
   const reportAnimalSighting = useMutation(api.animalSightings.report);
   const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
+  const ownPositionSharingEnabledRef = useRef(true);
 
   useEffect(() => {
     return subscribeToMapStyleChanges((style) => {
@@ -158,6 +167,10 @@ export default function EventMapScreen() {
         },
         (loc) => {
           setCurrentCoordinate([loc.coords.longitude, loc.coords.latitude]);
+          if (!ownPositionSharingEnabledRef.current) {
+            return;
+          }
+
           void updatePosition({
             eventId: eventId as Id<'events'>,
             latitude: loc.coords.latitude,
@@ -215,7 +228,7 @@ export default function EventMapScreen() {
   }, [area, insets.bottom, insets.top]);
 
   const liveMemberMarkers = useMemo(() => {
-    if (!members || !currentUser) return null;
+    if (!members || !currentUser || !showOtherUserPositions) return null;
     const markers: LiveMemberPositionMarkerItem[] = [];
 
     for (const member of members) {
@@ -234,11 +247,12 @@ export default function EventMapScreen() {
         imageUrl: member.user?.imageUrl ?? null,
         initials: getMemberInitials(name),
         name,
+        offline: Boolean(member.positionSharingDisabled),
       });
     }
 
     return markers;
-  }, [currentUser, members]);
+  }, [currentUser, members, showOtherUserPositions]);
 
   const assignmentPointByTargetKey = useMemo(() => {
     const points = new Map<string, { latitude: number; longitude: number }>();
@@ -371,6 +385,11 @@ export default function EventMapScreen() {
       currentUserAssignedStation.point
     );
   }, [currentCoordinate, currentUserAssignedStation]);
+  const isOwnPositionSharingEnabled = !currentUserMember?.positionSharingDisabled;
+
+  useEffect(() => {
+    ownPositionSharingEnabledRef.current = isOwnPositionSharingEnabled;
+  }, [isOwnPositionSharingEnabled, ownPositionSharingEnabledRef]);
 
   const assignmentTrail = useMemo<AssignmentTrail | null>(() => {
     if (
@@ -430,7 +449,7 @@ export default function EventMapScreen() {
       setPendingAnimalSighting({ ...pointFromMapLongPress(mapEvent), isReporting: false });
       Vibration.vibrate(8);
     },
-    [isActiveHunt]
+    [isActiveHunt, setPendingAnimalSighting]
   );
 
   const handleSelectAnimalSighting = useCallback(
@@ -458,7 +477,7 @@ export default function EventMapScreen() {
         );
       }
     },
-    [eventId, pendingAnimalSighting, reportAnimalSighting]
+    [eventId, pendingAnimalSighting, reportAnimalSighting, setPendingAnimalSighting]
   );
 
   const handlePressAnimalSighting = useCallback(
@@ -499,6 +518,22 @@ export default function EventMapScreen() {
       Alert.alert('Kunde inte ta bort status', 'Försök igen om en stund.');
     }
   }, [clearInPosition, eventId]);
+
+  const handleToggleOwnPositionSharing = useCallback(async () => {
+    const nextEnabled = !isOwnPositionSharingEnabled;
+    ownPositionSharingEnabledRef.current = nextEnabled;
+
+    try {
+      await setPositionSharingDisabled({
+        disabled: !nextEnabled,
+        eventId: eventId as Id<'events'>,
+      });
+    } catch (error) {
+      ownPositionSharingEnabledRef.current = isOwnPositionSharingEnabled;
+      console.error('Failed to update position sharing:', error);
+      Alert.alert('Kunde inte ändra positionsdelning', 'Försök igen om en stund.');
+    }
+  }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
 
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
@@ -569,6 +604,7 @@ export default function EventMapScreen() {
     currentUserMemberCoordinate,
     isActiveHunt,
     setAssignmentRouteMode,
+    setVisibleAssignmentTrailTargetKey,
     visibleAssignmentTrailTargetKey,
   ]);
 
@@ -698,34 +734,40 @@ export default function EventMapScreen() {
         <View
           className="absolute left-6"
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
-          <View className="gap-3">
-            {isActiveHunt && currentUserAssignedStation ? (
-              <GlassFloatingButton
-                icon="navigate"
-                onPress={handleToggleAssignmentTrail}
-                accessibilityLabel={
-                  activeAssignmentTrailTargetKey === currentUserAssignedStation.targetKey
-                    ? 'Dölj väg till tilldelat pass'
-                    : 'Visa väg till tilldelat pass'
-                }
-                color={APP_COLORS.surface}
-                surfaceClassName="size-12"
-                tone="dark"
-                tintColor={
-                  activeAssignmentTrailTargetKey === currentUserAssignedStation.targetKey
-                    ? 'rgba(57, 128, 72, 0.92)'
-                    : 'rgba(49, 52, 68, 0.82)'
-                }
-              />
-            ) : null}
-            <GlassFloatingButton
-              icon="locate"
-              onPress={handleGoToMyPosition}
-              accessibilityLabel="Gå till min position"
-              surfaceClassName="size-12"
-              tone="dark"
+          {isActiveHunt ? (
+            <HuntMapToolsMenu
+              inPosition={{
+                available: Boolean(currentUserAssignedStation),
+                marked: currentUserMarkedInPosition,
+                onClear: () => {
+                  void handleClearSelfInPosition();
+                },
+                onMark: () => {
+                  void handleMarkSelfInPosition();
+                },
+              }}
+              onLocate={() => {
+                void handleGoToMyPosition();
+              }}
+              positions={{
+                onToggleOthers: toggleOtherUserPositions,
+                onToggleOwnSharing: () => {
+                  void handleToggleOwnPositionSharing();
+                },
+                ownSharingEnabled: isOwnPositionSharingEnabled,
+                showOthers: showOtherUserPositions,
+              }}
+              route={{
+                available: Boolean(currentUserAssignedStation),
+                onToggle: () => {
+                  void handleToggleAssignmentTrail();
+                },
+                visible:
+                  Boolean(currentUserAssignedStation) &&
+                  activeAssignmentTrailTargetKey === currentUserAssignedStation?.targetKey,
+              }}
             />
-          </View>
+          ) : null}
         </View>
 
         <View

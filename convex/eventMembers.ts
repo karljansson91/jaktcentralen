@@ -385,3 +385,26 @@ export const clearInPosition = mutation({
     return membership._id;
   },
 });
+
+export const setPositionSharingDisabled = mutation({
+  args: {
+    disabled: v.boolean(),
+    eventId: v.id("events"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const now = Date.now();
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    assertEventIsActive(event, now);
+
+    const membership = await getAcceptedEventMembership(ctx, args.eventId, user._id);
+    await ctx.db.patch(membership._id, {
+      positionSharingDisabled: args.disabled ? true : undefined,
+    });
+
+    return membership._id;
+  },
+});

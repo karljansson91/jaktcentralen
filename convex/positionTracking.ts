@@ -82,6 +82,10 @@ export async function writeMemberPosition(
     throw new Error("Not an accepted member");
   }
 
+  if (membership.positionSharingDisabled) {
+    return { recordedTrail: false, status: "disabled" as const };
+  }
+
   await ctx.db.patch(membership._id, {
     lastLatitude: args.latitude,
     lastLongitude: args.longitude,
