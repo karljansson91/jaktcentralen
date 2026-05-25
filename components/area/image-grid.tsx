@@ -1,6 +1,7 @@
 import { Button, Text } from '@/components/ui';
 import { Id } from '@/convex/_generated/dataModel';
 import { AreaFeatureImage } from '@/lib/area-features';
+import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
@@ -27,8 +28,17 @@ export function ImageGrid({ images, isUploading, onAdd, onRemove }: ImageGridPro
 
       <View className="mb-4 flex-row flex-wrap gap-3">
         {images.map((image) => (
-          <View key={image.fileId} className="relative">
-            <Image source={{ uri: image.url }} className="size-24 rounded-xl bg-muted" />
+          <View key={image.fileId} className="relative size-24">
+            <Image
+              source={{ uri: image.url }}
+              contentFit="cover"
+              style={{
+                backgroundColor: APP_COLORS.border,
+                borderRadius: 12,
+                height: 96,
+                width: 96,
+              }}
+            />
             <Pressable
               onPress={() => onRemove(image.fileId)}
               className="absolute right-1 top-1 rounded-full bg-black/65 p-1">

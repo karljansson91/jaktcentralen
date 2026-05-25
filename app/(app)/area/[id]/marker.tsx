@@ -30,6 +30,7 @@ import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm } from '@tanstack/react-form';
 import { useMutation } from 'convex/react';
+import { File, UploadType } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -258,19 +259,19 @@ export default function MarkerFormScreen() {
   }
 
   async function uploadImage(asset: ImagePicker.ImagePickerAsset) {
-    const [uploadUrl, imageResponse] = await Promise.all([generateUploadUrl(), fetch(asset.uri)]);
-    const blob = await imageResponse.blob();
-    const uploadResponse = await fetch(uploadUrl, {
-      body: blob,
+    const uploadUrl = await generateUploadUrl();
+    const uploadResponse = await new File(asset.uri).upload(uploadUrl, {
       headers: { 'Content-Type': asset.mimeType ?? 'image/jpeg' },
-      method: 'POST',
+      httpMethod: 'POST',
+      sessionType: 'foreground',
+      uploadType: UploadType.BINARY_CONTENT,
     });
 
-    if (!uploadResponse.ok) {
+    if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
       throw new Error('Kunde inte ladda upp bilden.');
     }
 
-    const { storageId } = (await uploadResponse.json()) as { storageId: Id<'_storage'> };
+    const { storageId } = JSON.parse(uploadResponse.body) as { storageId: Id<'_storage'> };
     return {
       fileId: storageId,
       url: asset.uri,
@@ -298,6 +299,8 @@ export default function MarkerFormScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: remainingSlots > 1,
         mediaTypes: ['images'],
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
         quality: 0.78,
         selectionLimit: remainingSlots,
       });
