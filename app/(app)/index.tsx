@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const inboxCount = (pendingInvitations?.length ?? 0) + (pendingFriendRequests?.length ?? 0);
   const sortedCurrentHunts = useMemo(
     () =>
-      (events ?? []).toSorted((a, b) => {
+      (events ?? []).slice().sort((a, b) => {
         const lifecycleA = getEventLifecycle(a, currentTime);
         const lifecycleB = getEventLifecycle(b, currentTime);
         const rankA = lifecycleA === 'active' ? 0 : 1;
