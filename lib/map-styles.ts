@@ -17,44 +17,14 @@ export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
     styleURL: 'mapbox://styles/mapbox/standard',
   },
   {
-    id: 'streets',
-    label: 'Streets',
-    styleURL: 'mapbox://styles/mapbox/streets-v12',
-  },
-  {
     id: 'outdoors',
-    label: 'Outdoors',
+    label: 'Terräng',
     styleURL: 'mapbox://styles/mapbox/outdoors-v12',
   },
   {
-    id: 'light',
-    label: 'Light',
-    styleURL: 'mapbox://styles/mapbox/light-v11',
-  },
-  {
-    id: 'dark',
-    label: 'Dark',
-    styleURL: 'mapbox://styles/mapbox/dark-v11',
-  },
-  {
     id: 'satellite',
-    label: 'Satellite',
+    label: 'Satellit',
     styleURL: 'mapbox://styles/mapbox/satellite-v9',
-  },
-  {
-    id: 'satelliteStreets',
-    label: 'Satellite Streets',
-    styleURL: 'mapbox://styles/mapbox/satellite-streets-v12',
-  },
-  {
-    id: 'navigationDay',
-    label: 'Navigation Day',
-    styleURL: 'mapbox://styles/mapbox/navigation-day-v1',
-  },
-  {
-    id: 'navigationNight',
-    label: 'Navigation Night',
-    styleURL: 'mapbox://styles/mapbox/navigation-night-v1',
   },
 ];
 

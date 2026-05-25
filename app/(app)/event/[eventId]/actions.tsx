@@ -3,11 +3,13 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { getEventLifecycle } from '@/lib/event-lifecycle';
+import { showMapStylePicker } from '@/lib/map-style-picker';
+import { DEFAULT_MAP_STYLE, getSavedMapStyle } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery } from 'convex/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -62,6 +64,7 @@ export default function EventActionsScreen() {
   const insets = useSafeAreaInsets();
   const currentTime = useCurrentTime();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const selectedMapStyleIdRef = useRef(DEFAULT_MAP_STYLE.id);
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -70,9 +73,33 @@ export default function EventActionsScreen() {
   const leaveEvent = useMutation(api.eventMembers.leave);
   const endEvent = useMutation(api.events.end);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void getSavedMapStyle().then((style) => {
+      if (!cancelled) {
+        selectedMapStyleIdRef.current = style.id;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function closeAndNavigate(path: Href) {
     back();
     setTimeout(() => push(path), 100);
+  }
+
+  function handleSelectMapStyle() {
+    showMapStylePicker({
+      message: 'Gäller både områden och jakter.',
+      onSelect: (savedStyle) => {
+        selectedMapStyleIdRef.current = savedStyle.id;
+      },
+      selectedMapStyleId: selectedMapStyleIdRef.current,
+    });
   }
 
   async function handleLeaveEvent() {
@@ -168,6 +195,16 @@ export default function EventActionsScreen() {
           icon="information-circle-outline"
           iconColor={APP_COLORS.text}
           label="Info"
+          disabled={isSubmitting}
+        />
+
+        <EventActionButton
+          variant="outline"
+          onPress={handleSelectMapStyle}
+          accessibilityLabel="Ändra kartvy"
+          icon="map-outline"
+          iconColor={APP_COLORS.text}
+          label="Ändra kartvy"
           disabled={isSubmitting}
         />
 

@@ -1,15 +1,11 @@
 import { Button, ButtonProps, Text } from '@/components/ui';
-import {
-  DEFAULT_MAP_STYLE,
-  MAP_STYLE_OPTIONS,
-  getSavedMapStyle,
-  saveMapStyle,
-} from '@/lib/map-styles';
+import { DEFAULT_MAP_STYLE, getSavedMapStyle } from '@/lib/map-styles';
+import { showMapStylePicker } from '@/lib/map-style-picker';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function ActionIcon({ name, color }: { name: keyof typeof Ionicons.glyphMap; color: string }) {
@@ -51,14 +47,14 @@ export default function AreaActionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
-  const [selectedMapStyleId, setSelectedMapStyleId] = useState(DEFAULT_MAP_STYLE.id);
+  const selectedMapStyleIdRef = useRef(DEFAULT_MAP_STYLE.id);
 
   useEffect(() => {
     let cancelled = false;
 
     void getSavedMapStyle().then((style) => {
       if (!cancelled) {
-        setSelectedMapStyleId(style.id);
+        selectedMapStyleIdRef.current = style.id;
       }
     });
 
@@ -73,26 +69,14 @@ export default function AreaActionsScreen() {
   }
 
   const handleSelectMapStyle = useCallback(() => {
-    Alert.alert(
-      'Välj kartstil',
-      'Välj vilken Mapbox-karta som ska användas i områdesvyn.',
-      [
-        ...MAP_STYLE_OPTIONS.map((option) => ({
-          text: option.id === selectedMapStyleId ? `${option.label} ✓` : option.label,
-          onPress: () => {
-            void saveMapStyle(option.id).then((savedStyle) => {
-              setSelectedMapStyleId(savedStyle.id);
-            });
-          },
-        })),
-        { text: 'Avbryt', style: 'cancel' as const },
-      ]
-    );
-  }, [selectedMapStyleId]);
-
-  const selectedMapStyleLabel =
-    MAP_STYLE_OPTIONS.find((option) => option.id === selectedMapStyleId)?.label ??
-    DEFAULT_MAP_STYLE.label;
+    showMapStylePicker({
+      message: 'Gäller både områden och jakter.',
+      onSelect: (savedStyle) => {
+        selectedMapStyleIdRef.current = savedStyle.id;
+      },
+      selectedMapStyleId: selectedMapStyleIdRef.current,
+    });
+  }, []);
 
   return (
     <View
@@ -143,7 +127,7 @@ export default function AreaActionsScreen() {
           accessibilityLabel="Ändra kartvy"
           icon="map-outline"
           iconColor={APP_COLORS.text}
-          label={`Ändra kartvy: ${selectedMapStyleLabel}`}
+          label="Ändra kartvy"
         />
       </View>
     </View>
