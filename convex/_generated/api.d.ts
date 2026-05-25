@@ -8,9 +8,11 @@
  * @module
  */
 
+import type * as animalSightings from "../animalSightings.js";
 import type * as areaFeatures from "../areaFeatures.js";
 import type * as areaPoints from "../areaPoints.js";
 import type * as areas from "../areas.js";
+import type * as eventAccess from "../eventAccess.js";
 import type * as eventCleanup from "../eventCleanup.js";
 import type * as eventLifecycle from "../eventLifecycle.js";
 import type * as eventMembers from "../eventMembers.js";
@@ -31,9 +33,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  animalSightings: typeof animalSightings;
   areaFeatures: typeof areaFeatures;
   areaPoints: typeof areaPoints;
   areas: typeof areas;
+  eventAccess: typeof eventAccess;
   eventCleanup: typeof eventCleanup;
   eventLifecycle: typeof eventLifecycle;
   eventMembers: typeof eventMembers;

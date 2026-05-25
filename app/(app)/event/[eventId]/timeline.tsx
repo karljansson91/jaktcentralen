@@ -1,9 +1,11 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
+import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
 import { GlassSurface, GlassTopNav } from '@/components/glass';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useCurrentTime } from '@/hooks/use-current-time';
+import { AnimalSightingMapItem } from '@/lib/animal-sightings';
 import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import {
@@ -45,6 +47,8 @@ type ReplayGroup = {
   points: ReplayPoint[];
   userId: string;
 };
+
+type ReplayAnimalSighting = AnimalSightingMapItem;
 
 function formatReplayTimestamp(timestamp: number) {
   return new Date(timestamp).toLocaleString('sv-SE', {
@@ -109,6 +113,10 @@ export default function EventTimelineScreen() {
     api.positionTrails.listReplayByEvent,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
+  const animalSightings = useQuery(
+    api.animalSightings.listForReplay,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
 
   useEffect(() => {
     return subscribeToMapStyleChanges((style) => {
@@ -161,9 +169,16 @@ export default function EventTimelineScreen() {
   }, [area, insets.bottom, insets.top]);
 
   const timeline = useMemo(() => {
-    if (!replay) return null;
+    if (!replay || !animalSightings) return null;
 
-    const sorted = replay.toSorted((a, b) => a.timestamp - b.timestamp);
+    const sorted = Array.from(replay).sort((a, b) => a.timestamp - b.timestamp);
+    const sortedSightings = Array.from(animalSightings).sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
+    const timestamps = [
+      ...sorted.map((point) => point.timestamp),
+      ...sortedSightings.map((sighting) => sighting.timestamp),
+    ];
     const groups = new Map<string, ReplayGroup>();
 
     for (const point of sorted) {
@@ -187,11 +202,13 @@ export default function EventTimelineScreen() {
 
     return {
       groups: Array.from(groups.values()),
-      maxTimestamp: sorted[sorted.length - 1]?.timestamp ?? null,
-      minTimestamp: sorted[0]?.timestamp ?? null,
+      maxTimestamp: timestamps.length > 0 ? Math.max(...timestamps) : null,
+      minTimestamp: timestamps.length > 0 ? Math.min(...timestamps) : null,
       pointCount: sorted.length,
+      sightingCount: sortedSightings.length,
+      sightings: sortedSightings,
     };
-  }, [replay]);
+  }, [animalSightings, replay]);
 
   const selectedReplayTimestamp =
     timeline?.maxTimestamp == null || timeline.minTimestamp == null
@@ -217,7 +234,19 @@ export default function EventTimelineScreen() {
       .filter((group) => group.currentPoint !== null);
   }, [selectedReplayTimestamp, timeline]);
 
-  if (event === undefined || area === undefined || areaFeatures === undefined || replay === undefined) {
+  const visibleSightings = useMemo<ReplayAnimalSighting[]>(() => {
+    if (!timeline || selectedReplayTimestamp == null) return [];
+
+    return timeline.sightings.filter((sighting) => sighting.timestamp <= selectedReplayTimestamp);
+  }, [selectedReplayTimestamp, timeline]);
+
+  if (
+    event === undefined ||
+    area === undefined ||
+    areaFeatures === undefined ||
+    replay === undefined ||
+    animalSightings === undefined
+  ) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="small" color={APP_COLORS.primary} />
@@ -251,7 +280,7 @@ export default function EventTimelineScreen() {
     );
   }
 
-  const hasReplay = timeline !== null && timeline.pointCount > 0;
+  const hasReplay = timeline !== null && (timeline.pointCount > 0 || timeline.sightingCount > 0);
   const minTimestamp = timeline?.minTimestamp ?? 0;
   const maxTimestamp = timeline?.maxTimestamp ?? minTimestamp;
   const canScrub = hasReplay && maxTimestamp > minTimestamp;
@@ -334,6 +363,8 @@ export default function EventTimelineScreen() {
             </ShapeSource>
           ) : null
         )}
+
+        <AnimalSightingLayers idPrefix="timeline" sightings={visibleSightings} />
       </MapView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
@@ -370,7 +401,7 @@ export default function EventTimelineScreen() {
               </View>
               <View className="rounded-full bg-primary/10 px-3 py-1.5">
                 <Text className="text-xs font-semibold text-primary">
-                  {visibleGroups.length} jägare
+                  {visibleGroups.length} jägare · {visibleSightings.length} obs
                 </Text>
               </View>
             </View>
@@ -389,7 +420,7 @@ export default function EventTimelineScreen() {
               />
             ) : (
               <Text className="text-sm leading-5 text-muted-foreground">
-                Det finns inga sparade positioner för den här jakten ännu.
+                Det finns inga sparade positioner eller observationer för den här jakten ännu.
               </Text>
             )}
 

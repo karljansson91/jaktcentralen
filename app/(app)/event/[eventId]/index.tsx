@@ -1,4 +1,6 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
+import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
+import { AnimalSightingPicker } from '@/components/event/animal-sighting-picker';
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
@@ -6,6 +8,11 @@ import { GlassFloatingButton } from '@/components/glass';
 import { IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import {
+  AnimalSightingMapItem,
+  AnimalSightingType,
+  getAnimalSightingLabel,
+} from '@/lib/animal-sightings';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
@@ -34,8 +41,22 @@ import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
+import { ActivityIndicator, Alert, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+function pointFromMapLongPress(event: GeoJSON.Feature) {
+  const coordinates = (event.geometry as GeoJSON.Point).coordinates as [number, number];
+  return {
+    latitude: coordinates[1],
+    longitude: coordinates[0],
+  };
+}
+
+type PendingAnimalSighting = {
+  isReporting: boolean;
+  latitude: number;
+  longitude: number;
+};
 
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -48,6 +69,8 @@ export default function EventMapScreen() {
   const [visibleAssignmentTrailTargetKey, setVisibleAssignmentTrailTargetKey] = useState<
     string | null
   >(null);
+  const [pendingAnimalSighting, setPendingAnimalSighting] =
+    useState<PendingAnimalSighting | null>(null);
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -73,8 +96,14 @@ export default function EventMapScreen() {
     api.messages.getUnreadCount,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
+  const animalSightings = useQuery(
+    api.animalSightings.listVisible,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
 
   const updatePosition = useMutation(api.eventMembers.updatePosition);
+  const reportAnimalSighting = useMutation(api.animalSightings.report);
+  const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
 
@@ -317,6 +346,67 @@ export default function EventMapScreen() {
     [handlePressStationTarget]
   );
 
+  const handleMapLongPress = useCallback(
+    (mapEvent: GeoJSON.Feature) => {
+      if (!isActiveHunt) {
+        return;
+      }
+
+      setPendingAnimalSighting({ ...pointFromMapLongPress(mapEvent), isReporting: false });
+      Vibration.vibrate(8);
+    },
+    [isActiveHunt]
+  );
+
+  const handleSelectAnimalSighting = useCallback(
+    async (animal: AnimalSightingType) => {
+      if (!pendingAnimalSighting || pendingAnimalSighting.isReporting) {
+        return;
+      }
+
+      setPendingAnimalSighting((current) =>
+        current ? { ...current, isReporting: true } : current
+      );
+      try {
+        await reportAnimalSighting({
+          eventId: eventId as Id<'events'>,
+          animal,
+          latitude: pendingAnimalSighting.latitude,
+          longitude: pendingAnimalSighting.longitude,
+        });
+        setPendingAnimalSighting(null);
+      } catch (error) {
+        console.error('Failed to report animal sighting:', error);
+        Alert.alert('Kunde inte skicka observation', 'Försök igen om en stund.');
+        setPendingAnimalSighting((current) =>
+          current ? { ...current, isReporting: false } : current
+        );
+      }
+    },
+    [eventId, pendingAnimalSighting, reportAnimalSighting]
+  );
+
+  const handlePressAnimalSighting = useCallback(
+    (sighting: AnimalSightingMapItem) => {
+      const label = sighting.label ?? getAnimalSightingLabel(sighting.animal);
+      const reporter = sighting.user?.name?.trim() || 'Okänd jägare';
+
+      Alert.alert(label, `${reporter} markerade observationen på kartan.`, [
+        { text: 'Stäng', style: 'cancel' },
+        {
+          text: 'Kvittera',
+          onPress: () => {
+            void acknowledgeAnimalSighting({ sightingId: sighting._id }).catch((error) => {
+              console.error('Failed to acknowledge animal sighting:', error);
+              Alert.alert('Kunde inte kvittera', 'Försök igen om en stund.');
+            });
+          },
+        },
+      ]);
+    },
+    [acknowledgeAnimalSighting]
+  );
+
   const handleGoToMyPosition = useCallback(async () => {
     try {
       const coordinate = await getCurrentUserCoordinate();
@@ -392,6 +482,7 @@ export default function EventMapScreen() {
     members === undefined ||
     currentUser === undefined ||
     assignments === undefined ||
+    animalSightings === undefined ||
     cameraBounds === null
   ) {
     return (
@@ -418,7 +509,8 @@ export default function EventMapScreen() {
         zoomEnabled
         rotateEnabled={false}
         pitchEnabled={false}
-        attributionEnabled={false}>
+        attributionEnabled={false}
+        onLongPress={isActiveHunt ? handleMapLongPress : undefined}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         <LocationPuck puckBearingEnabled puckBearing="heading" />
 
@@ -476,6 +568,12 @@ export default function EventMapScreen() {
             onPress={handlePressStationTarget}
           />
         ))}
+
+        <AnimalSightingLayers
+          idPrefix="event"
+          sightings={animalSightings}
+          onPressSighting={handlePressAnimalSighting}
+        />
       </MapView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
@@ -562,6 +660,20 @@ export default function EventMapScreen() {
             ) : null}
           </IconButton>
         </View>
+
+        {pendingAnimalSighting ? (
+          <View
+            className="absolute left-4 right-4"
+            style={{ bottom: Math.max(insets.bottom, 20) + 96 }}>
+            <AnimalSightingPicker
+              disabled={pendingAnimalSighting.isReporting}
+              onCancel={() => setPendingAnimalSighting(null)}
+              onSelect={(animal) => {
+                void handleSelectAnimalSighting(animal);
+              }}
+            />
+          </View>
+        ) : null}
       </View>
     </View>
   );

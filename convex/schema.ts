@@ -155,6 +155,34 @@ export default defineSchema({
     .index("by_eventId_and_timestamp", ["eventId", "timestamp"])
     .index("by_eventId", ["eventId"]),
 
+  animalSightings: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    animal: v.union(
+      v.literal("elk"),
+      v.literal("deer"),
+      v.literal("boar"),
+      v.literal("fox"),
+      v.literal("other")
+    ),
+    latitude: v.number(),
+    longitude: v.number(),
+    timestamp: v.number(),
+    messageId: v.optional(v.id("messages")),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_eventId_and_timestamp", ["eventId", "timestamp"]),
+
+  animalSightingAcknowledgements: defineTable({
+    eventId: v.id("events"),
+    sightingId: v.id("animalSightings"),
+    userId: v.id("users"),
+    acknowledgedAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_eventId_and_userId", ["eventId", "userId"])
+    .index("by_sightingId_and_userId", ["sightingId", "userId"]),
+
   messages: defineTable({
     eventId: v.id("events"),
     userId: v.id("users"),
