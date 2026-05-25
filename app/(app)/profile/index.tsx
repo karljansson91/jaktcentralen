@@ -1,6 +1,8 @@
 import { Badge, Button, Card, CardContent, IconButton, Text } from '@/components/ui';
+import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import { APP_COLORS } from '@/lib/theme';
 import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,18 +10,6 @@ import { useMutation, useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function getInitials(name?: string | null) {
-  return (
-    name
-      ?.trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || '?'
-  );
-}
 
 function formatDate(ts?: number) {
   if (!ts) {
@@ -80,9 +70,10 @@ export default function ProfileScreen() {
   const declineFriendRequest = useMutation(api.friends.declineRequest);
   const removeFriend = useMutation(api.friends.removeFriend);
 
-  const displayName = user?.name || clerkUser?.fullName || clerkUser?.primaryEmailAddress?.emailAddress;
-  const displayEmail = user?.email || clerkUser?.primaryEmailAddress?.emailAddress;
-  const profileInitials = getInitials(displayName);
+  const displayName =
+    user?.name || clerkUser?.fullName || clerkUser?.primaryEmailAddress?.emailAddress;
+  const displayContact =
+    getUserContactLine(user) || clerkUser?.primaryEmailAddress?.emailAddress || '';
   const hasInvitations =
     (invitations && invitations.length > 0) || (friendRequests && friendRequests.length > 0);
 
@@ -167,18 +158,14 @@ export default function ProfileScreen() {
       <Card className="overflow-hidden border-border/70 bg-card py-0">
         <CardContent className="gap-5 p-5">
           <View className="flex-row items-center gap-4">
-            <View className="size-16 items-center justify-center rounded-full bg-primary">
-              <Text className="text-xl font-semibold text-primary-foreground">
-                {profileInitials}
-              </Text>
-            </View>
+            <UserAvatar imageUrl={user?.imageUrl} name={displayName} size={64} />
             <View className="min-w-0 flex-1 gap-1">
               <Text className="text-xl font-semibold text-foreground" numberOfLines={1}>
                 {displayName || 'Profil'}
               </Text>
-              {displayEmail ? (
+              {displayContact ? (
                 <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                  {displayEmail}
+                  {displayContact}
                 </Text>
               ) : (
                 <Text className="text-sm text-muted-foreground">Ditt Jaktcentralen-konto</Text>
@@ -186,6 +173,14 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          <Button
+            variant="outline"
+            className="h-11 rounded-xl bg-background/70"
+            onPress={() => push('/profile/edit' as Href)}
+            accessibilityLabel="Redigera profil">
+            <Ionicons name="create-outline" size={18} color={APP_COLORS.primary} />
+            <Text>Redigera profil</Text>
+          </Button>
         </CardContent>
       </Card>
 
@@ -236,14 +231,10 @@ export default function ProfileScreen() {
             <Card key={request.friendshipId} className="border-border/70 bg-card py-0">
               <CardContent className="gap-4 p-5">
                 <View className="flex-row items-center gap-3">
-                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
-                    <Text className="text-sm font-semibold text-primary">
-                      {getInitials(request.user?.name)}
-                    </Text>
-                  </View>
+                  <UserAvatar imageUrl={request.user?.imageUrl} name={request.user?.name} />
                   <View className="min-w-0 flex-1 gap-1">
                     <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-                      {request.user?.name || 'Okänd användare'}
+                      {getUserDisplayName(request.user)}
                     </Text>
                     <Text className="text-sm text-muted-foreground">Vill bli vän</Text>
                   </View>
@@ -278,18 +269,14 @@ export default function ProfileScreen() {
             <Card key={request.friendshipId} className="border-border/70 bg-card py-0">
               <CardContent className="px-5 py-4">
                 <View className="flex-row items-center gap-3">
-                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
-                    <Text className="text-sm font-semibold text-primary">
-                      {getInitials(request.user?.name)}
-                    </Text>
-                  </View>
+                  <UserAvatar imageUrl={request.user?.imageUrl} name={request.user?.name} />
                   <View className="min-w-0 flex-1 gap-1">
                     <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-                      {request.user?.name || 'Okänd användare'}
+                      {getUserDisplayName(request.user)}
                     </Text>
-                    {request.user?.email ? (
+                    {getUserContactLine(request.user) ? (
                       <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                        {request.user.email}
+                        {getUserContactLine(request.user)}
                       </Text>
                     ) : (
                       <Text className="text-sm text-muted-foreground">Vänförfrågan skickad</Text>
@@ -323,18 +310,14 @@ export default function ProfileScreen() {
               <Card className="border-border/70 bg-card py-0">
                 <CardContent className="px-5 py-4">
                   <View className="flex-row items-center gap-3">
-                    <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
-                      <Text className="text-sm font-semibold text-primary">
-                        {getInitials(friend.user?.name)}
-                      </Text>
-                    </View>
+                    <UserAvatar imageUrl={friend.user?.imageUrl} name={friend.user?.name} />
                     <View className="min-w-0 flex-1 gap-1">
                       <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-                        {friend.user?.name || 'Okänd användare'}
+                        {getUserDisplayName(friend.user)}
                       </Text>
-                      {friend.user?.email ? (
+                      {getUserContactLine(friend.user) ? (
                         <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                          {friend.user.email}
+                          {getUserContactLine(friend.user)}
                         </Text>
                       ) : (
                         <Text className="text-sm text-muted-foreground">Vän</Text>

@@ -1,7 +1,8 @@
 import { Button, Card, CardContent, Input, Text } from '@/components/ui';
+import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
 import { Doc, Id } from '@/convex/_generated/dataModel';
-import { getMemberInitials } from '@/lib/event-formatting';
+import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
@@ -26,7 +27,7 @@ function isInviteUser(user: InviteUser | null | undefined): user is InviteUser {
 }
 
 function getDisplayName(user: InviteUser | null | undefined) {
-  return user?.name?.trim() || user?.email || 'Okänd användare';
+  return getUserDisplayName(user);
 }
 
 function getInviteLabel(status: InviteStatus | undefined, isPending: boolean) {
@@ -55,7 +56,7 @@ function getInviteSubtitle(user: InviteUser, status: InviteStatus | undefined) {
   if (status === 'declined') {
     return 'Har tidigare tackat nej';
   }
-  return user.email || 'Användare';
+  return getUserContactLine(user) || 'Användare';
 }
 
 type InviteUserRowProps = {
@@ -71,11 +72,7 @@ function InviteUserRow({ user, status, isPending, onInvite }: InviteUserRowProps
 
   return (
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-      <View className="size-10 items-center justify-center rounded-2xl bg-primary/10">
-        <Text className="text-sm font-semibold text-primary">
-          {getMemberInitials(name)}
-        </Text>
-      </View>
+      <UserAvatar imageUrl={user.imageUrl} name={name} size={40} />
       <View className="min-w-0 flex-1 gap-0.5">
         <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
           {name}
@@ -329,9 +326,9 @@ export default function EventInviteScreen() {
         <Input
           value={searchQuery}
           onChangeText={setSearchQuery}
-          autoCapitalize="words"
+          autoCapitalize="none"
           autoCorrect={false}
-          placeholder="Sök namn eller e-post..."
+          placeholder="Sök namn, e-post eller telefon..."
           className="h-12 rounded-xl bg-card"
           returnKeyType="search"
         />

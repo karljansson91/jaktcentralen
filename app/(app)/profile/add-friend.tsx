@@ -1,6 +1,8 @@
 import { Button, Card, CardContent, Input, Text } from '@/components/ui';
+import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import { APP_COLORS } from '@/lib/theme';
 import { useMutation, useQuery } from 'convex/react';
 import { useDeferredValue, useMemo, useState } from 'react';
@@ -14,18 +16,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function getInitials(name?: string | null) {
-  return (
-    name
-      ?.trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || '?'
-  );
-}
 
 export default function AddFriendSheet() {
   const insets = useSafeAreaInsets();
@@ -91,7 +81,7 @@ export default function AddFriendSheet() {
             Lägg till vän
           </Text>
           <Text className="text-sm leading-5 text-muted-foreground">
-            Sök på namn och skicka en vänförfrågan.
+            Sök på namn, e-post eller telefon och skicka en vänförfrågan.
           </Text>
         </View>
 
@@ -99,8 +89,9 @@ export default function AddFriendSheet() {
           value={query}
           onChangeText={setQuery}
           autoFocus
-          autoCapitalize="words"
-          placeholder="Sök namn..."
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Sök namn, e-post eller telefon..."
           className="h-12 rounded-xl bg-card"
           returnKeyType="search"
         />
@@ -135,18 +126,14 @@ export default function AddFriendSheet() {
                 className="rounded-3xl border border-border bg-card p-4 active:bg-accent"
                 onPress={() => void handleSendFriendRequest(user._id)}>
                 <View className="flex-row items-center gap-3">
-                  <View className="size-11 items-center justify-center rounded-2xl bg-primary/10">
-                    <Text className="text-sm font-semibold text-primary">
-                      {getInitials(user.name)}
-                    </Text>
-                  </View>
+                  <UserAvatar imageUrl={user.imageUrl} name={user.name} />
                   <View className="min-w-0 flex-1 gap-1">
                     <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-                      {user.name || 'Namnlös användare'}
+                      {getUserDisplayName(user)}
                     </Text>
-                    {user.email ? (
+                    {getUserContactLine(user) ? (
                       <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                        {user.email}
+                        {getUserContactLine(user)}
                       </Text>
                     ) : null}
                   </View>
@@ -167,7 +154,7 @@ export default function AddFriendSheet() {
             <CardContent className="gap-2 p-5">
               <Text className="text-base font-semibold text-foreground">Inga träffar</Text>
               <Text className="text-sm leading-5 text-muted-foreground">
-                Testa ett annat namn. E-postsök kan vi lägga till när vi bygger ut vänflödet mer.
+                Testa ett annat namn, e-post eller telefonnummer.
               </Text>
             </CardContent>
           </Card>

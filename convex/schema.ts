@@ -5,14 +5,20 @@ export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
     clerkId: v.string(),
+    clerkName: v.optional(v.string()),
+    clerkEmail: v.optional(v.string()),
+    clerkImageUrl: v.optional(v.string()),
     name: v.string(),
     email: v.string(),
     imageUrl: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    phoneSearch: v.optional(v.string()),
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_clerkId", ["clerkId"])
     .searchIndex("search_name", { searchField: "name" })
-    .searchIndex("search_email", { searchField: "email" }),
+    .searchIndex("search_email", { searchField: "email" })
+    .searchIndex("search_phoneSearch", { searchField: "phoneSearch" }),
 
   friendships: defineTable({
     requesterId: v.id("users"),

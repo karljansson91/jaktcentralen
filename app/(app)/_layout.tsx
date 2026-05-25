@@ -96,6 +96,19 @@ export default function AppLayout() {
         options={profileHeaderOptions('')}
       />
       <Stack.Screen
+        name="profile/edit"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: [0.58, 0.86],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
         name="profile/add-friend"
         options={{
           presentation: 'formSheet',
