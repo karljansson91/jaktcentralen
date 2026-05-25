@@ -11,6 +11,8 @@ const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
 const ACTION_TOGGLE_OWN_SHARING = 'toggle-own-sharing';
 const ACTION_MARK_IN_POSITION = 'mark-in-position';
 const ACTION_CLEAR_IN_POSITION = 'clear-in-position';
+const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
+const ACTION_CLEAR_SCENT_DIRECTION = 'clear-scent-direction';
 
 type HuntMapToolsMenuProps = {
   inPosition: {
@@ -31,6 +33,12 @@ type HuntMapToolsMenuProps = {
     onToggle: () => void;
     visible: boolean;
   };
+  scent: {
+    hasDirection: boolean;
+    isSetting: boolean;
+    onClear: () => void;
+    onSet: () => void;
+  };
 };
 
 export function HuntMapToolsMenu({
@@ -38,6 +46,7 @@ export function HuntMapToolsMenu({
   onLocate,
   positions,
   route,
+  scent,
 }: HuntMapToolsMenuProps) {
   const {
     available: inPositionAvailable,
@@ -52,6 +61,12 @@ export function HuntMapToolsMenu({
     showOthers,
   } = positions;
   const { available: routeAvailable, onToggle: onToggleRoute, visible: routeVisible } = route;
+  const {
+    hasDirection: hasScentDirection,
+    isSetting: isSettingScentDirection,
+    onClear: onClearScentDirection,
+    onSet: onSetScentDirection,
+  } = scent;
 
   const actions = useMemo<MenuAction[]>(
     () => [
@@ -66,6 +81,18 @@ export function HuntMapToolsMenu({
         image: 'point.topleft.down.curvedto.point.bottomright.up',
         state: routeVisible ? 'on' : 'off',
         title: 'Visa väg till pass',
+      },
+      {
+        id: ACTION_SET_SCENT_DIRECTION,
+        image: 'wind',
+        state: isSettingScentDirection || hasScentDirection ? 'on' : 'off',
+        title: hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+      },
+      {
+        attributes: { hidden: !hasScentDirection },
+        id: ACTION_CLEAR_SCENT_DIRECTION,
+        image: 'xmark.circle',
+        title: 'Rensa vindriktning',
       },
       {
         id: ACTION_TOGGLE_OTHER_POSITIONS,
@@ -89,6 +116,8 @@ export function HuntMapToolsMenu({
     [
       inPositionAvailable,
       inPositionMarked,
+      hasScentDirection,
+      isSettingScentDirection,
       ownSharingEnabled,
       routeAvailable,
       routeVisible,
@@ -104,6 +133,12 @@ export function HuntMapToolsMenu({
           break;
         case ACTION_TOGGLE_ROUTE:
           onToggleRoute();
+          break;
+        case ACTION_SET_SCENT_DIRECTION:
+          onSetScentDirection();
+          break;
+        case ACTION_CLEAR_SCENT_DIRECTION:
+          onClearScentDirection();
           break;
         case ACTION_TOGGLE_OTHER_POSITIONS:
           onToggleOthers();
@@ -123,6 +158,8 @@ export function HuntMapToolsMenu({
       onLocate,
       onClear,
       onMark,
+      onClearScentDirection,
+      onSetScentDirection,
       onToggleOthers,
       onToggleOwnSharing,
       onToggleRoute,

@@ -9,6 +9,8 @@ import {
   LiveMemberPositionMarker,
   type LiveMemberPositionMarkerItem,
 } from '@/components/event/live-member-position-marker';
+import { ScentDirectionOverlay } from '@/components/event/scent-direction-overlay';
+import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -78,6 +80,8 @@ export default function EventMapScreen() {
   const currentTime = useCurrentTime();
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
+  const [scentDirectionDegrees, setScentDirectionDegrees] = useState<number | null>(null);
+  const [isSettingScentDirection, setIsSettingScentDirection] = useState(false);
   const {
     pendingAnimalSighting,
     setPendingAnimalSighting,
@@ -125,6 +129,7 @@ export default function EventMapScreen() {
   const reportAnimalSighting = useMutation(api.animalSightings.report);
   const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
+  const activeScentDirectionDegrees = isActiveHunt ? scentDirectionDegrees : null;
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
   const ownPositionSharingEnabledRef = useRef(true);
 
@@ -545,6 +550,24 @@ export default function EventMapScreen() {
     }
   }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
 
+  const handleSetScentDirection = useCallback((directionDegrees: number) => {
+    setScentDirectionDegrees(directionDegrees);
+    setIsSettingScentDirection(false);
+  }, []);
+
+  const handleClearScentDirection = useCallback(() => {
+    setScentDirectionDegrees(null);
+    setIsSettingScentDirection(false);
+  }, []);
+
+  const handleStartSettingScentDirection = useCallback(() => {
+    setIsSettingScentDirection(true);
+  }, []);
+
+  const handleCancelSettingScentDirection = useCallback(() => {
+    setIsSettingScentDirection(false);
+  }, []);
+
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
     currentUserMarkedInPosition &&
@@ -683,6 +706,13 @@ export default function EventMapScreen() {
           </ShapeSource>
         )}
 
+        {currentCoordinate && activeScentDirectionDegrees != null ? (
+          <ScentPlumeLayer
+            directionDegrees={activeScentDirectionDegrees}
+            originCoordinate={currentCoordinate}
+          />
+        ) : null}
+
         {areaFeatures && (
           <AreaFeatureLayers
             features={areaFeatures}
@@ -778,6 +808,12 @@ export default function EventMapScreen() {
                   Boolean(currentUserAssignedStation) &&
                   activeAssignmentTrailTargetKey === currentUserAssignedStation?.targetKey,
               }}
+              scent={{
+                hasDirection: activeScentDirectionDegrees != null,
+                isSetting: isActiveHunt && isSettingScentDirection,
+                onClear: handleClearScentDirection,
+                onSet: handleStartSettingScentDirection,
+              }}
             />
           ) : null}
         </View>
@@ -824,6 +860,13 @@ export default function EventMapScreen() {
             />
           </View>
         ) : null}
+
+        <ScentDirectionOverlay
+          active={isActiveHunt && isSettingScentDirection}
+          bottomInset={Math.max(insets.bottom, 20)}
+          onCancel={handleCancelSettingScentDirection}
+          onDirectionSet={handleSetScentDirection}
+        />
       </View>
     </View>
   );
