@@ -769,6 +769,7 @@ export default function EventMapScreen() {
             renderActionsMenu={renderHuntActionsMenu}
             title={event.title}
             onBack={() => back()}
+            positionSharingEnabled={isActiveHunt ? isOwnPositionSharingEnabled : undefined}
             readinessLabel={
               isActiveHunt && readinessSummary?.total
                 ? `${readinessSummary.confirmed}/${readinessSummary.total} på plats`

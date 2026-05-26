@@ -5,8 +5,7 @@ import {
   AssignmentRouteSummary,
   type AssignmentRouteSummaryProps,
 } from '@/components/event/assignment-route-summary';
-import { cn } from '@/lib/utils';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 
 const GLASS_NAV_HEIGHT = 44;
@@ -20,6 +19,7 @@ type HuntMapTopNavProps = {
   onAllowedGamePress?: () => void;
   onBack: () => void;
   onMore?: () => void;
+  positionSharingEnabled?: boolean;
   readinessLabel?: string | null;
   renderActionsMenu?: () => ReactNode;
   routeSummary?: AssignmentRouteSummaryProps | null;
@@ -32,19 +32,32 @@ export function HuntMapTopNav({
   onAllowedGamePress,
   onBack,
   onMore,
+  positionSharingEnabled,
   readinessLabel,
   renderActionsMenu,
   routeSummary,
   title,
 }: HuntMapTopNavProps) {
+  const [detailsVisible, setDetailsVisible] = useState(false);
+  const hasDetails = Boolean(readinessLabel || allowedGameLabel || routeSummary);
+  const detailsExpanded = hasDetails && detailsVisible;
   const subtitleCount = Number(Boolean(readinessLabel)) + Number(Boolean(allowedGameLabel));
-  const titleSurfaceStyle = routeSummary
+  const expandedTitleSurfaceStyle = routeSummary
     ? styles.expandedTitleSurface
     : subtitleCount > 1
       ? styles.doubleSubtitleTitleSurface
       : subtitleCount === 1
       ? styles.readinessTitleSurface
       : styles.compactTitleSurface;
+  const titleSurfaceStyle = detailsExpanded
+    ? expandedTitleSurfaceStyle
+    : styles.compactTitleSurface;
+  const positionSharingLabel =
+    positionSharingEnabled == null
+      ? null
+      : positionSharingEnabled
+        ? 'Positionsdelning aktiv'
+        : 'Positionsdelning av';
 
   return (
     <View className="w-full">
@@ -66,22 +79,48 @@ export function HuntMapTopNav({
             className="max-w-full rounded-[28px]"
             style={titleSurfaceStyle}
             contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
-            <View className="min-h-6 items-center justify-center">
+            <Pressable
+              accessibilityLabel={[
+                title,
+                positionSharingLabel,
+                hasDetails
+                  ? detailsExpanded
+                    ? 'Dölj jaktinfo'
+                    : 'Visa jaktinfo'
+                  : null,
+              ]
+                .filter(Boolean)
+                .join('. ')}
+              accessibilityRole={hasDetails ? 'button' : undefined}
+              accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
+              disabled={!hasDetails}
+              onPress={() => setDetailsVisible((visible) => !visible)}
+              className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
               <Text
-                className={cn('text-center text-[16px] font-semibold leading-[21px] text-white')}
+                className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.72}
                 style={styles.floatingTitle}>
                 {title}
               </Text>
-            </View>
-            {readinessLabel ? (
+              {positionSharingEnabled != null ? (
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                  className="size-2.5 rounded-full border border-white/85"
+                  style={{
+                    backgroundColor: positionSharingEnabled ? '#8FE8A5' : '#F0B0A4',
+                  }}
+                />
+              ) : null}
+            </Pressable>
+            {detailsExpanded && readinessLabel ? (
               <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
                 {readinessLabel}
               </Text>
             ) : null}
-            {allowedGameLabel ? (
+            {detailsExpanded && allowedGameLabel ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={onAllowedGamePress}
@@ -93,7 +132,9 @@ export function HuntMapTopNav({
                 </Text>
               </Pressable>
             ) : null}
-            {routeSummary ? <AssignmentRouteSummary {...routeSummary} /> : null}
+            {detailsExpanded && routeSummary ? (
+              <AssignmentRouteSummary {...routeSummary} />
+            ) : null}
           </GlassSurface>
         </View>
 
