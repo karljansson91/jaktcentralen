@@ -5,6 +5,7 @@ import {
   AssignmentRouteSummary,
   type AssignmentRouteSummaryProps,
 } from '@/components/event/assignment-route-summary';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, type ReactNode } from 'react';
 import {
   LayoutAnimation,
@@ -98,71 +99,78 @@ export function HuntMapTopNav({
         />
 
         <View className="min-w-0 flex-1 items-center justify-center px-2">
-          <GlassSurface
-            tone="dark"
-            overlayColor={FLOATING_HEADER_OVERLAY}
-            tintColor={FLOATING_HEADER_TINT}
-            className="max-w-full rounded-[28px]"
-            style={titleSurfaceStyle}
-            contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
-            <Pressable
-              accessibilityLabel={[
-                title,
-                positionSharingLabel,
-                hasDetails
-                  ? detailsExpanded
-                    ? 'Dölj jaktinfo'
-                    : 'Visa jaktinfo'
-                  : null,
-              ]
-                .filter(Boolean)
-                .join('. ')}
-              accessibilityRole={hasDetails ? 'button' : undefined}
-              accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
-              disabled={!hasDetails}
-              hitSlop={8}
-              onPress={toggleDetails}
-              className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
-              <Text
-                className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
-                style={styles.floatingTitle}>
-                {title}
-              </Text>
-              {positionSharingEnabled != null ? (
-                <View
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                  className="size-2.5 rounded-full border border-white/85"
-                  style={{
-                    backgroundColor: positionSharingEnabled ? '#8FE8A5' : '#F0B0A4',
-                  }}
-                />
-              ) : null}
-            </Pressable>
-            {detailsExpanded && readinessLabel ? (
-              <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
-                {readinessLabel}
-              </Text>
-            ) : null}
-            {detailsExpanded && allowedGameLabel ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onAllowedGamePress}
-                className="max-w-full">
-                <Text
-                  className="text-center text-[11px] font-semibold leading-[14px] text-white/85"
-                  numberOfLines={1}>
-                  {allowedGameLabel}
-                </Text>
-              </Pressable>
-            ) : null}
-            {detailsExpanded && routeSummary ? (
-              <AssignmentRouteSummary {...routeSummary} />
-            ) : null}
-          </GlassSurface>
+          <Pressable
+            accessibilityLabel={[
+              title,
+              positionSharingLabel,
+              hasDetails
+                ? detailsExpanded
+                  ? 'Dölj jaktinfo'
+                  : 'Visa jaktinfo'
+                : null,
+            ]
+              .filter(Boolean)
+              .join('. ')}
+            accessibilityRole={hasDetails ? 'button' : undefined}
+            accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
+            disabled={!hasDetails}
+            hitSlop={8}
+            onPress={toggleDetails}
+            className="max-w-full">
+            {({ pressed }) => (
+              <GlassSurface
+                interactive={hasDetails}
+                tone="dark"
+                overlayColor={FLOATING_HEADER_OVERLAY}
+                tintColor={FLOATING_HEADER_TINT}
+                className="max-w-full rounded-[28px]"
+                style={[
+                  pressed && hasDetails ? styles.pressedTitleSurface : null,
+                  titleSurfaceStyle,
+                ]}
+                contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
+                <View className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
+                  <Text
+                    className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                    style={styles.floatingTitle}>
+                    {title}
+                  </Text>
+                  {positionSharingEnabled != null ? (
+                    <Ionicons
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                      name={positionSharingEnabled ? 'navigate' : 'navigate-outline'}
+                      size={14}
+                      color={positionSharingEnabled ? '#8FE8A5' : 'rgba(255, 255, 255, 0.62)'}
+                    />
+                  ) : null}
+                </View>
+                {detailsExpanded && readinessLabel ? (
+                  <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
+                    {readinessLabel}
+                  </Text>
+                ) : null}
+                {detailsExpanded && allowedGameLabel ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={onAllowedGamePress}
+                    className="max-w-full">
+                    <Text
+                      className="text-center text-[11px] font-semibold leading-[14px] text-white/85"
+                      numberOfLines={1}>
+                      {allowedGameLabel}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {detailsExpanded && routeSummary ? (
+                  <AssignmentRouteSummary {...routeSummary} />
+                ) : null}
+              </GlassSurface>
+            )}
+          </Pressable>
         </View>
 
         {renderActionsMenu ? (
@@ -209,6 +217,9 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
   } satisfies TextStyle,
+  pressedTitleSurface: {
+    transform: [{ scale: 1.025 }],
+  } satisfies ViewStyle,
   row: {
     alignItems: 'flex-start',
     flexDirection: 'row',
