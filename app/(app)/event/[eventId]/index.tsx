@@ -838,7 +838,7 @@ export default function EventMapScreen() {
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
           <IconButton
             size="lg"
-            onPress={() => push(`/event/${eventId}/chat`)}
+            onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
             accessibilityLabel={
               unreadMessageCount
                 ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`

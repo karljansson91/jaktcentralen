@@ -30,10 +30,14 @@ function formatTime(ts: number): string {
 }
 
 export default function EventChatScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, focusComposer } = useLocalSearchParams<{
+    eventId: string;
+    focusComposer?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scrollViewRef = useRef<ElementRef<typeof KeyboardChatScrollView>>(null);
+  const composerRef = useRef<ElementRef<typeof TextInput>>(null);
   const [body, setBody] = useState('');
   const [composerHeight, setComposerHeight] = useState(COMPOSER_KEYBOARD_OFFSET);
   const sendMessage = useMutation(api.messages.send);
@@ -62,6 +66,16 @@ export default function EventChatScreen() {
     if (!keyboardVisible || messages.length === 0) return;
     scrollToLatestMessage(false);
   }, [keyboardVisible, messages.length, scrollToLatestMessage]);
+
+  useEffect(() => {
+    if (focusComposer !== '1') return;
+
+    const timeout = setTimeout(() => {
+      composerRef.current?.focus();
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [focusComposer]);
 
   useEffect(() => {
     if (status === 'LoadingFirstPage') return;
@@ -180,6 +194,7 @@ export default function EventChatScreen() {
           }}
           collapsable={false}>
           <TextInput
+            ref={composerRef}
             nativeID="event-chat-composer"
             className="min-h-[44px] flex-1 rounded-[22px] bg-card px-4 py-3 text-base text-foreground"
             placeholder="Skriv ett meddelande…"

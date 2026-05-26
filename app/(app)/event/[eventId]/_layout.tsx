@@ -10,7 +10,7 @@ export default function EventLayout() {
           presentation: 'formSheet',
           headerShown: false,
           contentStyle: { backgroundColor: '#FCF8F2' },
-          sheetAllowedDetents: [0.32, 0.72, 0.94],
+          sheetAllowedDetents: [0.5, 0.72, 0.94],
           sheetInitialDetentIndex: 0,
           sheetGrabberVisible: true,
           sheetExpandsWhenScrolledToEdge: true,
