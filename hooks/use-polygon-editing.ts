@@ -141,6 +141,13 @@ export function usePolygonEditing({
     setPolygonPoints((previous) => previous.slice(0, -1));
   }, []);
 
+  const replacePolygonPoints = useCallback((points: LngLat[]) => {
+    draggingRef.current = null;
+    suppressMapPress.current = false;
+    setDraggingVertex(null);
+    setPolygonPoints(points);
+  }, []);
+
   const handleDone = useCallback(() => {
     if (polygonPoints.length < 3) return;
     setDraggingVertex(null);
@@ -159,5 +166,6 @@ export function usePolygonEditing({
     hasChanges: hasPointChanges(polygonPoints, initialPoints),
     isDragging: draggingVertex !== null,
     polygonPoints,
+    replacePolygonPoints,
   };
 }

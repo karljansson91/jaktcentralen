@@ -1,7 +1,6 @@
 import { Button, Input, Text } from '@/components/ui';
 import { LngLat, PolygonDrawer } from '@/components/PolygonDrawer';
 import { api } from '@/convex/_generated/api';
-import { APP_COLORS } from '@/lib/theme';
 import { useMutation } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -14,6 +13,8 @@ export default function CreateAreaScreen() {
   const [polygonPoints, setPolygonPoints] = useState<LngLat[] | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const topContentInset = Math.max(insets.top, 12);
+  const bottomContentInset = Math.max(insets.bottom, 24);
 
   const createArea = useMutation(api.areas.create);
 
@@ -73,18 +74,7 @@ export default function CreateAreaScreen() {
   // Step 2: Enter details
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'Skapa område',
-          headerLargeTitle: false,
-          headerTitleAlign: 'center',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: APP_COLORS.background },
-          headerTintColor: APP_COLORS.text,
-          contentStyle: { backgroundColor: APP_COLORS.background },
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         className="flex-1 bg-background"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -96,8 +86,8 @@ export default function CreateAreaScreen() {
             paddingHorizontal: 24,
             paddingTop: 24,
           }}
-          contentInset={{ bottom: Math.max(insets.bottom, 24) }}
-          scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
+          contentInset={{ top: topContentInset, bottom: bottomContentInset }}
+          scrollIndicatorInsets={{ top: topContentInset, bottom: bottomContentInset }}
           keyboardShouldPersistTaps="handled">
           <Text variant="h3" className="mb-2">
             Namnge ditt område
