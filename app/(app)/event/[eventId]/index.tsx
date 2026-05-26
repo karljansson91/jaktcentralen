@@ -1,6 +1,5 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
-import { AnimalSightingPicker } from '@/components/event/animal-sighting-picker';
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
@@ -18,7 +17,6 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import {
   AnimalSightingMapItem,
-  AnimalSightingType,
   getAnimalSightingLabel,
 } from '@/lib/animal-sightings';
 import { formatAllowedGameSummary } from '@/lib/allowed-game';
@@ -84,8 +82,6 @@ export default function EventMapScreen() {
   const [scentDirectionDegrees, setScentDirectionDegrees] = useState<number | null>(null);
   const [isSettingScentDirection, setIsSettingScentDirection] = useState(false);
   const {
-    pendingAnimalSighting,
-    setPendingAnimalSighting,
     setVisibleAssignmentTrailTargetKey,
     showOtherUserPositions,
     toggleOtherUserPositions,
@@ -127,7 +123,6 @@ export default function EventMapScreen() {
   const setPositionSharingDisabled = useMutation(
     api.eventMembers.setPositionSharingDisabled
   );
-  const reportAnimalSighting = useMutation(api.animalSightings.report);
   const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
   const activeScentDirectionDegrees = isActiveHunt ? scentDirectionDegrees : null;
@@ -454,38 +449,13 @@ export default function EventMapScreen() {
         return;
       }
 
-      setPendingAnimalSighting({ ...pointFromMapLongPress(mapEvent), isReporting: false });
+      const point = pointFromMapLongPress(mapEvent);
       Vibration.vibrate(8);
-    },
-    [isActiveHunt, setPendingAnimalSighting]
-  );
-
-  const handleSelectAnimalSighting = useCallback(
-    async (animal: AnimalSightingType) => {
-      if (!pendingAnimalSighting || pendingAnimalSighting.isReporting) {
-        return;
-      }
-
-      setPendingAnimalSighting((current) =>
-        current ? { ...current, isReporting: true } : current
+      push(
+        `/event/${eventId}/animal-sighting?latitude=${point.latitude}&longitude=${point.longitude}`
       );
-      try {
-        await reportAnimalSighting({
-          eventId: eventId as Id<'events'>,
-          animal,
-          latitude: pendingAnimalSighting.latitude,
-          longitude: pendingAnimalSighting.longitude,
-        });
-        setPendingAnimalSighting(null);
-      } catch (error) {
-        console.error('Failed to report animal sighting:', error);
-        Alert.alert('Kunde inte skicka observation', 'Försök igen om en stund.');
-        setPendingAnimalSighting((current) =>
-          current ? { ...current, isReporting: false } : current
-        );
-      }
     },
-    [eventId, pendingAnimalSighting, reportAnimalSighting, setPendingAnimalSighting]
+    [eventId, isActiveHunt, push]
   );
 
   const handlePressAnimalSighting = useCallback(
@@ -857,20 +827,6 @@ export default function EventMapScreen() {
             </View>
           ) : null}
         </View>
-
-        {pendingAnimalSighting ? (
-          <View
-            className="absolute left-4 right-4"
-            style={{ bottom: Math.max(insets.bottom, 20) + 96 }}>
-            <AnimalSightingPicker
-              disabled={pendingAnimalSighting.isReporting}
-              onCancel={() => setPendingAnimalSighting(null)}
-              onSelect={(animal) => {
-                void handleSelectAnimalSighting(animal);
-              }}
-            />
-          </View>
-        ) : null}
 
         <ScentDirectionOverlay
           active={isActiveHunt && isSettingScentDirection}

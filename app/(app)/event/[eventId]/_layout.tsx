@@ -13,6 +13,19 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
+        name="animal-sighting"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: '#FCF8F2' },
+          sheetAllowedDetents: [0.48, 0.66],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
         name="station"
         options={{
           presentation: 'formSheet',
