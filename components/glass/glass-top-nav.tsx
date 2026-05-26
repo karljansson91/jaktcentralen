@@ -3,6 +3,7 @@ import { GlassSurface } from '@/components/glass/glass-surface';
 import { Text } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { View, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,7 +22,9 @@ type GlassTopNavProps = {
   onBack?: () => void;
   onRightPress?: () => void;
   rightAccessibilityLabel?: string;
+  rightAccessory?: ReactNode;
   rightIcon?: keyof typeof Ionicons.glyphMap;
+  renderRightAccessory?: () => ReactNode;
   title: string;
   titleBackground?: boolean;
 };
@@ -47,7 +50,9 @@ export function GlassTopNav({
   onBack,
   onRightPress,
   rightAccessibilityLabel = 'Fler alternativ',
+  rightAccessory,
   rightIcon = 'ellipsis-horizontal',
+  renderRightAccessory,
   title,
   titleBackground,
 }: GlassTopNavProps) {
@@ -96,7 +101,11 @@ export function GlassTopNav({
         )}
       </View>
 
-      {onRightPress ? (
+      {renderRightAccessory ? (
+        renderRightAccessory()
+      ) : rightAccessory ? (
+        rightAccessory
+      ) : onRightPress ? (
         <GlassIconButton
           icon={rightIcon}
           iconSize={21}

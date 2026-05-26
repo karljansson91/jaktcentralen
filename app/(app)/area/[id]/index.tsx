@@ -1,4 +1,5 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
+import { AreaActionsMenu } from '@/components/area/area-actions-menu';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
 import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
 import { Text } from '@/components/ui';
@@ -29,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ViewAreaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { back, push } = useRouter();
+  const { back } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
@@ -112,6 +113,11 @@ export default function ViewAreaScreen() {
     });
   }, [areaFeatures, draggedPointOverrides]);
 
+  const renderAreaActionsMenu = useCallback(
+    () => <AreaActionsMenu areaId={id as Id<'areas'>} />,
+    [id]
+  );
+
   const handleGoToMyPosition = useCallback(async () => {
     try {
       const coordinate = await getCurrentUserCoordinate();
@@ -131,10 +137,6 @@ export default function ViewAreaScreen() {
       Alert.alert('Kunde inte hitta position', 'Försök igen om en stund.');
     }
   }, []);
-
-  const handleOpenAreaActions = useCallback(() => {
-    push(`/area/${id}/actions`);
-  }, [id, push]);
 
   if (area === undefined || areaFeatures === undefined) {
     return (
@@ -213,8 +215,7 @@ export default function ViewAreaScreen() {
             appearance="floating"
             title={area.name}
             onBack={() => back()}
-            onRightPress={handleOpenAreaActions}
-            rightAccessibilityLabel="Områdesåtgärder"
+            renderRightAccessory={renderAreaActionsMenu}
           />
         </View>
 

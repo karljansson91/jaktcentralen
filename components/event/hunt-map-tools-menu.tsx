@@ -1,9 +1,6 @@
-import { GlassSurface } from '@/components/glass/glass-surface';
-import { APP_COLORS } from '@/lib/theme';
-import { Ionicons } from '@expo/vector-icons';
-import { MenuView, type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
+import { GlassMenuButton } from '@/components/glass/glass-menu-button';
+import { type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
 import { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
 
 const ACTION_LOCATE = 'locate';
 const ACTION_TOGGLE_ROUTE = 'toggle-route';
@@ -167,23 +164,16 @@ export function HuntMapToolsMenu({
   );
 
   return (
-    <MenuView
+    <GlassMenuButton
+      accessibilityLabel="Kartverktyg"
       actions={actions}
+      className="size-14"
+      icon="map-outline"
+      iconSize={24}
       onPressAction={handlePressAction}
-      shouldOpenOnLongPress={false}
-      title="Kartverktyg">
-      <View
-        accessibilityLabel="Kartverktyg"
-        accessibilityRole="button"
-        accessible
-        className="size-14">
-        <GlassSurface
-          tone="dark"
-          className="size-14 rounded-full"
-          contentClassName="h-full w-full items-center justify-center">
-          <Ionicons name="map-outline" size={24} color={APP_COLORS.surface} />
-        </GlassSurface>
-      </View>
-    </MenuView>
+      surfaceClassName="size-14"
+      title="Kartverktyg"
+      tone="dark"
+    />
   );
 }

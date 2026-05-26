@@ -3,6 +3,7 @@ import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers'
 import { AnimalSightingPicker } from '@/components/event/animal-sighting-picker';
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
+import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import {
@@ -586,6 +587,20 @@ export default function EventMapScreen() {
     onMarkInPosition: handleMarkSelfInPosition,
   });
 
+  const renderHuntActionsMenu = useCallback(() => {
+    if (!event || !currentUser) {
+      return undefined;
+    }
+
+    return (
+      <HuntActionsMenu
+        currentUserId={currentUser._id}
+        event={event}
+        eventId={eventId as Id<'events'>}
+      />
+    );
+  }, [currentUser, event, eventId]);
+
   const handleGoToMyPosition = useCallback(async () => {
     try {
       const coordinate = await getCurrentUserCoordinate();
@@ -751,9 +766,9 @@ export default function EventMapScreen() {
           <HuntMapTopNav
             allowedGameLabel={allowedGameSummary}
             onAllowedGamePress={handleShowAllowedGame}
+            renderActionsMenu={renderHuntActionsMenu}
             title={event.title}
             onBack={() => back()}
-            onMore={() => push(`/event/${eventId}/actions`)}
             readinessLabel={
               isActiveHunt && readinessSummary?.total
                 ? `${readinessSummary.confirmed}/${readinessSummary.total} på plats`

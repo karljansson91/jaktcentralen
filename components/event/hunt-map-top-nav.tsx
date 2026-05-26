@@ -6,6 +6,7 @@ import {
   type AssignmentRouteSummaryProps,
 } from '@/components/event/assignment-route-summary';
 import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 
 const GLASS_NAV_HEIGHT = 44;
@@ -15,20 +16,24 @@ const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
 
 type HuntMapTopNavProps = {
   allowedGameLabel?: string | null;
+  actionsMenu?: ReactNode;
   onAllowedGamePress?: () => void;
   onBack: () => void;
-  onMore: () => void;
+  onMore?: () => void;
   readinessLabel?: string | null;
+  renderActionsMenu?: () => ReactNode;
   routeSummary?: AssignmentRouteSummaryProps | null;
   title: string;
 };
 
 export function HuntMapTopNav({
   allowedGameLabel,
+  actionsMenu,
   onAllowedGamePress,
   onBack,
   onMore,
   readinessLabel,
+  renderActionsMenu,
   routeSummary,
   title,
 }: HuntMapTopNavProps) {
@@ -92,16 +97,24 @@ export function HuntMapTopNav({
           </GlassSurface>
         </View>
 
-        <GlassIconButton
-          icon="ellipsis-horizontal"
-          iconSize={21}
-          onPress={onMore}
-          accessibilityLabel="Jaktåtgärder"
-          overlayColor={FLOATING_HEADER_OVERLAY}
-          surfaceClassName="size-11"
-          tintColor={FLOATING_HEADER_TINT}
-          tone="dark"
-        />
+        {renderActionsMenu ? (
+          renderActionsMenu()
+        ) : actionsMenu ? (
+          actionsMenu
+        ) : onMore ? (
+          <GlassIconButton
+            icon="ellipsis-horizontal"
+            iconSize={21}
+            onPress={onMore}
+            accessibilityLabel="Jaktåtgärder"
+            overlayColor={FLOATING_HEADER_OVERLAY}
+            surfaceClassName="size-11"
+            tintColor={FLOATING_HEADER_TINT}
+            tone="dark"
+          />
+        ) : (
+          <View style={{ width: GLASS_NAV_HEIGHT }} />
+        )}
       </View>
     </View>
   );

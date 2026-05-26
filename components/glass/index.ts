@@ -1,4 +1,5 @@
 export { GlassFloatingButton, GlassIconButton } from '@/components/glass/glass-icon-button';
+export { GlassMenuButton } from '@/components/glass/glass-menu-button';
 export {
   GlassScreenHeader,
   GlassTopNav,

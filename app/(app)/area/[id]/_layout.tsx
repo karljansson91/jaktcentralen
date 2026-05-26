@@ -49,17 +49,6 @@ export default function AreaLayout() {
         }}
       />
       <Stack.Screen
-        name="actions"
-        options={{
-          presentation: 'formSheet',
-          headerShown: false,
-          contentStyle: { backgroundColor: APP_COLORS.background },
-          sheetAllowedDetents: 'fitToContents',
-          sheetGrabberVisible: true,
-          sheetCornerRadius: 28,
-        }}
-      />
-      <Stack.Screen
         name="marker"
         options={{
           presentation: 'modal',
