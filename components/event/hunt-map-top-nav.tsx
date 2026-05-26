@@ -47,6 +47,7 @@ type HuntMapTopNavProps = {
   renderActionsMenu?: () => ReactNode;
   routeSummary?: AssignmentRouteSummaryProps | null;
   title: string;
+  windDirectionLabel?: string | null;
 };
 
 export function HuntMapTopNav({
@@ -60,6 +61,7 @@ export function HuntMapTopNav({
   renderActionsMenu,
   routeSummary,
   title,
+  windDirectionLabel,
 }: HuntMapTopNavProps) {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const hasDetails = Boolean(readinessLabel || allowedGameLabel || routeSummary);
@@ -110,6 +112,7 @@ export function HuntMapTopNav({
               accessibilityLabel={[
                 title,
                 positionSharingLabel,
+                windDirectionLabel,
                 canToggleDetails
                   ? detailsExpanded
                     ? 'Dölj jaktinfo'
@@ -140,6 +143,13 @@ export function HuntMapTopNav({
                   size={14}
                   color={positionSharingEnabled ? '#8FE8A5' : 'rgba(255, 255, 255, 0.62)'}
                 />
+              ) : null}
+              {windDirectionLabel ? (
+                <Text
+                  className="text-[11px] font-bold leading-[14px] text-white/85"
+                  numberOfLines={1}>
+                  {windDirectionLabel}
+                </Text>
               ) : null}
             </Pressable>
             {detailsExpanded && readinessLabel ? (

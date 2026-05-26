@@ -13,7 +13,6 @@ import {
   type LiveMemberPositionMarkerItem,
 } from '@/components/event/live-member-position-marker';
 import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
-import { ScentDirectionOverlay } from '@/components/event/scent-direction-overlay';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
@@ -36,6 +35,11 @@ import {
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
+import {
+  formatWindDirectionIndicator,
+  oppositeDirectionDegrees,
+} from '@/lib/wind-direction';
+import { subscribeToWindDirectionSelection } from '@/lib/wind-direction-selection';
 import { useAnimalSightingMapVisibility } from '@/hooks/use-animal-sighting-map-visibility';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
@@ -80,8 +84,7 @@ export default function EventMapScreen() {
   const currentTime = useCurrentTime();
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
-  const [scentDirectionDegrees, setScentDirectionDegrees] = useState<number | null>(null);
-  const [isSettingScentDirection, setIsSettingScentDirection] = useState(false);
+  const [windSourceDirectionDegrees, setWindSourceDirectionDegrees] = useState<number | null>(null);
   const {
     longPressActionPoint,
     setLongPressActionPoint,
@@ -141,7 +144,15 @@ export default function EventMapScreen() {
     api.eventMembers.setPositionSharingDisabled
   );
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
-  const activeScentDirectionDegrees = isActiveHunt ? scentDirectionDegrees : null;
+  const activeWindSourceDirectionDegrees = isActiveHunt ? windSourceDirectionDegrees : null;
+  const activeScentPlumeDirectionDegrees =
+    activeWindSourceDirectionDegrees == null
+      ? null
+      : oppositeDirectionDegrees(activeWindSourceDirectionDegrees);
+  const windDirectionLabel =
+    activeWindSourceDirectionDegrees == null
+      ? null
+      : formatWindDirectionIndicator(activeWindSourceDirectionDegrees);
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
   const ownPositionSharingEnabledRef = useRef(true);
   const {
@@ -159,6 +170,8 @@ export default function EventMapScreen() {
       setMapStyleURL(style.styleURL);
     });
   }, []);
+
+  useEffect(() => subscribeToWindDirectionSelection(setWindSourceDirectionDegrees), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -577,23 +590,13 @@ export default function EventMapScreen() {
     }
   }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
 
-  const handleSetScentDirection = useCallback((directionDegrees: number) => {
-    setScentDirectionDegrees(directionDegrees);
-    setIsSettingScentDirection(false);
-  }, []);
-
   const handleClearScentDirection = useCallback(() => {
-    setScentDirectionDegrees(null);
-    setIsSettingScentDirection(false);
+    setWindSourceDirectionDegrees(null);
   }, []);
 
   const handleStartSettingScentDirection = useCallback(() => {
-    setIsSettingScentDirection(true);
-  }, []);
-
-  const handleCancelSettingScentDirection = useCallback(() => {
-    setIsSettingScentDirection(false);
-  }, []);
+    push(`/event/${eventId}/wind-direction`);
+  }, [eventId, push]);
 
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
@@ -747,9 +750,9 @@ export default function EventMapScreen() {
           </ShapeSource>
         )}
 
-        {currentCoordinate && activeScentDirectionDegrees != null ? (
+        {currentCoordinate && activeScentPlumeDirectionDegrees != null ? (
           <ScentPlumeLayer
-            directionDegrees={activeScentDirectionDegrees}
+            directionDegrees={activeScentPlumeDirectionDegrees}
             originCoordinate={currentCoordinate}
           />
         ) : null}
@@ -801,6 +804,7 @@ export default function EventMapScreen() {
             forceDetailsVisible={visibleMeasurementActive}
             renderActionsMenu={renderHuntActionsMenu}
             title={event.title}
+            windDirectionLabel={windDirectionLabel}
             onBack={() => back()}
             positionSharingEnabled={isActiveHunt ? isOwnPositionSharingEnabled : undefined}
             readinessLabel={
@@ -867,8 +871,8 @@ export default function EventMapScreen() {
                   activeAssignmentTrailTargetKey === currentUserAssignedStation?.targetKey,
               }}
               scent={{
-                hasDirection: activeScentDirectionDegrees != null,
-                isSetting: isActiveHunt && isSettingScentDirection,
+                hasDirection: activeWindSourceDirectionDegrees != null,
+                isSetting: false,
                 onClear: handleClearScentDirection,
                 onSet: handleStartSettingScentDirection,
               }}
@@ -909,12 +913,6 @@ export default function EventMapScreen() {
           ) : null}
         </View>
 
-        <ScentDirectionOverlay
-          active={isActiveHunt && isSettingScentDirection}
-          bottomInset={Math.max(insets.bottom, 20)}
-          onCancel={handleCancelSettingScentDirection}
-          onDirectionSet={handleSetScentDirection}
-        />
       </View>
 
       <HuntMapLongPressActionSheet

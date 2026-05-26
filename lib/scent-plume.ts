@@ -1,4 +1,5 @@
 import type { LngLat } from '@/lib/geo';
+import { normalizeDegrees } from '@/lib/wind-direction';
 
 const EARTH_RADIUS_METERS = 6_371_000;
 const DEFAULT_SEGMENTS = 10;
@@ -9,10 +10,6 @@ function toRadians(degrees: number) {
 
 function toDegrees(radians: number) {
   return (radians * 180) / Math.PI;
-}
-
-function normalizeDegrees(degrees: number) {
-  return ((degrees % 360) + 360) % 360;
 }
 
 function coordinateAtBearing(origin: LngLat, bearingDegrees: number, distanceMeters: number): LngLat {

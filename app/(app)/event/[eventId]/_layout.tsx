@@ -26,6 +26,14 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
+        name="wind-direction"
+        options={{
+          presentation: 'fullScreenModal',
+          headerShown: false,
+          contentStyle: { backgroundColor: '#FCF8F2' },
+        }}
+      />
+      <Stack.Screen
         name="station"
         options={{
           presentation: 'formSheet',
