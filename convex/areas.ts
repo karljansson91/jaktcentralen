@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { deleteEventCascade } from "./eventCleanup";
 import { getCurrentUser } from "./helpers";
+
+function isAreaDeleted(area: { deletedAt?: number }) {
+  return area.deletedAt !== undefined;
+}
 
 export const create = mutation({
   args: {
@@ -30,8 +33,8 @@ export const get = query({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const area = await ctx.db.get(args.areaId);
-    if (!area) {
-      throw new Error("Area not found");
+    if (!area || isAreaDeleted(area)) {
+      return null;
     }
     if (area.creatorId !== user._id) {
       throw new Error("Not authorized");
@@ -52,7 +55,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const area = await ctx.db.get(args.areaId);
-    if (!area) {
+    if (!area || isAreaDeleted(area)) {
       throw new Error("Area not found");
     }
     if (area.creatorId !== user._id) {
@@ -69,30 +72,17 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const area = await ctx.db.get(args.areaId);
-    if (!area) {
+    if (!area || isAreaDeleted(area)) {
       throw new Error("Area not found");
     }
     if (area.creatorId !== user._id) {
       throw new Error("Not authorized");
     }
 
-    const points = await ctx.db
-      .query("areaPoints")
-      .withIndex("by_areaId", (q) => q.eq("areaId", args.areaId))
-      .collect();
-    for (const p of points) {
-      await ctx.db.delete(p._id);
-    }
-
-    const events = await ctx.db
-      .query("events")
-      .withIndex("by_areaId", (q) => q.eq("areaId", args.areaId))
-      .collect();
-    for (const event of events) {
-      await deleteEventCascade(ctx, event._id);
-    }
-
-    await ctx.db.delete(args.areaId);
+    await ctx.db.patch(args.areaId, {
+      deletedAt: Date.now(),
+      deletedByUserId: user._id,
+    });
   },
 });
 
@@ -132,9 +122,11 @@ export const listMyAreas = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
 
-    return await ctx.db
+    const areas = await ctx.db
       .query("areas")
       .withIndex("by_creatorId", (q) => q.eq("creatorId", user._id))
-      .take(50);
+      .take(200);
+
+    return areas.filter((area) => !isAreaDeleted(area)).slice(0, 50);
   },
 });

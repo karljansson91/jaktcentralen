@@ -1,3 +1,4 @@
+import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
 import { GlassScreenHeader, useGlassHeaderSpacing } from '@/components/glass';
 import { Button, Card, CardDescription, CardHeader, CardTitle, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
@@ -47,7 +48,11 @@ export default function EventsListScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { back, push } = useRouter();
   const { insets } = useGlassHeaderSpacing();
-  const events = useQuery(api.events.listByArea, { areaId: id as Id<'areas'> });
+  const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
+  const events = useQuery(
+    api.events.listByArea,
+    area ? { areaId: id as Id<'areas'> } : 'skip'
+  );
   const openEvent = useCallback(
     (eventId: Id<'events'>) => {
       back();
@@ -59,6 +64,18 @@ export default function EventsListScreen() {
     ({ item }: ListRenderItemInfo<AreaEventItem>) => <EventRow item={item} onOpen={openEvent} />,
     [openEvent]
   );
+
+  if (area === undefined || (area && events === undefined)) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="small" color={APP_COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (area === null) {
+    return <AreaUnavailableState message="Området kan ha tagits bort från startsidan." />;
+  }
 
   return (
     <View className="flex-1 bg-background">

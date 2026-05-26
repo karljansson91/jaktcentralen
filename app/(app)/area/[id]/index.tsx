@@ -1,8 +1,8 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AreaActionsMenu } from '@/components/area/area-actions-menu';
+import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
 import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
-import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { getAreaFeatureTargetKey } from '@/lib/area-features';
@@ -35,7 +35,10 @@ export default function ViewAreaScreen() {
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
-  const areaFeatures = useQuery(api.areaFeatures.listByArea, { areaId: id as Id<'areas'> });
+  const areaFeatures = useQuery(
+    api.areaFeatures.listByArea,
+    area ? { areaId: id as Id<'areas'> } : 'skip'
+  );
   const {
     draggedPointOverrides,
     handleDropFeature,
@@ -138,7 +141,7 @@ export default function ViewAreaScreen() {
     }
   }, []);
 
-  if (area === undefined || areaFeatures === undefined) {
+  if (area === undefined || (area && areaFeatures === undefined)) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="small" color={APP_COLORS.primary} />
@@ -147,11 +150,7 @@ export default function ViewAreaScreen() {
   }
 
   if (area === null) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background p-6">
-        <Text variant="h3">Området hittades inte</Text>
-      </View>
-    );
+    return <AreaUnavailableState message="Området kan ha tagits bort från startsidan." />;
   }
 
   return (

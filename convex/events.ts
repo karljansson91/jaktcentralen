@@ -156,7 +156,7 @@ export const create = mutation({
 
     // Verify caller owns the area
     const area = await ctx.db.get(args.areaId);
-    if (!area) {
+    if (!area || area.deletedAt !== undefined) {
       throw new Error("Area not found");
     }
     if (area.creatorId !== user._id) {
@@ -383,7 +383,7 @@ export const listByArea = query({
 
     // Verify caller owns the area
     const area = await ctx.db.get(args.areaId);
-    if (!area) {
+    if (!area || area.deletedAt !== undefined) {
       throw new Error("Area not found");
     }
     if (area.creatorId !== user._id) {

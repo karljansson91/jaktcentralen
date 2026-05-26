@@ -1,5 +1,5 @@
+import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
 import { LngLat, PolygonDrawer } from '@/components/PolygonDrawer';
-import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useMutation, useQuery } from 'convex/react';
@@ -42,11 +42,7 @@ export default function RedrawAreaScreen() {
   }
 
   if (area === null) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background p-6">
-        <Text>Området hittades inte.</Text>
-      </View>
-    );
+    return <AreaUnavailableState message="Området kan ha tagits bort från startsidan." />;
   }
 
   return (

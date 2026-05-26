@@ -47,6 +47,8 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     creatorId: v.id("users"),
+    deletedAt: v.optional(v.number()),
+    deletedByUserId: v.optional(v.id("users")),
     polygon: v.array(
       v.object({ latitude: v.number(), longitude: v.number() })
     ),

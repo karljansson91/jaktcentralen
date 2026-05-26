@@ -1,3 +1,4 @@
+import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
 import { Button, Card, CardHeader, CardTitle, Input, Text } from '@/components/ui';
 import { AllowedGameEditor } from '@/components/event/allowed-game-editor';
 import { EventDatePickerField } from '@/components/event/event-date-picker-field';
@@ -14,7 +15,15 @@ import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function normalizeDate(date: Date): Date {
@@ -35,7 +44,7 @@ export default function CreateEventScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
-  const friends = useQuery(api.friends.listFriends);
+  const friends = useQuery(api.friends.listFriends, area ? {} : 'skip');
   const createEvent = useMutation(api.events.create);
   const inviteMember = useMutation(api.eventMembers.invite);
 
@@ -107,6 +116,18 @@ export default function CreateEventScreen() {
       return next;
     });
   }, []);
+
+  if (area === undefined) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="small" color="#2c4b31" />
+      </View>
+    );
+  }
+
+  if (area === null) {
+    return <AreaUnavailableState message="Det går inte att skapa en jakt från ett borttaget område." />;
+  }
 
   return (
     <KeyboardAvoidingView

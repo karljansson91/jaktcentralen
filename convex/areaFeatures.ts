@@ -43,7 +43,7 @@ async function verifyAreaCreator(
   userId: Id<"users">
 ) {
   const area = await ctx.db.get(areaId);
-  if (!area) {
+  if (!area || area.deletedAt !== undefined) {
     throw new Error("Area not found");
   }
   if (area.creatorId !== userId) {
