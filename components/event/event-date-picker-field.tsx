@@ -1,7 +1,7 @@
 import { Text } from '@/components/ui';
 import { APP_COLORS } from '@/lib/theme';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 type EventDatePickerFieldProps = {
   label: string;
@@ -36,17 +36,20 @@ export function EventDatePickerField({
         ) : null}
       </View>
 
-      <DateTimePicker
-        value={value}
-        mode="date"
-        display="compact"
-        presentation="inline"
-        locale="sv_SE"
-        accentColor={APP_COLORS.primary}
-        positiveButton={{ label: 'Välj' }}
-        negativeButton={{ label: 'Avbryt' }}
-        onValueChange={(_, date) => onValueChange(date)}
-      />
+      <View className="items-start">
+        <DateTimePicker
+          value={value}
+          mode="date"
+          display="compact"
+          presentation="inline"
+          locale="sv_SE"
+          accentColor={APP_COLORS.primary}
+          positiveButton={{ label: 'Välj' }}
+          negativeButton={{ label: 'Avbryt' }}
+          style={styles.datePicker}
+          onValueChange={(_, date) => onValueChange(date)}
+        />
+      </View>
 
       {helperText ? (
         <Text className="text-sm text-muted-foreground">{helperText}</Text>
@@ -54,3 +57,9 @@ export function EventDatePickerField({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  datePicker: {
+    alignSelf: 'flex-start',
+  },
+});
