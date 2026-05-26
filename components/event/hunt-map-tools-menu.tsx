@@ -11,6 +11,10 @@ const ACTION_CLEAR_IN_POSITION = 'clear-in-position';
 const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
 const ACTION_CLEAR_SCENT_DIRECTION = 'clear-scent-direction';
 
+function checkedTitle(title: string, checked: boolean) {
+  return checked ? `${title} ✓` : title;
+}
+
 type HuntMapToolsMenuProps = {
   inPosition: {
     available: boolean;
@@ -76,14 +80,15 @@ export function HuntMapToolsMenu({
         attributes: { hidden: !routeAvailable },
         id: ACTION_TOGGLE_ROUTE,
         image: 'point.topleft.down.curvedto.point.bottomright.up',
-        state: routeVisible ? 'on' : 'off',
-        title: 'Visa väg till pass',
+        title: checkedTitle('Visa väg till pass', routeVisible),
       },
       {
         id: ACTION_SET_SCENT_DIRECTION,
         image: 'wind',
-        state: isSettingScentDirection || hasScentDirection ? 'on' : 'off',
-        title: hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+        title: checkedTitle(
+          hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+          isSettingScentDirection || hasScentDirection
+        ),
       },
       {
         attributes: { hidden: !hasScentDirection },
@@ -94,14 +99,12 @@ export function HuntMapToolsMenu({
       {
         id: ACTION_TOGGLE_OTHER_POSITIONS,
         image: 'person.2',
-        state: showOthers ? 'on' : 'off',
-        title: 'Visa andras positioner',
+        title: checkedTitle('Visa andras positioner', showOthers),
       },
       {
         id: ACTION_TOGGLE_OWN_SHARING,
         image: ownSharingEnabled ? 'location.fill' : 'location.slash',
-        state: ownSharingEnabled ? 'on' : 'off',
-        title: 'Dela min position',
+        title: checkedTitle('Dela min position', ownSharingEnabled),
       },
       {
         attributes: { hidden: !inPositionAvailable },
