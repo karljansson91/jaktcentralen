@@ -2,22 +2,27 @@ import type {
   GlassMenuButtonIcon,
   GlassMenuButtonProps,
 } from '@/components/glass/glass-menu-button.types';
+import { resolveGlassMenuButtonSize } from '@/components/glass/glass-menu-button-utils';
 import { APP_COLORS } from '@/lib/theme';
 import { type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
 import { Button, Host, Menu, Section, Toggle } from '@expo/ui/swift-ui';
 import {
   accessibilityLabel as accessibilityLabelModifier,
   buttonStyle,
+  containerShape,
   controlSize,
+  contentShape,
+  cornerRadius,
   disabled as disabledModifier,
   foregroundColor as foregroundColorModifier,
   frame,
   labelStyle,
+  shapes,
   tint as tintModifier,
   type ViewModifier,
 } from '@expo/ui/swift-ui/modifiers';
 import type { ReactNode } from 'react';
-import { StyleSheet, type ColorValue, type StyleProp, type ViewStyle } from 'react-native';
+import type { ColorValue } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 function actionId(action: MenuAction): string {
@@ -108,14 +113,6 @@ const ICON_TO_SF_SYMBOL: Partial<Record<GlassMenuButtonIcon, SFSymbol>> = {
   'map-outline': 'map',
 };
 
-function resolvedButtonSize(buttonSize: number | undefined, style: StyleProp<ViewStyle>) {
-  const flattenedStyle = StyleSheet.flatten(style);
-  const styleWidth = typeof flattenedStyle?.width === 'number' ? flattenedStyle.width : null;
-  const styleHeight = typeof flattenedStyle?.height === 'number' ? flattenedStyle.height : null;
-
-  return buttonSize ?? (Math.max(styleWidth ?? 0, styleHeight ?? 0) || 44);
-}
-
 export function GlassMenuButton({
   accessibilityLabel,
   actions,
@@ -132,15 +129,22 @@ export function GlassMenuButton({
   title,
   tone = 'light',
 }: GlassMenuButtonProps) {
-  const size = resolvedButtonSize(explicitButtonSize, style);
+  const size = resolveGlassMenuButtonSize(explicitButtonSize, style);
   const systemImage = ICON_TO_SF_SYMBOL[icon] ?? 'ellipsis';
   const iconTint = tintColor ?? (tone === 'dark' ? APP_COLORS.surface : APP_COLORS.text);
   const control = iconSize >= 24 || size >= 56 ? 'large' : 'regular';
   const items = actions.map((action) => renderAction(action, onPressAction));
   const body = title ? <Section title={title}>{items}</Section> : items;
+  const circleShape = shapes.circle();
+  const fixedCircleStyle = {
+    borderRadius: size / 2,
+    height: size,
+    overflow: 'hidden' as const,
+    width: size,
+  };
 
   return (
-    <Host matchContents style={[{ height: size, width: size }, style]}>
+    <Host matchContents style={[style, fixedCircleStyle]}>
       <Menu
         label={accessibilityLabel}
         systemImage={systemImage}
@@ -149,6 +153,9 @@ export function GlassMenuButton({
           controlSize(control),
           labelStyle('iconOnly'),
           frame({ height: size, width: size }),
+          containerShape(circleShape),
+          contentShape(circleShape),
+          cornerRadius(size / 2),
           tintModifier(iconTint),
           accessibilityLabelModifier(accessibilityLabel),
         ]}>

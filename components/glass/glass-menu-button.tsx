@@ -1,5 +1,6 @@
 import { GlassSurface } from '@/components/glass/glass-surface';
 import type { GlassMenuButtonProps } from '@/components/glass/glass-menu-button.types';
+import { resolveGlassMenuButtonSize } from '@/components/glass/glass-menu-button-utils';
 import { APP_COLORS } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +24,8 @@ export function GlassMenuButton({
   tone = 'light',
 }: GlassMenuButtonProps) {
   const iconColor = tone === 'dark' ? APP_COLORS.surface : APP_COLORS.text;
-  const buttonSizeStyle = buttonSize ? { height: buttonSize, width: buttonSize } : undefined;
+  const size = resolveGlassMenuButtonSize(buttonSize, style);
+  const buttonSizeStyle = { borderRadius: size / 2, height: size, width: size };
 
   return (
     <MenuView
@@ -35,16 +37,16 @@ export function GlassMenuButton({
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         accessible
-        className={cn(buttonSize ? undefined : 'size-11', className)}
+        className={cn(className)}
         style={buttonSizeStyle}>
         <GlassSurface
           interactive
           overlayColor={overlayColor}
           tone={tone}
           tintColor={tintColor}
-          className={cn(buttonSize ? 'rounded-full' : 'size-11 rounded-full', surfaceClassName)}
+          className={cn('rounded-full', surfaceClassName)}
           contentClassName="h-full w-full items-center justify-center"
-          style={buttonSizeStyle ? [buttonSizeStyle, style] : style}>
+          style={[style, buttonSizeStyle]}>
           <Ionicons name={icon} size={iconSize} color={iconColor} />
         </GlassSurface>
       </View>
