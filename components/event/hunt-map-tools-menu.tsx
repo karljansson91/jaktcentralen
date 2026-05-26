@@ -1,19 +1,10 @@
-import { GlassMenuButton } from '@/components/glass/glass-menu-button';
-import { type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
-import { useCallback, useMemo } from 'react';
-
-const ACTION_LOCATE = 'locate';
-const ACTION_TOGGLE_ROUTE = 'toggle-route';
-const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
-const ACTION_TOGGLE_OWN_SHARING = 'toggle-own-sharing';
-const ACTION_MARK_IN_POSITION = 'mark-in-position';
-const ACTION_CLEAR_IN_POSITION = 'clear-in-position';
-const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
-const ACTION_CLEAR_SCENT_DIRECTION = 'clear-scent-direction';
-
-function checkedTitle(title: string, checked: boolean) {
-  return checked ? `${title} ✓` : title;
-}
+import { GlassSurface } from '@/components/glass/glass-surface';
+import { Text } from '@/components/ui';
+import { APP_COLORS } from '@/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type HuntMapToolsMenuProps = {
   inPosition: {
@@ -42,6 +33,15 @@ type HuntMapToolsMenuProps = {
   };
 };
 
+type HuntMapToolAction = {
+  checked?: boolean;
+  hidden?: boolean;
+  icon: keyof typeof Ionicons.glyphMap;
+  id: string;
+  onPress: () => void;
+  title: string;
+};
+
 export function HuntMapToolsMenu({
   inPosition,
   onLocate,
@@ -49,134 +49,145 @@ export function HuntMapToolsMenu({
   route,
   scent,
 }: HuntMapToolsMenuProps) {
-  const {
-    available: inPositionAvailable,
-    marked: inPositionMarked,
-    onClear,
-    onMark,
-  } = inPosition;
-  const {
-    onToggleOthers,
-    onToggleOwnSharing,
-    ownSharingEnabled,
-    showOthers,
-  } = positions;
-  const { available: routeAvailable, onToggle: onToggleRoute, visible: routeVisible } = route;
-  const {
-    hasDirection: hasScentDirection,
-    isSetting: isSettingScentDirection,
-    onClear: onClearScentDirection,
-    onSet: onSetScentDirection,
-  } = scent;
+  const insets = useSafeAreaInsets();
+  const [open, setOpen] = useState(false);
 
-  const actions = useMemo<MenuAction[]>(
+  const actions = useMemo<HuntMapToolAction[]>(
     () => [
       {
-        id: ACTION_LOCATE,
-        image: 'location',
-        title: 'Centrera på mig',
+        hidden: !inPosition.available,
+        icon: inPosition.marked ? 'close-circle-outline' : 'checkmark-circle-outline',
+        id: inPosition.marked ? 'clear-in-position' : 'mark-in-position',
+        onPress: inPosition.marked ? inPosition.onClear : inPosition.onMark,
+        title: inPosition.marked ? 'Ta bort på plats' : 'Markera mig på plats',
       },
       {
-        attributes: { hidden: !routeAvailable },
-        id: ACTION_TOGGLE_ROUTE,
-        image: 'point.topleft.down.curvedto.point.bottomright.up',
-        title: checkedTitle('Visa väg till pass', routeVisible),
+        checked: positions.ownSharingEnabled,
+        icon: positions.ownSharingEnabled ? 'navigate' : 'navigate-outline',
+        id: 'toggle-own-sharing',
+        onPress: positions.onToggleOwnSharing,
+        title: 'Dela min position',
       },
       {
-        id: ACTION_SET_SCENT_DIRECTION,
-        image: 'wind',
-        title: checkedTitle(
-          hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
-          isSettingScentDirection || hasScentDirection
-        ),
+        checked: positions.showOthers,
+        icon: 'people-outline',
+        id: 'toggle-other-positions',
+        onPress: positions.onToggleOthers,
+        title: 'Visa andras positioner',
       },
       {
-        attributes: { hidden: !hasScentDirection },
-        id: ACTION_CLEAR_SCENT_DIRECTION,
-        image: 'xmark.circle',
+        checked: scent.isSetting || scent.hasDirection,
+        icon: 'swap-vertical-outline',
+        id: 'set-scent-direction',
+        onPress: scent.onSet,
+        title: scent.hasDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+      },
+      {
+        hidden: !scent.hasDirection,
+        icon: 'close-circle-outline',
+        id: 'clear-scent-direction',
+        onPress: scent.onClear,
         title: 'Rensa vindriktning',
       },
       {
-        id: ACTION_TOGGLE_OTHER_POSITIONS,
-        image: 'person.2',
-        title: checkedTitle('Visa andras positioner', showOthers),
+        checked: route.visible,
+        hidden: !route.available,
+        icon: 'git-branch-outline',
+        id: 'toggle-route',
+        onPress: route.onToggle,
+        title: 'Visa väg till pass',
       },
       {
-        id: ACTION_TOGGLE_OWN_SHARING,
-        image: ownSharingEnabled ? 'location.fill' : 'location.slash',
-        title: checkedTitle('Dela min position', ownSharingEnabled),
-      },
-      {
-        attributes: { hidden: !inPositionAvailable },
-        id: inPositionMarked ? ACTION_CLEAR_IN_POSITION : ACTION_MARK_IN_POSITION,
-        image: inPositionMarked ? 'xmark.circle' : 'checkmark.circle',
-        title: inPositionMarked ? 'Ta bort på plats' : 'Markera mig på plats',
+        icon: 'locate-outline',
+        id: 'locate',
+        onPress: onLocate,
+        title: 'Centrera på mig',
       },
     ],
-    [
-      inPositionAvailable,
-      inPositionMarked,
-      hasScentDirection,
-      isSettingScentDirection,
-      ownSharingEnabled,
-      routeAvailable,
-      routeVisible,
-      showOthers,
-    ]
+    [inPosition, onLocate, positions, route, scent]
   );
 
-  const handlePressAction = useCallback(
-    (event: NativeActionEvent) => {
-      switch (event.nativeEvent.event) {
-        case ACTION_LOCATE:
-          onLocate();
-          break;
-        case ACTION_TOGGLE_ROUTE:
-          onToggleRoute();
-          break;
-        case ACTION_SET_SCENT_DIRECTION:
-          onSetScentDirection();
-          break;
-        case ACTION_CLEAR_SCENT_DIRECTION:
-          onClearScentDirection();
-          break;
-        case ACTION_TOGGLE_OTHER_POSITIONS:
-          onToggleOthers();
-          break;
-        case ACTION_TOGGLE_OWN_SHARING:
-          onToggleOwnSharing();
-          break;
-        case ACTION_MARK_IN_POSITION:
-          onMark();
-          break;
-        case ACTION_CLEAR_IN_POSITION:
-          onClear();
-          break;
-      }
-    },
-    [
-      onLocate,
-      onClear,
-      onMark,
-      onClearScentDirection,
-      onSetScentDirection,
-      onToggleOthers,
-      onToggleOwnSharing,
-      onToggleRoute,
-    ]
-  );
+  function handleActionPress(action: HuntMapToolAction) {
+    setOpen(false);
+    requestAnimationFrame(action.onPress);
+  }
 
   return (
-    <GlassMenuButton
-      accessibilityLabel="Kartverktyg"
-      actions={actions}
-      className="size-14"
-      icon="map-outline"
-      iconSize={24}
-      onPressAction={handlePressAction}
-      surfaceClassName="size-14"
-      title="Kartverktyg"
-      tone="dark"
-    />
+    <>
+      <Pressable
+        accessibilityLabel="Kartverktyg"
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(true)}>
+        <GlassSurface
+          interactive
+          tone="dark"
+          className="size-14 rounded-full"
+          contentClassName="h-full w-full items-center justify-center">
+          <Ionicons name="map-outline" size={24} color={APP_COLORS.surface} />
+        </GlassSurface>
+      </Pressable>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+        transparent
+        visible={open}>
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <Pressable
+            accessibilityLabel="Stäng kartverktyg"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setOpen(false)}
+          />
+          <GlassSurface
+            tone="light"
+            className="rounded-[34px]"
+            contentClassName="py-4"
+            style={[
+              styles.menu,
+              {
+                bottom: Math.max(insets.bottom, 20) + 88,
+              },
+            ]}>
+            <Text className="px-6 pb-3 text-[17px] font-semibold text-muted-foreground">
+              Kartverktyg
+            </Text>
+            <View className="gap-1">
+              {actions.map((action) =>
+                action.hidden ? null : (
+                  <Pressable
+                    key={action.id}
+                    accessibilityRole="menuitem"
+                    onPress={() => handleActionPress(action)}
+                    className="min-h-[52px] flex-row items-center px-5">
+                    <View className="w-11 items-center">
+                      <Ionicons name={action.icon} size={27} color={APP_COLORS.text} />
+                    </View>
+                    <Text className="min-w-0 flex-1 text-[22px] leading-[28px] text-foreground">
+                      {action.title}
+                    </Text>
+                    <View className="w-9 items-end">
+                      {action.checked ? (
+                        <Ionicons name="checkmark" size={25} color={APP_COLORS.text} />
+                      ) : null}
+                    </View>
+                  </Pressable>
+                )
+              )}
+            </View>
+          </GlassSurface>
+        </View>
+      </Modal>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  menu: {
+    boxShadow: '0 16px 24px rgba(31, 42, 36, 0.16)',
+    left: 24,
+    overflow: 'hidden',
+    position: 'absolute',
+    width: 304,
+  },
+});
