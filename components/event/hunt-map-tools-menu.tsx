@@ -1,10 +1,15 @@
-import { GlassSurface } from '@/components/glass/glass-surface';
-import { Text } from '@/components/ui';
-import { APP_COLORS } from '@/lib/theme';
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlassMenuButton } from '@/components/glass/glass-menu-button';
+import { type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
+import { useCallback, useMemo } from 'react';
+
+const ACTION_MARK_IN_POSITION = 'mark-in-position';
+const ACTION_CLEAR_IN_POSITION = 'clear-in-position';
+const ACTION_TOGGLE_OWN_SHARING = 'toggle-own-sharing';
+const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
+const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
+const ACTION_CLEAR_SCENT_DIRECTION = 'clear-scent-direction';
+const ACTION_TOGGLE_ROUTE = 'toggle-route';
+const ACTION_LOCATE = 'locate';
 
 type HuntMapToolsMenuProps = {
   inPosition: {
@@ -33,15 +38,6 @@ type HuntMapToolsMenuProps = {
   };
 };
 
-type HuntMapToolAction = {
-  checked?: boolean;
-  hidden?: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
-  id: string;
-  onPress: () => void;
-  title: string;
-};
-
 export function HuntMapToolsMenu({
   inPosition,
   onLocate,
@@ -49,144 +45,114 @@ export function HuntMapToolsMenu({
   route,
   scent,
 }: HuntMapToolsMenuProps) {
-  const insets = useSafeAreaInsets();
-  const [open, setOpen] = useState(false);
-
-  const actions = useMemo<HuntMapToolAction[]>(
+  const actions = useMemo<MenuAction[]>(
     () => [
       {
-        hidden: !inPosition.available,
-        icon: inPosition.marked ? 'close-circle-outline' : 'checkmark-circle-outline',
-        id: inPosition.marked ? 'clear-in-position' : 'mark-in-position',
-        onPress: inPosition.marked ? inPosition.onClear : inPosition.onMark,
+        attributes: { hidden: !inPosition.available },
+        id: inPosition.marked ? ACTION_CLEAR_IN_POSITION : ACTION_MARK_IN_POSITION,
+        image: inPosition.marked ? 'xmark.circle' : 'checkmark.circle',
         title: inPosition.marked ? 'Ta bort på plats' : 'Markera mig på plats',
       },
       {
-        checked: positions.ownSharingEnabled,
-        icon: positions.ownSharingEnabled ? 'navigate' : 'navigate-outline',
-        id: 'toggle-own-sharing',
-        onPress: positions.onToggleOwnSharing,
+        id: ACTION_TOGGLE_OWN_SHARING,
+        image: positions.ownSharingEnabled ? 'location.north.fill' : 'location.north',
+        state: positions.ownSharingEnabled ? 'on' : 'off',
         title: 'Dela min position',
       },
       {
-        checked: positions.showOthers,
-        icon: 'people-outline',
-        id: 'toggle-other-positions',
-        onPress: positions.onToggleOthers,
+        id: ACTION_TOGGLE_OTHER_POSITIONS,
+        image: 'person.2',
+        state: positions.showOthers ? 'on' : 'off',
         title: 'Visa andras positioner',
       },
       {
-        checked: scent.isSetting || scent.hasDirection,
-        icon: 'swap-vertical-outline',
-        id: 'set-scent-direction',
-        onPress: scent.onSet,
+        id: ACTION_SET_SCENT_DIRECTION,
+        image: 'wind',
+        state: scent.isSetting || scent.hasDirection ? 'on' : 'off',
         title: scent.hasDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
       },
       {
-        hidden: !scent.hasDirection,
-        icon: 'close-circle-outline',
-        id: 'clear-scent-direction',
-        onPress: scent.onClear,
+        attributes: { hidden: !scent.hasDirection },
+        id: ACTION_CLEAR_SCENT_DIRECTION,
+        image: 'xmark.circle',
         title: 'Rensa vindriktning',
       },
       {
-        checked: route.visible,
-        hidden: !route.available,
-        icon: 'git-branch-outline',
-        id: 'toggle-route',
-        onPress: route.onToggle,
+        attributes: { hidden: !route.available },
+        id: ACTION_TOGGLE_ROUTE,
+        image: 'figure.walk',
+        state: route.visible ? 'on' : 'off',
         title: 'Visa väg till pass',
       },
       {
-        icon: 'locate-outline',
-        id: 'locate',
-        onPress: onLocate,
+        id: ACTION_LOCATE,
+        image: 'scope',
         title: 'Centrera på mig',
       },
     ],
-    [inPosition, onLocate, positions, route, scent]
+    [
+      inPosition.available,
+      inPosition.marked,
+      positions.ownSharingEnabled,
+      positions.showOthers,
+      route.available,
+      route.visible,
+      scent.hasDirection,
+      scent.isSetting,
+    ],
   );
 
-  function handleActionPress(action: HuntMapToolAction) {
-    setOpen(false);
-    requestAnimationFrame(action.onPress);
-  }
+  const handlePressAction = useCallback(
+    (event: NativeActionEvent) => {
+      switch (event.nativeEvent.event) {
+        case ACTION_MARK_IN_POSITION:
+          requestAnimationFrame(inPosition.onMark);
+          break;
+        case ACTION_CLEAR_IN_POSITION:
+          requestAnimationFrame(inPosition.onClear);
+          break;
+        case ACTION_TOGGLE_OWN_SHARING:
+          requestAnimationFrame(positions.onToggleOwnSharing);
+          break;
+        case ACTION_TOGGLE_OTHER_POSITIONS:
+          requestAnimationFrame(positions.onToggleOthers);
+          break;
+        case ACTION_SET_SCENT_DIRECTION:
+          requestAnimationFrame(scent.onSet);
+          break;
+        case ACTION_CLEAR_SCENT_DIRECTION:
+          requestAnimationFrame(scent.onClear);
+          break;
+        case ACTION_TOGGLE_ROUTE:
+          requestAnimationFrame(route.onToggle);
+          break;
+        case ACTION_LOCATE:
+          requestAnimationFrame(onLocate);
+          break;
+      }
+    },
+    [
+      inPosition.onClear,
+      inPosition.onMark,
+      onLocate,
+      positions.onToggleOthers,
+      positions.onToggleOwnSharing,
+      route.onToggle,
+      scent.onClear,
+      scent.onSet,
+    ],
+  );
 
   return (
-    <>
-      <Pressable
-        accessibilityLabel="Kartverktyg"
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={() => setOpen(true)}>
-        <GlassSurface
-          interactive
-          className="size-14 rounded-full"
-          contentClassName="h-full w-full items-center justify-center">
-          <Ionicons name="map-outline" size={24} color={APP_COLORS.text} />
-        </GlassSurface>
-      </Pressable>
-
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setOpen(false)}
-        transparent
-        visible={open}>
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Pressable
-            accessibilityLabel="Stäng kartverktyg"
-            style={StyleSheet.absoluteFill}
-            onPress={() => setOpen(false)}
-          />
-          <GlassSurface
-            tone="light"
-            className="rounded-[34px]"
-            contentClassName="py-4"
-            style={[
-              styles.menu,
-              {
-                bottom: Math.max(insets.bottom, 20) + 88,
-              },
-            ]}>
-            <Text className="px-6 pb-3 text-[17px] font-semibold text-muted-foreground">
-              Kartverktyg
-            </Text>
-            <View className="gap-1">
-              {actions.map((action) =>
-                action.hidden ? null : (
-                  <Pressable
-                    key={action.id}
-                    accessibilityRole="menuitem"
-                    onPress={() => handleActionPress(action)}
-                    className="min-h-[52px] flex-row items-center px-5">
-                    <View className="w-11 items-center">
-                      <Ionicons name={action.icon} size={27} color={APP_COLORS.text} />
-                    </View>
-                    <Text className="min-w-0 flex-1 text-[22px] leading-[28px] text-foreground">
-                      {action.title}
-                    </Text>
-                    <View className="w-9 items-end">
-                      {action.checked ? (
-                        <Ionicons name="checkmark" size={25} color={APP_COLORS.text} />
-                      ) : null}
-                    </View>
-                  </Pressable>
-                )
-              )}
-            </View>
-          </GlassSurface>
-        </View>
-      </Modal>
-    </>
+    <GlassMenuButton
+      accessibilityLabel="Kartverktyg"
+      actions={actions}
+      className="size-14"
+      icon="map-outline"
+      iconSize={24}
+      onPressAction={handlePressAction}
+      surfaceClassName="size-14"
+      title="Kartverktyg"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  menu: {
-    boxShadow: '0 16px 24px rgba(31, 42, 36, 0.16)',
-    left: 24,
-    overflow: 'hidden',
-    position: 'absolute',
-    width: 304,
-  },
-});

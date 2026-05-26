@@ -6,13 +6,14 @@ import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer'
 import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
+import { GlassIconButton } from '@/components/glass';
 import {
   LiveMemberPositionMarker,
   type LiveMemberPositionMarkerItem,
 } from '@/components/event/live-member-position-marker';
 import { ScentDirectionOverlay } from '@/components/event/scent-direction-overlay';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
-import { IconButton, Text } from '@/components/ui';
+import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import {
@@ -42,7 +43,6 @@ import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
-import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
   FillLayer,
@@ -828,30 +828,34 @@ export default function EventMapScreen() {
         <View
           className="absolute right-6"
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
-          <IconButton
-            size="lg"
+          <GlassIconButton
             onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
             accessibilityLabel={
               unreadMessageCount
                 ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`
                 : 'Öppna chat'
             }
-            className="relative size-16 bg-primary"
+            className="relative size-16"
+            color={APP_COLORS.surface}
+            icon="chatbubbles"
+            iconSize={29}
+            overlayColor="rgba(29, 95, 43, 0.22)"
+            surfaceClassName="size-16"
+            tintColor={APP_COLORS.primary}
+            tone="dark"
             style={{
-              backgroundColor: APP_COLORS.primary,
               borderColor: 'rgba(254, 253, 251, 0.7)',
               borderWidth: 1,
               boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
-            }}>
-            <Ionicons name="chatbubbles" size={29} color={APP_COLORS.surface} />
-            {unreadMessageCount ? (
-              <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
-                <Text className="text-[11px] font-bold leading-4 text-white">
-                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
-                </Text>
-              </View>
-            ) : null}
-          </IconButton>
+            }}
+          />
+          {unreadMessageCount ? (
+            <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
+              <Text className="text-[11px] font-bold leading-4 text-white">
+                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {pendingAnimalSighting ? (
