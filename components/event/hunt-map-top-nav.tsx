@@ -39,6 +39,7 @@ const HEADER_DETAILS_ANIMATION = {
 type HuntMapTopNavProps = {
   allowedGameLabel?: string | null;
   actionsMenu?: ReactNode;
+  forceDetailsVisible?: boolean;
   onBack: () => void;
   onMore?: () => void;
   positionSharingEnabled?: boolean;
@@ -51,6 +52,7 @@ type HuntMapTopNavProps = {
 export function HuntMapTopNav({
   allowedGameLabel,
   actionsMenu,
+  forceDetailsVisible = false,
   onBack,
   onMore,
   positionSharingEnabled,
@@ -61,7 +63,8 @@ export function HuntMapTopNav({
 }: HuntMapTopNavProps) {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const hasDetails = Boolean(readinessLabel || allowedGameLabel || routeSummary);
-  const detailsExpanded = hasDetails && detailsVisible;
+  const detailsExpanded = hasDetails && (detailsVisible || forceDetailsVisible);
+  const canToggleDetails = hasDetails && !forceDetailsVisible;
   const subtitleCount = Number(Boolean(readinessLabel)) + Number(Boolean(allowedGameLabel));
   const expandedTitleSurfaceStyle = routeSummary
     ? styles.expandedTitleSurface
@@ -107,7 +110,7 @@ export function HuntMapTopNav({
               accessibilityLabel={[
                 title,
                 positionSharingLabel,
-                hasDetails
+                canToggleDetails
                   ? detailsExpanded
                     ? 'Dölj jaktinfo'
                     : 'Visa jaktinfo'
@@ -115,9 +118,9 @@ export function HuntMapTopNav({
               ]
                 .filter(Boolean)
                 .join('. ')}
-              accessibilityRole={hasDetails ? 'button' : undefined}
-              accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
-              disabled={!hasDetails}
+              accessibilityRole={canToggleDetails ? 'button' : undefined}
+              accessibilityState={canToggleDetails ? { expanded: detailsExpanded } : undefined}
+              disabled={!canToggleDetails}
               hitSlop={8}
               onPress={toggleDetails}
               className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">

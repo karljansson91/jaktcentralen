@@ -1,21 +1,27 @@
+import type { LatLngPoint } from '@/lib/geo';
 import { useCallback, useReducer } from 'react';
 
 type HuntMapUiState = {
+  longPressActionPoint: LatLngPoint | null;
   showOtherUserPositions: boolean;
   visibleAssignmentTrailTargetKey: string | null;
 };
 
 type HuntMapUiAction =
+  | { type: 'setLongPressActionPoint'; point: LatLngPoint | null }
   | { type: 'setVisibleAssignmentTrailTargetKey'; targetKey: string | null }
   | { type: 'toggleOtherUserPositions' };
 
 const INITIAL_HUNT_MAP_UI_STATE: HuntMapUiState = {
+  longPressActionPoint: null,
   showOtherUserPositions: true,
   visibleAssignmentTrailTargetKey: null,
 };
 
 function huntMapUiReducer(state: HuntMapUiState, action: HuntMapUiAction): HuntMapUiState {
   switch (action.type) {
+    case 'setLongPressActionPoint':
+      return { ...state, longPressActionPoint: action.point };
     case 'setVisibleAssignmentTrailTargetKey':
       return { ...state, visibleAssignmentTrailTargetKey: action.targetKey };
     case 'toggleOtherUserPositions':
@@ -26,6 +32,9 @@ function huntMapUiReducer(state: HuntMapUiState, action: HuntMapUiAction): HuntM
 export function useHuntMapUiState() {
   const [state, dispatch] = useReducer(huntMapUiReducer, INITIAL_HUNT_MAP_UI_STATE);
 
+  const setLongPressActionPoint = useCallback((point: LatLngPoint | null) => {
+    dispatch({ type: 'setLongPressActionPoint', point });
+  }, []);
   const setVisibleAssignmentTrailTargetKey = useCallback((targetKey: string | null) => {
     dispatch({ type: 'setVisibleAssignmentTrailTargetKey', targetKey });
   }, []);
@@ -35,6 +44,7 @@ export function useHuntMapUiState() {
 
   return {
     ...state,
+    setLongPressActionPoint,
     setVisibleAssignmentTrailTargetKey,
     toggleOtherUserPositions,
   };

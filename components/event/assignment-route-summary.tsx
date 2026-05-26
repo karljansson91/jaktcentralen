@@ -11,7 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
 export type AssignmentRouteSummaryProps = {
+  contextLabel?: string;
+  emptyLabel?: string;
   error: string | null;
+  label?: string;
   mode: AssignmentTrailMode;
   onToggleMode: () => void;
   route: AssignmentRoute | null;
@@ -19,19 +22,24 @@ export type AssignmentRouteSummaryProps = {
 };
 
 export function AssignmentRouteSummary({
+  contextLabel = 'till pass',
+  emptyLabel = 'Ingen väg',
   error,
+  label,
   mode,
   onToggleMode,
   route,
   status,
 }: AssignmentRouteSummaryProps) {
+  const modeLabel = mode === 'walking' ? 'Gångväg' : 'Riktning';
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={
         mode === 'walking'
-          ? 'Byt till riktning till pass'
-          : 'Byt till gångväg till pass'
+          ? `Byt till riktning ${contextLabel}`
+          : `Byt till gångväg ${contextLabel}`
       }
       onPress={onToggleMode}
       style={styles.trailSummaryRow}>
@@ -47,12 +55,14 @@ export function AssignmentRouteSummary({
         </>
       ) : route ? (
         <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-          {mode === 'walking' ? 'Gångväg' : 'Riktning'} ·{' '}
-          {formatTrailDistance(route.distanceMeters)} · {formatTrailDuration(route.durationSeconds)}
+          {label ? `${label} · ` : ''}
+          {modeLabel} · {formatTrailDistance(route.distanceMeters)} ·{' '}
+          {formatTrailDuration(route.durationSeconds)}
         </Text>
       ) : (
         <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-          {error ?? 'Ingen väg'}
+          {label ? `${label} · ` : ''}
+          {error ?? emptyLabel}
         </Text>
       )}
       <Ionicons name="swap-horizontal" size={14} color="rgba(255, 255, 255, 0.78)" />

@@ -3,6 +3,7 @@ import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers'
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
+import { HuntMapLongPressActionSheet } from '@/components/event/hunt-map-long-press-action-sheet';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
@@ -10,6 +11,7 @@ import {
   LiveMemberPositionMarker,
   type LiveMemberPositionMarkerItem,
 } from '@/components/event/live-member-position-marker';
+import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
 import { ScentDirectionOverlay } from '@/components/event/scent-direction-overlay';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { Text } from '@/components/ui';
@@ -23,7 +25,7 @@ import { formatAllowedGameSummary } from '@/lib/allowed-game';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
-import { distanceMeters } from '@/lib/geo';
+import { distanceMeters, type LatLngPoint } from '@/lib/geo';
 import type { AssignmentTrail } from '@/lib/hunt-navigation';
 import {
   IN_POSITION_RADIUS_METERS,
@@ -39,6 +41,7 @@ import {
 import { APP_COLORS } from '@/lib/theme';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
+import { useHuntMapMeasurement } from '@/hooks/use-hunt-map-measurement';
 import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
 import {
@@ -63,7 +66,7 @@ import {
 import { ActivityIndicator, Alert, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function pointFromMapLongPress(event: GeoJSON.Feature) {
+function pointFromMapLongPress(event: GeoJSON.Feature): LatLngPoint {
   const coordinates = (event.geometry as GeoJSON.Point).coordinates as [number, number];
   return {
     latitude: coordinates[1],
@@ -82,11 +85,27 @@ export default function EventMapScreen() {
   const [scentDirectionDegrees, setScentDirectionDegrees] = useState<number | null>(null);
   const [isSettingScentDirection, setIsSettingScentDirection] = useState(false);
   const {
+    longPressActionPoint,
+    setLongPressActionPoint,
     setVisibleAssignmentTrailTargetKey,
     showOtherUserPositions,
     toggleOtherUserPositions,
     visibleAssignmentTrailTargetKey,
   } = useHuntMapUiState();
+  const {
+    addPoint: addMeasurementPoint,
+    clear: clearMeasurement,
+    isActive: measurementActive,
+    mode: measurementMode,
+    points: measurementPoints,
+    replaceWithUserMeasurement,
+    route: measurementRoute,
+    routeError: measurementRouteError,
+    routeGeoJSON: measurementRouteGeoJSON,
+    routeStatus: measurementRouteStatus,
+    toggleMode: toggleMeasurementMode,
+    updatePointCoordinate: updateMeasurementPointCoordinate,
+  } = useHuntMapMeasurement();
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
@@ -363,6 +382,7 @@ export default function EventMapScreen() {
 
     return [currentUserMember.lastLongitude, currentUserMember.lastLatitude] as [number, number];
   }, [currentUserMember]);
+  const currentMeasurementStartCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
 
   const currentUserMarkedInPosition = Boolean(
     currentUserAssignedStation &&
@@ -429,6 +449,32 @@ export default function EventMapScreen() {
     toggleMode: toggleAssignmentRouteMode,
   } = useAssignmentRoute(assignmentTrail);
 
+  const visibleMeasurementActive = isActiveHunt && measurementActive;
+  const visibleMapRoute = visibleMeasurementActive ? measurementRoute : assignmentRoute;
+  const visibleMapRouteGeoJSON = visibleMeasurementActive
+    ? measurementRouteGeoJSON
+    : assignmentRouteGeoJSON;
+  const topNavRouteSummary = visibleMeasurementActive
+    ? {
+        contextLabel: 'för mätning',
+        emptyLabel: measurementPoints.length === 1 ? '1 mätpunkt' : 'Ingen mätning',
+        error: measurementRouteError,
+        label: 'Mätning',
+        mode: measurementMode,
+        onToggleMode: toggleMeasurementMode,
+        route: measurementRoute,
+        status: measurementRouteStatus,
+      }
+    : assignmentTrail
+      ? {
+          error: assignmentRouteError,
+          mode: assignmentRouteMode,
+          onToggleMode: toggleAssignmentRouteMode,
+          route: assignmentRoute,
+          status: assignmentRouteStatus,
+        }
+      : null;
+
   const handlePressStationTarget = useCallback(
     (targetKey: string) => {
       push(`/event/${eventId}/station?targetKey=${encodeURIComponent(targetKey)}`);
@@ -451,11 +497,44 @@ export default function EventMapScreen() {
 
       const point = pointFromMapLongPress(mapEvent);
       Vibration.vibrate(8);
+      setLongPressActionPoint(point);
+    },
+    [isActiveHunt, setLongPressActionPoint]
+  );
+
+  const handleCloseLongPressActionSheet = useCallback(() => {
+    setLongPressActionPoint(null);
+  }, [setLongPressActionPoint]);
+
+  const handleMeasureToLongPressPoint = useCallback(
+    (point: LatLngPoint) => {
+      if (!currentMeasurementStartCoordinate) {
+        Alert.alert('Plats saknas', 'Ge appen platsbehörighet för att mäta från din position.');
+        return;
+      }
+
+      replaceWithUserMeasurement(currentMeasurementStartCoordinate, point);
+      setLongPressActionPoint(null);
+    },
+    [currentMeasurementStartCoordinate, replaceWithUserMeasurement, setLongPressActionPoint]
+  );
+
+  const handleAddMeasurementPoint = useCallback(
+    (point: LatLngPoint) => {
+      addMeasurementPoint(point);
+      setLongPressActionPoint(null);
+    },
+    [addMeasurementPoint, setLongPressActionPoint]
+  );
+
+  const handleMarkAnimalSighting = useCallback(
+    (point: LatLngPoint) => {
+      setLongPressActionPoint(null);
       push(
         `/event/${eventId}/animal-sighting?latitude=${point.latitude}&longitude=${point.longitude}`
       );
     },
-    [eventId, isActiveHunt, push]
+    [eventId, push, setLongPressActionPoint]
   );
 
   const handlePressAnimalSighting = useCallback(
@@ -699,7 +778,13 @@ export default function EventMapScreen() {
           />
         )}
 
-        <AssignmentRouteLayer route={assignmentRoute} shape={assignmentRouteGeoJSON} />
+        <AssignmentRouteLayer route={visibleMapRoute} shape={visibleMapRouteGeoJSON} />
+        {visibleMeasurementActive ? (
+          <MeasurementPointMarkers
+            points={measurementPoints}
+            onDragPoint={updateMeasurementPointCoordinate}
+          />
+        ) : null}
 
         {liveMemberMarkers?.map((marker) => (
           <LiveMemberPositionMarker key={marker.id} marker={marker} />
@@ -727,6 +812,7 @@ export default function EventMapScreen() {
           style={{ top: Math.max(insets.top, 8) + 8 }}>
           <HuntMapTopNav
             allowedGameLabel={allowedGameSummary}
+            forceDetailsVisible={visibleMeasurementActive}
             renderActionsMenu={renderHuntActionsMenu}
             title={event.title}
             onBack={() => back()}
@@ -736,24 +822,27 @@ export default function EventMapScreen() {
                 ? `${readinessSummary.confirmed}/${readinessSummary.total} på plats`
                 : null
             }
-            routeSummary={
-              assignmentTrail
-                ? {
-                    error: assignmentRouteError,
-                    mode: assignmentRouteMode,
-                    onToggleMode: toggleAssignmentRouteMode,
-                    route: assignmentRoute,
-                    status: assignmentRouteStatus,
-                  }
-                : null
-            }
+            routeSummary={topNavRouteSummary}
           />
         </View>
 
         <View
           className="absolute left-6"
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
-          {isActiveHunt ? (
+          {visibleMeasurementActive ? (
+            <GlassIconButton
+              accessibilityLabel="Rensa mätning"
+              className="size-14"
+              color={APP_COLORS.surface}
+              icon="close"
+              iconSize={24}
+              onPress={clearMeasurement}
+              overlayColor="rgba(49, 52, 68, 0.18)"
+              surfaceClassName="size-14"
+              tintColor="rgba(49, 52, 68, 0.82)"
+              tone="dark"
+            />
+          ) : isActiveHunt ? (
             <HuntMapToolsMenu
               inPosition={{
                 available: Boolean(currentUserAssignedStation),
@@ -835,6 +924,15 @@ export default function EventMapScreen() {
           onDirectionSet={handleSetScentDirection}
         />
       </View>
+
+      <HuntMapLongPressActionSheet
+        canMeasureFromUser={Boolean(currentMeasurementStartCoordinate)}
+        coordinate={isActiveHunt ? longPressActionPoint : null}
+        onAddMeasurementPoint={handleAddMeasurementPoint}
+        onClose={handleCloseLongPressActionSheet}
+        onMarkAnimalSighting={handleMarkAnimalSighting}
+        onMeasureToPoint={handleMeasureToLongPressPoint}
+      />
     </View>
   );
 }

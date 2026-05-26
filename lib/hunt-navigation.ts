@@ -28,7 +28,7 @@ type MapboxDirectionsResponse = {
   }[];
 };
 
-const HUNT_WALKING_SPEED_MPS = 1.1;
+export const HUNT_WALKING_SPEED_MPS = 1.1;
 
 function toCoordinateKey(coordinate: Coordinate) {
   return `${coordinate[0].toFixed(5)},${coordinate[1].toFixed(5)}`;
