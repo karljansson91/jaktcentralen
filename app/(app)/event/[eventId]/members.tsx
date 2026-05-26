@@ -16,11 +16,18 @@ import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type MemberStatus = 'accepted' | 'invited' | 'declined';
+type AllowedGameSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+type AllowedGameSaveAction =
+  | { type: 'changed'; dirty: boolean }
+  | { type: 'error' }
+  | { type: 'idle' }
+  | { type: 'saved' }
+  | { type: 'saving' };
 
 function formatDateRange(startDate: number, endDate?: number) {
   const start = new Date(startDate);
@@ -127,6 +134,54 @@ function getStatusTone(status: MemberStatus) {
   return { container: 'bg-destructive/10', text: 'text-destructive' };
 }
 
+const ALLOWED_GAME_SAVE_DELAY_MS = 800;
+
+function getAllowedGameSaveStatus(status: AllowedGameSaveStatus) {
+  switch (status) {
+    case 'pending':
+    case 'saving':
+      return {
+        color: APP_COLORS.textMuted,
+        icon: 'cloud-upload-outline' as const,
+        label: 'Sparar...',
+      };
+    case 'saved':
+      return {
+        color: APP_COLORS.primary,
+        icon: 'checkmark-circle-outline' as const,
+        label: 'Sparat',
+      };
+    case 'error':
+      return {
+        color: '#B64E4E',
+        icon: 'alert-circle-outline' as const,
+        label: 'Kunde inte spara',
+      };
+    default:
+      return null;
+  }
+}
+
+function allowedGameSaveStatusReducer(
+  status: AllowedGameSaveStatus,
+  action: AllowedGameSaveAction
+): AllowedGameSaveStatus {
+  switch (action.type) {
+    case 'changed':
+      return action.dirty ? 'pending' : 'idle';
+    case 'saving':
+      return status === 'saving' ? status : 'saving';
+    case 'saved':
+      return 'saved';
+    case 'error':
+      return 'error';
+    case 'idle':
+      return 'idle';
+    default:
+      return status;
+  }
+}
+
 function AllowedGameEditCard({
   eventId,
   initialRules,
@@ -135,41 +190,102 @@ function AllowedGameEditCard({
   initialRules: AllowedGameRule[];
 }) {
   const [allowedGameDraft, setAllowedGameDraft] = useState(initialRules);
-  const [isSavingAllowedGame, setIsSavingAllowedGame] = useState(false);
+  const [saveStatus, dispatchSaveStatus] = useReducer(
+    allowedGameSaveStatusReducer,
+    'idle'
+  );
   const updateAllowedGame = useMutation(api.events.updateAllowedGame);
-  const allowedGameDirty = JSON.stringify(allowedGameDraft) !== JSON.stringify(initialRules);
+  const allowedGameDraftJson = useMemo(
+    () => JSON.stringify(allowedGameDraft),
+    [allowedGameDraft]
+  );
+  const latestDraftJsonRef = useRef(allowedGameDraftJson);
+  const lastSavedJsonRef = useRef(JSON.stringify(initialRules));
 
-  async function handleSaveAllowedGame() {
-    setIsSavingAllowedGame(true);
-    try {
-      await updateAllowedGame({
+  useEffect(() => {
+    latestDraftJsonRef.current = allowedGameDraftJson;
+  }, [allowedGameDraftJson]);
+
+  useEffect(() => {
+    if (allowedGameDraftJson === lastSavedJsonRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const timeout = setTimeout(() => {
+      dispatchSaveStatus({ type: 'saving' });
+
+      void updateAllowedGame({
         eventId,
         allowedGame: allowedGameDraft,
-      });
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte spara tillåtet vilt',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
+      })
+        .then(() => {
+          if (cancelled || latestDraftJsonRef.current !== allowedGameDraftJson) {
+            return;
+          }
+
+          lastSavedJsonRef.current = allowedGameDraftJson;
+          dispatchSaveStatus({ type: 'saved' });
+        })
+        .catch((error) => {
+          if (cancelled || latestDraftJsonRef.current !== allowedGameDraftJson) {
+            return;
+          }
+
+          console.error('Failed to auto-save allowed game:', error);
+          dispatchSaveStatus({ type: 'error' });
+        });
+    }, ALLOWED_GAME_SAVE_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [allowedGameDraft, allowedGameDraftJson, eventId, updateAllowedGame]);
+
+  useEffect(() => {
+    if (saveStatus !== 'saved') {
+      return;
     }
-    setIsSavingAllowedGame(false);
-  }
+
+    const timeout = setTimeout(() => {
+      if (latestDraftJsonRef.current === lastSavedJsonRef.current) {
+        dispatchSaveStatus({ type: 'idle' });
+      }
+    }, 1400);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [saveStatus]);
+
+  const saveStatusDisplay = getAllowedGameSaveStatus(saveStatus);
 
   return (
     <View className="gap-4">
+      {saveStatusDisplay ? (
+        <View className="flex-row items-center justify-end gap-1.5 px-1">
+          <Ionicons
+            name={saveStatusDisplay.icon}
+            size={15}
+            color={saveStatusDisplay.color}
+          />
+          <Text className="text-xs font-semibold" style={{ color: saveStatusDisplay.color }}>
+            {saveStatusDisplay.label}
+          </Text>
+        </View>
+      ) : null}
       <AllowedGameEditor
         value={allowedGameDraft}
-        onChange={setAllowedGameDraft}
-        disabled={isSavingAllowedGame}
+        onChange={(draft) => {
+          setAllowedGameDraft(draft);
+          dispatchSaveStatus({
+            dirty: JSON.stringify(draft) !== lastSavedJsonRef.current,
+            type: 'changed',
+          });
+        }}
       />
-      <Button
-        variant="outline"
-        disabled={!allowedGameDirty || isSavingAllowedGame}
-        onPress={() => void handleSaveAllowedGame()}
-        className="rounded-xl">
-        <Ionicons name="save-outline" size={18} color={APP_COLORS.text} />
-        <Text>{isSavingAllowedGame ? 'Sparar…' : 'Spara tillåtet vilt'}</Text>
-      </Button>
     </View>
   );
 }
@@ -215,7 +331,6 @@ export default function EventInfoScreen() {
   const canEditAllowedGame =
     Boolean(currentUserMembership?.role === 'admin') &&
     getEventLifecycle(event ?? { startDate: 0, endDate: 0 }, currentTime) !== 'ended';
-  const eventAllowedGameJson = JSON.stringify(event?.allowedGame ?? []);
 
   async function handleRemoveMember(userId: Id<'users'>) {
     setPendingUserId(userId);
@@ -353,7 +468,6 @@ export default function EventInfoScreen() {
 
           {canEditAllowedGame ? (
             <AllowedGameEditCard
-              key={eventAllowedGameJson}
               eventId={eventId as Id<'events'>}
               initialRules={(event.allowedGame ?? []) as AllowedGameRule[]}
             />
