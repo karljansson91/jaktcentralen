@@ -6,12 +6,34 @@ import {
   type AssignmentRouteSummaryProps,
 } from '@/components/event/assignment-route-summary';
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
+import {
+  LayoutAnimation,
+  Pressable,
+  StyleSheet,
+  View,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
 const GLASS_NAV_HEIGHT = 44;
 const GLASS_NAV_HORIZONTAL_GAP = 8;
 const FLOATING_HEADER_TINT = 'rgba(42, 108, 55, 0.84)';
 const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
+const HEADER_DETAILS_ANIMATION = {
+  create: {
+    property: LayoutAnimation.Properties.opacity,
+    type: LayoutAnimation.Types.easeInEaseOut,
+  },
+  delete: {
+    property: LayoutAnimation.Properties.opacity,
+    type: LayoutAnimation.Types.easeInEaseOut,
+  },
+  duration: 260,
+  update: {
+    springDamping: 0.82,
+    type: LayoutAnimation.Types.spring,
+  },
+};
 
 type HuntMapTopNavProps = {
   allowedGameLabel?: string | null;
@@ -58,6 +80,10 @@ export function HuntMapTopNav({
       : positionSharingEnabled
         ? 'Positionsdelning aktiv'
         : 'Positionsdelning av';
+  const toggleDetails = () => {
+    LayoutAnimation.configureNext(HEADER_DETAILS_ANIMATION);
+    setDetailsVisible((visible) => !visible);
+  };
 
   return (
     <View className="w-full">
@@ -94,7 +120,8 @@ export function HuntMapTopNav({
               accessibilityRole={hasDetails ? 'button' : undefined}
               accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
               disabled={!hasDetails}
-              onPress={() => setDetailsVisible((visible) => !visible)}
+              hitSlop={8}
+              onPress={toggleDetails}
               className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
               <Text
                 className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
