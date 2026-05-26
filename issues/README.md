@@ -47,6 +47,19 @@ These issue test plans must be runnable by Codex without human supervision.
 - `24d-hunt-map-tools-menu-and-position-sharing.md`: replace map controls with an anchored native menu and add visibility/sharing toggles.
 - `26-hunt-allowed-game-rules.md`: define allowed game for a hunt with structured species options, title/home hints, popup details, and hunt info display.
 - `29-local-scent-plume-indicator.md`: add a local-only active hunt scent plume set by swipe and cleared from the map tools menu.
+- `30-home-dropdown-animation.md`: add polished animation to homepage dropdown/expandable sections.
+- `31-area-options-delete-action.md`: add an owner-only delete option to the area options menu with confirmation.
+- `32-restore-round-map-and-options-buttons.md`: restore round styling for floating map and options buttons.
+- `33-edit-profile-page-content.md`: fix the edit profile page so it renders editable profile content and states.
+- `34-left-align-hunt-create-date-fields.md`: left-align date fields in the create-hunt flow.
+- `35-allowed-game-picker-keyboard-focus.md`: deferred for now; allowed-game keyboard focus changes are intentionally skipped.
+- `36-compact-create-hunt-friend-cards.md`: make friend invite cards in create hunt compact and scan-friendly.
+- `37-chat-fullscreen-modal.md`: present chat as a full-screen modal with a glass close header instead of a half-screen sheet.
+- `38-hunt-map-long-press-action-menu.md`: open a long-press hunt map action menu for distance tools and animal sightings.
+- `39-animal-sighting-bottom-sheet-picker.md`: replace the animal sighting picker menu with a polished bottom sheet.
+- `40-animal-sighting-marker-age-and-hide.md`: show animal sighting age above markers and let users hide sightings from the marker.
+- `41-chat-system-message-styling.md`: style hunt status/system chat messages distinctly from normal chat.
+- `42-wind-direction-picker-clarity.md`: make wind direction setting clearer and show the selected wind direction in the title.
 
 Note: `20-chat-sheet-height-and-latest-message-visibility.md` was triaged as no longer needed and intentionally not created.
 Note: `25-hunt-drive-planning-and-pass-selection.md` needs more domain clarification and is intentionally deferred.
