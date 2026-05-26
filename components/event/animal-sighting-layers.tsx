@@ -1,5 +1,6 @@
 import {
   AnimalSightingMapItem,
+  formatAnimalSightingMapLabel,
   getAnimalSightingColor,
   getAnimalSightingLabel,
 } from '@/lib/animal-sightings';
@@ -8,6 +9,7 @@ import { CircleLayer, ShapeSource, SymbolLayer } from '@rnmapbox/maps';
 import type { ComponentProps } from 'react';
 
 type AnimalSightingLayersProps = {
+  currentTime?: number;
   idPrefix: string;
   sightings: AnimalSightingMapItem[];
   onPressSighting?: (sighting: AnimalSightingMapItem) => void;
@@ -37,7 +39,10 @@ const animalSightingLabelStyle = {
   textSize: 12,
 } satisfies NonNullable<ComponentProps<typeof SymbolLayer>['style']>;
 
-function buildAnimalSightingShape(sightings: AnimalSightingMapItem[]): GeoJSON.FeatureCollection {
+function buildAnimalSightingShape(
+  sightings: AnimalSightingMapItem[],
+  currentTime?: number
+): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: sightings.map((sighting) => ({
@@ -45,7 +50,10 @@ function buildAnimalSightingShape(sightings: AnimalSightingMapItem[]): GeoJSON.F
       properties: {
         id: sighting._id,
         color: getAnimalSightingColor(sighting.animal),
-        label: sighting.label ?? getAnimalSightingLabel(sighting.animal),
+        label:
+          currentTime == null
+            ? sighting.label ?? getAnimalSightingLabel(sighting.animal)
+            : formatAnimalSightingMapLabel(sighting, currentTime),
       },
       geometry: {
         type: 'Point',
@@ -61,6 +69,7 @@ function getPressedSightingId(event: ShapeSourcePressEvent) {
 }
 
 export function AnimalSightingLayers({
+  currentTime,
   idPrefix,
   sightings,
   onPressSighting,
@@ -83,7 +92,7 @@ export function AnimalSightingLayers({
   return (
     <ShapeSource
       id={`${idPrefix}-animal-sightings`}
-      shape={buildAnimalSightingShape(sightings)}
+      shape={buildAnimalSightingShape(sightings, currentTime)}
       hitbox={{ width: 44, height: 44 }}
       onPress={handlePress}>
       <CircleLayer id={`${idPrefix}-animal-sighting-circle`} style={animalSightingCircleStyle} />

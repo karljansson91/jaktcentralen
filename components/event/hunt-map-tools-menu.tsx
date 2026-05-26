@@ -9,9 +9,15 @@ const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
 const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
 const ACTION_CLEAR_SCENT_DIRECTION = 'clear-scent-direction';
 const ACTION_TOGGLE_ROUTE = 'toggle-route';
+const ACTION_TOGGLE_ANIMAL_SIGHTINGS = 'toggle-animal-sightings';
 const ACTION_LOCATE = 'locate';
 
 type HuntMapToolsMenuProps = {
+  animalSightings: {
+    available: boolean;
+    onToggle: () => void;
+    showing: boolean;
+  };
   inPosition: {
     available: boolean;
     marked: boolean;
@@ -39,6 +45,7 @@ type HuntMapToolsMenuProps = {
 };
 
 export function HuntMapToolsMenu({
+  animalSightings,
   inPosition,
   onLocate,
   positions,
@@ -85,12 +92,21 @@ export function HuntMapToolsMenu({
         title: 'Visa väg till pass',
       },
       {
+        attributes: { hidden: !animalSightings.available },
+        id: ACTION_TOGGLE_ANIMAL_SIGHTINGS,
+        image: animalSightings.showing ? 'eye.slash' : 'eye',
+        state: animalSightings.showing ? 'on' : 'off',
+        title: animalSightings.showing ? 'Dölj observationer' : 'Visa observationer',
+      },
+      {
         id: ACTION_LOCATE,
         image: 'scope',
         title: 'Centrera på mig',
       },
     ],
     [
+      animalSightings.available,
+      animalSightings.showing,
       inPosition.available,
       inPosition.marked,
       positions.ownSharingEnabled,
@@ -126,12 +142,16 @@ export function HuntMapToolsMenu({
         case ACTION_TOGGLE_ROUTE:
           requestAnimationFrame(route.onToggle);
           break;
+        case ACTION_TOGGLE_ANIMAL_SIGHTINGS:
+          requestAnimationFrame(animalSightings.onToggle);
+          break;
         case ACTION_LOCATE:
           requestAnimationFrame(onLocate);
           break;
       }
     },
     [
+      animalSightings.onToggle,
       inPosition.onClear,
       inPosition.onMark,
       onLocate,

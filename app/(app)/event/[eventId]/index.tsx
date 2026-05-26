@@ -1,4 +1,5 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
+import { AnimalSightingActionSheet } from '@/components/event/animal-sighting-action-sheet';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
@@ -17,10 +18,6 @@ import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import {
-  AnimalSightingMapItem,
-  getAnimalSightingLabel,
-} from '@/lib/animal-sightings';
 import { formatAllowedGameSummary } from '@/lib/allowed-game';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { isEventActive } from '@/lib/event-lifecycle';
@@ -39,6 +36,7 @@ import {
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
+import { useAnimalSightingMapVisibility } from '@/hooks/use-animal-sighting-map-visibility';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { useHuntMapMeasurement } from '@/hooks/use-hunt-map-measurement';
@@ -142,11 +140,19 @@ export default function EventMapScreen() {
   const setPositionSharingDisabled = useMutation(
     api.eventMembers.setPositionSharingDisabled
   );
-  const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
   const activeScentDirectionDegrees = isActiveHunt ? scentDirectionDegrees : null;
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
   const ownPositionSharingEnabledRef = useRef(true);
+  const {
+    hasLocallyHiddenCurrentSightings,
+    handleCloseSightingSheet,
+    handleHideSighting,
+    handlePressSighting,
+    handleToggleVisibility: handleToggleAnimalSightingVisibility,
+    selectedSighting,
+    visibleSightings: visibleAnimalSightings,
+  } = useAnimalSightingMapVisibility(animalSightings);
 
   useEffect(() => {
     return subscribeToMapStyleChanges((style) => {
@@ -537,27 +543,6 @@ export default function EventMapScreen() {
     [eventId, push, setLongPressActionPoint]
   );
 
-  const handlePressAnimalSighting = useCallback(
-    (sighting: AnimalSightingMapItem) => {
-      const label = sighting.label ?? getAnimalSightingLabel(sighting.animal);
-      const reporter = sighting.user?.name?.trim() || 'Okänd jägare';
-
-      Alert.alert(label, `${reporter} markerade observationen på kartan.`, [
-        { text: 'Stäng', style: 'cancel' },
-        {
-          text: 'Kvittera',
-          onPress: () => {
-            void acknowledgeAnimalSighting({ sightingId: sighting._id }).catch((error) => {
-              console.error('Failed to acknowledge animal sighting:', error);
-              Alert.alert('Kunde inte kvittera', 'Försök igen om en stund.');
-            });
-          },
-        },
-      ]);
-    },
-    [acknowledgeAnimalSighting]
-  );
-
   const handleMarkSelfInPosition = useCallback(async () => {
     try {
       await markInPosition({ eventId: eventId as Id<'events'> });
@@ -799,9 +784,10 @@ export default function EventMapScreen() {
         ))}
 
         <AnimalSightingLayers
+          currentTime={currentTime}
           idPrefix="event"
-          sightings={animalSightings}
-          onPressSighting={handlePressAnimalSighting}
+          sightings={visibleAnimalSightings}
+          onPressSighting={handlePressSighting}
         />
       </MapView>
 
@@ -844,6 +830,12 @@ export default function EventMapScreen() {
             />
           ) : isActiveHunt ? (
             <HuntMapToolsMenu
+              animalSightings={{
+                available:
+                  visibleAnimalSightings.length > 0 || hasLocallyHiddenCurrentSightings,
+                onToggle: handleToggleAnimalSightingVisibility,
+                showing: !hasLocallyHiddenCurrentSightings,
+              }}
               inPosition={{
                 available: Boolean(currentUserAssignedStation),
                 marked: currentUserMarkedInPosition,
@@ -932,6 +924,12 @@ export default function EventMapScreen() {
         onClose={handleCloseLongPressActionSheet}
         onMarkAnimalSighting={handleMarkAnimalSighting}
         onMeasureToPoint={handleMeasureToLongPressPoint}
+      />
+      <AnimalSightingActionSheet
+        currentTime={currentTime}
+        sighting={selectedSighting}
+        onClose={handleCloseSightingSheet}
+        onHide={handleHideSighting}
       />
     </View>
   );
