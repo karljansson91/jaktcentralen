@@ -13,14 +13,6 @@ type EventDatePickerFieldProps = {
   required?: boolean;
 };
 
-function formatDateLabel(date: Date): string {
-  return date.toLocaleDateString('sv-SE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
 export function EventDatePickerField({
   actionLabel,
   helperText,
@@ -44,20 +36,17 @@ export function EventDatePickerField({
         ) : null}
       </View>
 
-      <View className="rounded-2xl border border-border bg-card px-4 py-3">
-        <Text className="mb-3 text-sm text-muted-foreground">{formatDateLabel(value)}</Text>
-        <DateTimePicker
-          value={value}
-          mode="date"
-          display="compact"
-          presentation="inline"
-          locale="sv_SE"
-          accentColor={APP_COLORS.primary}
-          positiveButton={{ label: 'Välj' }}
-          negativeButton={{ label: 'Avbryt' }}
-          onValueChange={(_, date) => onValueChange(date)}
-        />
-      </View>
+      <DateTimePicker
+        value={value}
+        mode="date"
+        display="compact"
+        presentation="inline"
+        locale="sv_SE"
+        accentColor={APP_COLORS.primary}
+        positiveButton={{ label: 'Välj' }}
+        negativeButton={{ label: 'Avbryt' }}
+        onValueChange={(_, date) => onValueChange(date)}
+      />
 
       {helperText ? (
         <Text className="text-sm text-muted-foreground">{helperText}</Text>
