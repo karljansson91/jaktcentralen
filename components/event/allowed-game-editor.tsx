@@ -6,6 +6,7 @@ import {
   type AllowedGameRule,
   type AllowedGameSpecies,
 } from '@/lib/allowed-game';
+import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 
@@ -34,7 +35,7 @@ function createCustomRule(): AllowedGameRule {
   };
 }
 
-function Chip({
+function OptionPill({
   active,
   disabled,
   label,
@@ -50,12 +51,56 @@ function Chip({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      className={`rounded-full border px-3 py-2 ${
-        active ? 'border-primary bg-primary' : 'border-border bg-card'
+      className={`min-h-9 flex-row items-center gap-1.5 rounded-full border px-3 py-2 ${
+        active ? 'border-primary bg-primary' : 'border-border bg-surface'
       } ${disabled ? 'opacity-60' : ''}`}>
-      <Text className={`text-sm font-medium ${active ? 'text-primary-foreground' : 'text-foreground'}`}>
+      {active ? <Ionicons name="checkmark" size={14} color={APP_COLORS.surface} /> : null}
+      <Text
+        className={`text-sm font-semibold ${
+          active ? 'text-primary-foreground' : 'text-foreground'
+        }`}>
         {label}
       </Text>
+    </Pressable>
+  );
+}
+
+function SpeciesRow({
+  disabled,
+  label,
+  onPress,
+  selected,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+  selected: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      className={`rounded-2xl border px-3 py-3 ${
+        selected ? 'border-primary bg-primary/10' : 'border-border bg-surface'
+      } ${disabled ? 'opacity-60' : ''}`}>
+      <View className="flex-row items-center gap-3">
+        <View
+          className={`size-7 items-center justify-center rounded-full ${
+            selected ? 'bg-primary' : 'border border-border bg-card'
+          }`}>
+          {selected ? <Ionicons name="checkmark" size={16} color={APP_COLORS.surface} /> : null}
+        </View>
+        <Text className="min-w-0 flex-1 text-base font-semibold text-foreground" numberOfLines={1}>
+          {label}
+        </Text>
+        <Ionicons
+          name={selected ? 'close' : 'add'}
+          size={18}
+          color={selected ? APP_COLORS.primary : APP_COLORS.textMuted}
+        />
+      </View>
     </Pressable>
   );
 }
@@ -93,91 +138,102 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
 
   return (
     <View className="gap-4">
-      {ALLOWED_GAME_GROUPS.map((group) => (
-        <View key={group.id} className="gap-2">
-          <Text className="text-sm font-semibold text-muted-foreground">{group.label}</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {group.species.map((species) => {
-              const selected = selectedBySpeciesId.get(species.id);
-              return (
-                <Chip
-                  key={species.id}
-                  active={Boolean(selected)}
-                  disabled={disabled}
-                  label={species.label}
-                  onPress={() => toggleSpecies(species)}
-                />
-              );
-            })}
-          </View>
-          {group.species.map((species) => {
-            const selected = selectedBySpeciesId.get(species.id);
-            if (!selected) return null;
+      {ALLOWED_GAME_GROUPS.map((group) => {
+        const selectedCount = group.species.filter((species) =>
+          selectedBySpeciesId.has(species.id)
+        ).length;
 
-            const options = species.options ?? [];
-            return (
-              <View key={`${species.id}-details`} className="gap-2 rounded-2xl border border-border bg-card p-3">
-                <View className="flex-row items-center justify-between gap-3">
-                  <Text className="font-semibold text-foreground">{species.label}</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={disabled}
-                    onPress={() => removeRule(selected.index)}
-                    className="size-8 items-center justify-center rounded-full bg-muted">
-                    <Ionicons name="close" size={16} color="#636679" />
-                  </Pressable>
+        return (
+          <View key={group.id} className="gap-3">
+            <View className="flex-row items-center justify-between gap-3 px-1">
+              <Text className="text-sm font-semibold text-muted-foreground">{group.label}</Text>
+              {selectedCount > 0 ? (
+                <View className="rounded-full bg-primary/10 px-2.5 py-1">
+                  <Text className="text-xs font-semibold text-primary">
+                    {selectedCount} valda
+                  </Text>
                 </View>
-                {options.length > 0 ? (
-                  <View className="flex-row flex-wrap gap-2">
-                    <Chip
-                      active={selected.rule.mode === 'all'}
+              ) : null}
+            </View>
+
+            <View className="gap-2">
+              {group.species.map((species) => {
+                const selected = selectedBySpeciesId.get(species.id);
+                const options = species.options ?? [];
+
+                return (
+                  <View key={species.id} className="gap-2">
+                    <SpeciesRow
                       disabled={disabled}
-                      label="Alla"
-                      onPress={() =>
-                        replaceRule(selected.index, {
-                          ...selected.rule,
-                          mode: 'all',
-                          optionIds: [],
-                        })
-                      }
+                      label={species.label}
+                      selected={Boolean(selected)}
+                      onPress={() => toggleSpecies(species)}
                     />
-                    {options.map((option) => (
-                      <Chip
-                        key={option.id}
-                        active={selected.rule.optionIds.includes(option.id)}
-                        disabled={disabled}
-                        label={option.label}
-                        onPress={() => {
-                          const optionIds = selected.rule.optionIds.includes(option.id)
-                            ? selected.rule.optionIds.filter((candidate) => candidate !== option.id)
-                            : [...selected.rule.optionIds, option.id];
 
-                          replaceRule(selected.index, {
-                            ...selected.rule,
-                            mode: optionIds.length === 0 ? 'all' : 'selected',
-                            optionIds,
-                          });
-                        }}
-                      />
-                    ))}
+                    {selected ? (
+                      <View className="ml-5 gap-3 border-l border-border pl-4">
+                        {options.length > 0 ? (
+                          <View className="gap-2">
+                            <Text className="text-xs font-semibold uppercase text-muted-foreground">
+                              Urval
+                            </Text>
+                            <View className="flex-row flex-wrap gap-2">
+                              <OptionPill
+                                active={selected.rule.mode === 'all'}
+                                disabled={disabled}
+                                label="Alla"
+                                onPress={() =>
+                                  replaceRule(selected.index, {
+                                    ...selected.rule,
+                                    mode: 'all',
+                                    optionIds: [],
+                                  })
+                                }
+                              />
+                              {options.map((option) => (
+                                <OptionPill
+                                  key={option.id}
+                                  active={selected.rule.optionIds.includes(option.id)}
+                                  disabled={disabled}
+                                  label={option.label}
+                                  onPress={() => {
+                                    const optionIds = selected.rule.optionIds.includes(option.id)
+                                      ? selected.rule.optionIds.filter(
+                                          (candidate) => candidate !== option.id
+                                        )
+                                      : [...selected.rule.optionIds, option.id];
+
+                                    replaceRule(selected.index, {
+                                      ...selected.rule,
+                                      mode: optionIds.length === 0 ? 'all' : 'selected',
+                                      optionIds,
+                                    });
+                                  }}
+                                />
+                              ))}
+                            </View>
+                          </View>
+                        ) : null}
+                        <Input
+                          editable={!disabled}
+                          placeholder="Anteckning, t.ex. taggintervall"
+                          value={selected.rule.note ?? ''}
+                          onChangeText={(note) =>
+                            replaceRule(selected.index, { ...selected.rule, note })
+                          }
+                        />
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
-                <Input
-                  editable={!disabled}
-                  placeholder="Anteckning, t.ex. taggintervall"
-                  value={selected.rule.note ?? ''}
-                  onChangeText={(note) =>
-                    replaceRule(selected.index, { ...selected.rule, note })
-                  }
-                />
-              </View>
-            );
-          })}
-        </View>
-      ))}
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
 
-      <View className="gap-2">
-        <View className="flex-row items-center justify-between">
+      <View className="gap-3">
+        <View className="flex-row items-center justify-between px-1">
           <Text className="text-sm font-semibold text-muted-foreground">Annat</Text>
           <Pressable
             accessibilityRole="button"
@@ -189,7 +245,7 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
           </Pressable>
         </View>
         {customRules.map(({ rule, index }) => (
-          <View key={rule.speciesId} className="gap-2 rounded-2xl border border-border bg-card p-3">
+          <View key={rule.speciesId} className="gap-2 rounded-2xl border border-border bg-surface p-3">
             <View className="flex-row items-center gap-2">
               <Input
                 editable={!disabled}

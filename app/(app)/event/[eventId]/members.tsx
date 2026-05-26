@@ -156,8 +156,7 @@ function AllowedGameEditCard({
   }
 
   return (
-    <View className="gap-3 rounded-2xl border border-border bg-card p-4">
-      <Text className="text-sm font-semibold text-foreground">Redigera tillåtet vilt</Text>
+    <View className="gap-4">
       <AllowedGameEditor
         value={allowedGameDraft}
         onChange={setAllowedGameDraft}
@@ -282,7 +281,7 @@ export default function EventInfoScreen() {
     <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="gap-4 px-4"
+        contentContainerClassName="gap-6 px-5"
         contentContainerStyle={{
           paddingBottom: 16,
           paddingTop: 0,
@@ -290,84 +289,93 @@ export default function EventInfoScreen() {
         contentInset={{ bottom: Math.max(insets.bottom, 16) }}
         scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}
         showsVerticalScrollIndicator={false}>
-        <Card>
-          <CardContent className="gap-4 p-5">
-            <View className="gap-2">
-              <View className="flex-row items-start gap-3">
-                <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
-                  <Ionicons name="trail-sign-outline" size={24} color={APP_COLORS.primary} />
-                </View>
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className="text-2xl font-semibold text-foreground" numberOfLines={2}>
-                    {event.title}
-                  </Text>
-                  <Text className="text-sm leading-5 text-muted-foreground">
-                    {area.name}
-                  </Text>
-                </View>
-                <Badge className="rounded-full bg-primary/10">
-                  <Text className="text-xs font-semibold text-primary">
-                    {getEventStatus(event.startDate, event.endDate, currentTime, event.endedAt)}
-                  </Text>
-                </Badge>
+        <View className="gap-5">
+          <View className="gap-3">
+            <View className="flex-row items-start gap-3">
+              <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
+                <Ionicons name="trail-sign-outline" size={24} color={APP_COLORS.primary} />
               </View>
-
-              {event.description ? (
+              <View className="min-w-0 flex-1 gap-1">
+                <Text className="text-2xl font-semibold text-foreground" numberOfLines={2}>
+                  {event.title}
+                </Text>
                 <Text className="text-sm leading-5 text-muted-foreground">
-                  {event.description}
-                </Text>
-              ) : null}
-            </View>
-
-            <View className="gap-3 rounded-2xl bg-accent/50 p-4">
-              <View className="flex-row items-center gap-3">
-                <Ionicons name="calendar-outline" size={18} color={APP_COLORS.textMuted} />
-                <Text className="flex-1 text-sm text-foreground">
-                  {formatDateRange(event.startDate, event.endDate)}
+                  {area.name}
                 </Text>
               </View>
-              <View className="flex-row items-center gap-3">
-                <Ionicons name="people-outline" size={18} color={APP_COLORS.textMuted} />
-                <Text className="flex-1 text-sm text-foreground">
-                  {acceptedCount} deltagare
+              <Badge className="rounded-full bg-primary/10">
+                <Text className="text-xs font-semibold text-primary">
+                  {getEventStatus(event.startDate, event.endDate, currentTime, event.endedAt)}
                 </Text>
-              </View>
-              {isCreator && event.joinCode ? (
-                <View className="flex-row items-center gap-3">
-                  <Ionicons name="key-outline" size={18} color={APP_COLORS.textMuted} />
-                  <Text className="flex-1 text-sm text-foreground">
-                    Jaktkod: {event.joinCode}
-                  </Text>
-                </View>
-              ) : null}
+              </Badge>
             </View>
 
-            <AllowedGameDetails rules={event.allowedGame as AllowedGameRule[] | undefined} />
+            {event.description ? (
+              <Text className="text-sm leading-5 text-muted-foreground">
+                {event.description}
+              </Text>
+            ) : null}
+          </View>
 
+          <View className="gap-4 border-y border-border py-4">
+            <View className="flex-row items-center gap-3">
+              <Ionicons name="calendar-outline" size={18} color={APP_COLORS.textMuted} />
+              <Text className="flex-1 text-sm leading-5 text-foreground">
+                {formatDateRange(event.startDate, event.endDate)}
+              </Text>
+            </View>
+            <View className="flex-row items-center gap-3">
+              <Ionicons name="people-outline" size={18} color={APP_COLORS.textMuted} />
+              <Text className="flex-1 text-sm text-foreground">
+                {acceptedCount} deltagare
+              </Text>
+            </View>
+            {isCreator && event.joinCode ? (
+              <View className="flex-row items-center gap-3">
+                <Ionicons name="key-outline" size={18} color={APP_COLORS.textMuted} />
+                <Text className="flex-1 text-sm text-foreground">
+                  Jaktkod: {event.joinCode}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View className="gap-4">
+          <View className="flex-row items-center justify-between gap-3 px-1">
+            <Text className="text-lg font-semibold text-foreground">Tillåtet vilt</Text>
             {canEditAllowedGame ? (
-              <AllowedGameEditCard
-                key={eventAllowedGameJson}
-                eventId={eventId as Id<'events'>}
-                initialRules={(event.allowedGame ?? []) as AllowedGameRule[]}
-              />
+              <View className="rounded-full bg-primary/10 px-2.5 py-1">
+                <Text className="text-xs font-semibold text-primary">Redigerbar</Text>
+              </View>
             ) : null}
+          </View>
 
-            {isCreator ? (
-              <Button
-                variant="outline"
-                onPress={() =>
-                  push({
-                    pathname: '/event/[eventId]/invite',
-                    params: { eventId },
-                  } as Href)
-                }
-                className="rounded-xl">
-                <Ionicons name="person-add-outline" size={18} color={APP_COLORS.text} />
-                <Text>Bjud in användare</Text>
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
+          {canEditAllowedGame ? (
+            <AllowedGameEditCard
+              key={eventAllowedGameJson}
+              eventId={eventId as Id<'events'>}
+              initialRules={(event.allowedGame ?? []) as AllowedGameRule[]}
+            />
+          ) : (
+            <AllowedGameDetails rules={event.allowedGame as AllowedGameRule[] | undefined} />
+          )}
+        </View>
+
+        {isCreator ? (
+          <Button
+            variant="outline"
+            onPress={() =>
+              push({
+                pathname: '/event/[eventId]/invite',
+                params: { eventId },
+              } as Href)
+            }
+            className="rounded-xl">
+            <Ionicons name="person-add-outline" size={18} color={APP_COLORS.text} />
+            <Text>Bjud in användare</Text>
+          </Button>
+        ) : null}
 
         <View className="gap-3">
           <Text className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

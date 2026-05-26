@@ -14,8 +14,7 @@ export function AllowedGameDetails({ rules }: AllowedGameDetailsProps) {
   const summary = formatAllowedGameSummary(rules, 8);
 
   return (
-    <View className="gap-2 rounded-2xl bg-accent/50 p-4">
-      <Text className="text-sm font-semibold text-foreground">Tillåtet vilt</Text>
+    <View className="gap-2">
       <Text className="text-sm leading-5 text-muted-foreground">
         {summary ?? 'Inget angivet'}
       </Text>
