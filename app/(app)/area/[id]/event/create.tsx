@@ -1,10 +1,12 @@
 import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
-import { Button, Card, CardHeader, CardTitle, Input, Text } from '@/components/ui';
+import { Button, Input, Text } from '@/components/ui';
 import { AllowedGameEditor } from '@/components/event/allowed-game-editor';
 import { EventDatePickerField } from '@/components/event/event-date-picker-field';
+import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import type { Doc, Id } from '@/convex/_generated/dataModel';
 import type { AllowedGameRule } from '@/lib/allowed-game';
+import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import {
   createJoinCodeSuggestions,
   formatJoinCodeInput,
@@ -32,6 +34,46 @@ function normalizeDate(date: Date): Date {
 
 function isValidDate(date: Date | undefined): date is Date {
   return date instanceof Date && !Number.isNaN(date.getTime());
+}
+
+type FriendInviteRowProps = {
+  disabled?: boolean;
+  isSelected: boolean;
+  onPress: () => void;
+  user: Doc<'users'>;
+};
+
+function FriendInviteRow({ disabled, isSelected, onPress, user }: FriendInviteRowProps) {
+  const contactLine = getUserContactLine(user);
+
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isSelected, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      className={`min-h-14 flex-row items-center gap-3 rounded-2xl border px-3 py-2 ${
+        isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'
+      } ${disabled ? 'opacity-60' : 'active:bg-accent'}`}>
+      <UserAvatar imageUrl={user.imageUrl} name={user.name} size={36} />
+      <View className="min-w-0 flex-1">
+        <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+          {getUserDisplayName(user)}
+        </Text>
+        {contactLine ? (
+          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+            {contactLine}
+          </Text>
+        ) : null}
+      </View>
+      <View
+        className={`size-7 items-center justify-center rounded-full border ${
+          isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30 bg-background'
+        }`}>
+        {isSelected ? <Ionicons name="checkmark" size={16} color="white" /> : null}
+      </View>
+    </Pressable>
+  );
 }
 
 export default function CreateEventScreen() {
@@ -315,22 +357,17 @@ export default function CreateEventScreen() {
           <View className="mb-6 gap-2">
             {friends.map((f) => {
               if (!f.user) return null;
-              const isSelected = selectedFriends.has(f.user._id);
+              const friendUser = f.user;
+              const isSelected = selectedFriends.has(friendUser._id);
 
               return (
-                <Pressable key={f.user._id} onPress={() => toggleFriend(f.user!._id)}>
-                  <Card className={isSelected ? 'border-primary' : ''}>
-                    <CardHeader className="flex-row items-center gap-3 py-3">
-                      <View
-                        className={`size-6 items-center justify-center rounded ${
-                          isSelected ? 'bg-primary' : 'border border-muted-foreground/30'
-                        }`}>
-                        {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
-                      </View>
-                      <CardTitle className="text-base">{f.user.name}</CardTitle>
-                    </CardHeader>
-                  </Card>
-                </Pressable>
+                <FriendInviteRow
+                  key={friendUser._id}
+                  disabled={isSubmitting}
+                  isSelected={isSelected}
+                  user={friendUser}
+                  onPress={() => toggleFriend(friendUser._id)}
+                />
               );
             })}
           </View>
