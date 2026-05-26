@@ -23,11 +23,116 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const COMPOSER_KEYBOARD_OFFSET = 76;
 const COMPOSER_SCROLL_GAP = 12;
 
+type ChatMessageItem = {
+  _creationTime: number;
+  _id: string;
+  body: string;
+  type?: string;
+  user?: { name?: string | null } | null;
+  userId: Id<'users'>;
+};
+
+type SystemMessageTone = {
+  backgroundColor: string;
+  borderColor: string;
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('sv-SE', {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function getSystemMessageTone(type: string): SystemMessageTone {
+  switch (type) {
+    case 'animal_sighting':
+      return {
+        backgroundColor: 'rgba(201, 129, 34, 0.12)',
+        borderColor: 'rgba(201, 129, 34, 0.32)',
+        color: '#C98122',
+        icon: 'eye-outline',
+      };
+    case 'member_in_position':
+      return {
+        backgroundColor: 'rgba(57, 128, 72, 0.12)',
+        borderColor: 'rgba(57, 128, 72, 0.32)',
+        color: APP_COLORS.primary,
+        icon: 'checkmark-circle-outline',
+      };
+    case 'member_left_position':
+      return {
+        backgroundColor: 'rgba(99, 102, 121, 0.12)',
+        borderColor: 'rgba(99, 102, 121, 0.28)',
+        color: APP_COLORS.textMuted,
+        icon: 'exit-outline',
+      };
+    default:
+      return {
+        backgroundColor: 'rgba(99, 102, 121, 0.1)',
+        borderColor: 'rgba(99, 102, 121, 0.24)',
+        color: APP_COLORS.textMuted,
+        icon: 'information-circle-outline',
+      };
+  }
+}
+
+function ChatMessageRow({
+  currentUserId,
+  message,
+}: {
+  currentUserId?: Id<'users'>;
+  message: ChatMessageItem;
+}) {
+  const messageType = message.type ?? 'text';
+  const isSystemMessage = messageType !== 'text';
+  const isMine = message.userId === currentUserId;
+
+  if (isSystemMessage) {
+    const tone = getSystemMessageTone(messageType);
+
+    return (
+      <View
+        className="max-w-[92%] self-start rounded-2xl border px-3 py-2"
+        style={{ backgroundColor: tone.backgroundColor, borderColor: tone.borderColor }}>
+        <View className="flex-row items-start gap-2">
+          <View
+            className="mt-0.5 size-7 items-center justify-center rounded-full"
+            style={{ backgroundColor: `${tone.color}24` }}>
+            <Ionicons name={tone.icon} size={16} color={tone.color} />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm font-semibold leading-5 text-foreground">
+              {message.body}
+            </Text>
+            <Text className="mt-0.5 text-[11px] text-muted-foreground">
+              {formatTime(message._creationTime)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className={`max-w-[82%] rounded-[26px] px-4 py-3 ${isMine ? 'self-end bg-primary' : 'self-start bg-muted'}`}>
+      {!isMine && (
+        <Text className="mb-1 text-xs font-semibold text-muted-foreground">
+          {message.user?.name ?? 'Okänd'}
+        </Text>
+      )}
+      <Text className={isMine ? 'text-primary-foreground' : 'text-foreground'}>
+        {message.body}
+      </Text>
+      <Text
+        className={`mt-1 text-right text-[11px] ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+        {formatTime(message._creationTime)}
+      </Text>
+    </View>
+  );
 }
 
 export default function EventChatScreen() {
@@ -166,28 +271,13 @@ export default function EventChatScreen() {
         ) : (
           <>
             <View style={{ flexGrow: 1 }} />
-            {messages.map((item) => {
-              const isMine = item.userId === currentUser?._id;
-
-              return (
-                <View
-                  key={item._id}
-                  className={`max-w-[82%] rounded-[26px] px-4 py-3 ${isMine ? 'self-end bg-primary' : 'self-start bg-muted'}`}>
-                  {!isMine && (
-                    <Text className="mb-1 text-xs font-semibold text-muted-foreground">
-                      {item.user?.name ?? 'Okänd'}
-                    </Text>
-                  )}
-                  <Text className={isMine ? 'text-primary-foreground' : 'text-foreground'}>
-                    {item.body}
-                  </Text>
-                  <Text
-                    className={`mt-1 text-right text-[11px] ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                    {formatTime(item._creationTime)}
-                  </Text>
-                </View>
-              );
-            })}
+            {messages.map((item) => (
+              <ChatMessageRow
+                key={item._id}
+                currentUserId={currentUser?._id}
+                message={item}
+              />
+            ))}
             <View
               style={{
                 height:
