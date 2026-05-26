@@ -147,11 +147,10 @@ export function HuntMapToolsMenu({
     <GlassMenuButton
       accessibilityLabel="Kartverktyg"
       actions={actions}
-      className="size-14"
+      buttonSize={56}
       icon="map-outline"
       iconSize={24}
       onPressAction={handlePressAction}
-      surfaceClassName="size-14"
       title="Kartverktyg"
     />
   );
