@@ -116,7 +116,7 @@ export default function CreateEventScreen() {
         className="flex-1 bg-background"
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
-          paddingBottom: 24,
+          paddingBottom: 40,
           paddingHorizontal: 24,
           paddingTop: 24,
         }}
@@ -318,19 +318,24 @@ export default function CreateEventScreen() {
       </ScrollView>
 
       <View
-        className="flex-row gap-3 border-t border-border bg-background px-6 pt-3"
+        className="border-t border-border bg-background px-6 pt-3"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
-        <Button
-          variant="outline"
-          className="flex-1"
-          onPress={() => back()}
-          disabled={isSubmitting}>
-          <Text>Avbryt</Text>
-        </Button>
+        <View className="flex-row items-center gap-3">
+          <Button
+            variant="ghost"
+            className="h-12 flex-1 rounded-xl"
+            onPress={() => back()}
+            disabled={isSubmitting}>
+            <Text className="text-muted-foreground">Avbryt</Text>
+          </Button>
 
-        <Button onPress={() => form.handleSubmit()} className="flex-1" disabled={isSubmitting}>
-          <Text>{isSubmitting ? 'Skapar…' : 'Skapa jakt'}</Text>
-        </Button>
+          <Button
+            onPress={() => form.handleSubmit()}
+            className="h-12 flex-1 rounded-xl"
+            disabled={isSubmitting}>
+            <Text>{isSubmitting ? 'Skapar…' : 'Skapa jakt'}</Text>
+          </Button>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
