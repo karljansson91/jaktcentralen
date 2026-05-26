@@ -105,14 +105,7 @@ export default function EventChatScreen() {
           }
         }}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[0]}>
-        <View className="bg-background pb-2 pt-1" collapsable={false}>
-          <Text className="text-[18px] font-medium leading-[24px] text-foreground">
-            Chat
-          </Text>
-        </View>
-
+        scrollEventThrottle={16}>
         {status === 'CanLoadMore' && (
           <Pressable
             onPress={() => loadMore(20)}
