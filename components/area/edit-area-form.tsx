@@ -76,11 +76,10 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           flexGrow: 1,
+          paddingBottom: 40,
           paddingHorizontal: 24,
           paddingTop: 24,
         }}
-        contentInset={{ bottom: Math.max(insets.bottom, 24) }}
-        scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
         keyboardShouldPersistTaps="handled">
         <View className="flex-1">
           <Text className="mb-1 font-medium">Namn *</Text>
@@ -101,20 +100,25 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
             className="mb-4 h-20"
             textAlignVertical="top"
           />
-
-          <View className="flex-1" />
-
-          <View className="gap-3 pt-6">
-            <Button onPress={handleSubmit}>
-              <Text>Spara ändringar</Text>
-            </Button>
-
-            <Button variant="outline" onPress={() => back()}>
-              <Text>Avbryt</Text>
-            </Button>
-          </View>
         </View>
       </ScrollView>
+
+      <View
+        className="border-t border-border bg-background px-6 pt-3"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+        <View className="flex-row items-center gap-3">
+          <Button
+            variant="ghost"
+            className="h-12 flex-1 rounded-xl"
+            onPress={() => back()}>
+            <Text className="text-muted-foreground">Avbryt</Text>
+          </Button>
+
+          <Button onPress={handleSubmit} className="h-12 flex-1 rounded-xl">
+            <Text>Spara ändringar</Text>
+          </Button>
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 }
