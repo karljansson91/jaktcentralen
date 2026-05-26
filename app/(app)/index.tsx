@@ -1,6 +1,7 @@
+import { EndedHuntsDropdown } from '@/components/home/ended-hunts-dropdown';
 import { HomeSectionHeader } from '@/components/home/home-section-header';
 import { HomeHuntCard } from '@/components/home/hunt-card';
-import { Badge, Button, Card, CardContent, IconButton, Text } from '@/components/ui';
+import { Button, Card, CardContent, IconButton, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { getEventLifecycle } from '@/lib/event-lifecycle';
@@ -8,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, LayoutAnimation, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -124,45 +125,12 @@ export default function HomeScreen() {
                 </Card>
               ) : null}
 
-              {endedEvents.length > 0 ? (
-                <View className="gap-2 pt-1">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      showEndedHunts ? 'Dölj avslutade jakter' : 'Visa avslutade jakter'
-                    }
-                    onPress={() => {
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      setShowEndedHunts((current) => !current);
-                    }}
-                    className="flex-row items-center justify-between rounded-2xl px-1 py-2">
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-sm font-semibold text-muted-foreground">
-                        Avslutade
-                      </Text>
-                      <Badge variant="muted">
-                        <Text>{endedEvents.length}</Text>
-                      </Badge>
-                    </View>
-                    <Ionicons
-                      name={showEndedHunts ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color="#8b948d"
-                    />
-                  </Pressable>
-
-                  {showEndedHunts
-                    ? endedEvents.map((event) => (
-                        <HomeHuntCard
-                          key={event._id}
-                          event={event}
-                          lifecycle="ended"
-                          onPress={() => push(`/event/${event._id}`)}
-                        />
-                      ))
-                    : null}
-                </View>
-              ) : null}
+              <EndedHuntsDropdown
+                endedEvents={endedEvents}
+                expanded={showEndedHunts}
+                onOpenEvent={(eventId) => push(`/event/${eventId}`)}
+                onToggle={() => setShowEndedHunts((current) => !current)}
+              />
             </View>
           ) : (
             <Card className="overflow-hidden border-border/70 bg-card/95 py-0">
