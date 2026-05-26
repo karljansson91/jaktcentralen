@@ -57,7 +57,6 @@ export function GlassTopNav({
   titleBackground,
 }: GlassTopNavProps) {
   const isFloating = appearance === 'floating';
-  const buttonTone = isFloating ? 'dark' : 'light';
   const shouldShowTitleBackground = titleBackground ?? isFloating;
   const titleClassName = isFloating ? 'text-white' : 'text-foreground';
   const titleContent = (
@@ -80,7 +79,6 @@ export function GlassTopNav({
           onPress={onBack}
           accessibilityLabel={leftAccessibilityLabel}
           surfaceClassName="size-11"
-          tone={buttonTone}
         />
       ) : (
         <View style={{ width: GLASS_NAV_HEIGHT }} />
@@ -89,7 +87,7 @@ export function GlassTopNav({
       <View className="min-w-0 flex-1 items-center justify-center px-2">
         {shouldShowTitleBackground ? (
           <GlassSurface
-            tone={buttonTone}
+            tone={isFloating ? 'dark' : 'light'}
             overlayColor={isFloating ? FLOATING_HEADER_OVERLAY : undefined}
             tintColor={isFloating ? FLOATING_HEADER_TINT : undefined}
             className="h-10 max-w-full rounded-full"
@@ -111,10 +109,7 @@ export function GlassTopNav({
           iconSize={21}
           onPress={onRightPress}
           accessibilityLabel={rightAccessibilityLabel}
-          overlayColor={isFloating ? FLOATING_HEADER_OVERLAY : undefined}
           surfaceClassName="size-11"
-          tintColor={isFloating ? FLOATING_HEADER_TINT : undefined}
-          tone={buttonTone}
         />
       ) : (
         <View style={{ width: GLASS_NAV_HEIGHT }} />

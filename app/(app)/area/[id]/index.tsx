@@ -227,7 +227,6 @@ export default function ViewAreaScreen() {
             onPress={handleGoToMyPosition}
             accessibilityLabel="Gå till min position"
             surfaceClassName="size-12"
-            tone="dark"
           />
         </View>
       </View>

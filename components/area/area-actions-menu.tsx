@@ -10,9 +10,6 @@ const ACTION_REDRAW_AREA = 'redraw-area';
 const ACTION_EDIT_AREA = 'edit-area';
 const ACTION_MAP_STYLE = 'map-style';
 
-const FLOATING_HEADER_TINT = 'rgba(42, 108, 55, 0.84)';
-const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
-
 type AreaActionsMenuProps = {
   areaId: Id<'areas'>;
 };
@@ -73,10 +70,7 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
       actions={actions}
       icon="ellipsis-horizontal"
       onPressAction={handlePressAction}
-      overlayColor={FLOATING_HEADER_OVERLAY}
-      tintColor={FLOATING_HEADER_TINT}
       title="Områdesåtgärder"
-      tone="dark"
     />
   );
 }

@@ -20,7 +20,7 @@ import {
   AnimalSightingType,
   getAnimalSightingLabel,
 } from '@/lib/animal-sightings';
-import { formatAllowedGameDetails, formatAllowedGameSummary } from '@/lib/allowed-game';
+import { formatAllowedGameSummary } from '@/lib/allowed-game';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
@@ -509,14 +509,6 @@ export default function EventMapScreen() {
     [acknowledgeAnimalSighting]
   );
 
-  function handleShowAllowedGame() {
-    if (!event?.allowedGame?.length) {
-      return;
-    }
-
-    Alert.alert('Tillåtet vilt', formatAllowedGameDetails(event.allowedGame));
-  }
-
   const handleMarkSelfInPosition = useCallback(async () => {
     try {
       await markInPosition({ eventId: eventId as Id<'events'> });
@@ -765,7 +757,6 @@ export default function EventMapScreen() {
           style={{ top: Math.max(insets.top, 8) + 8 }}>
           <HuntMapTopNav
             allowedGameLabel={allowedGameSummary}
-            onAllowedGamePress={handleShowAllowedGame}
             renderActionsMenu={renderHuntActionsMenu}
             title={event.title}
             onBack={() => back()}

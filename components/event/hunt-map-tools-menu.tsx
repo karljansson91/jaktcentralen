@@ -121,10 +121,9 @@ export function HuntMapToolsMenu({
         onPress={() => setOpen(true)}>
         <GlassSurface
           interactive
-          tone="dark"
           className="size-14 rounded-full"
           contentClassName="h-full w-full items-center justify-center">
-          <Ionicons name="map-outline" size={24} color={APP_COLORS.surface} />
+          <Ionicons name="map-outline" size={24} color={APP_COLORS.text} />
         </GlassSurface>
       </Pressable>
 

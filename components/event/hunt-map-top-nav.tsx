@@ -39,7 +39,6 @@ const HEADER_DETAILS_ANIMATION = {
 type HuntMapTopNavProps = {
   allowedGameLabel?: string | null;
   actionsMenu?: ReactNode;
-  onAllowedGamePress?: () => void;
   onBack: () => void;
   onMore?: () => void;
   positionSharingEnabled?: boolean;
@@ -52,7 +51,6 @@ type HuntMapTopNavProps = {
 export function HuntMapTopNav({
   allowedGameLabel,
   actionsMenu,
-  onAllowedGamePress,
   onBack,
   onMore,
   positionSharingEnabled,
@@ -95,82 +93,68 @@ export function HuntMapTopNav({
           onPress={onBack}
           accessibilityLabel="Gå tillbaka"
           surfaceClassName="size-11"
-          tone="dark"
         />
 
         <View className="min-w-0 flex-1 items-center justify-center px-2">
-          <Pressable
-            accessibilityLabel={[
-              title,
-              positionSharingLabel,
-              hasDetails
-                ? detailsExpanded
-                  ? 'Dölj jaktinfo'
-                  : 'Visa jaktinfo'
-                : null,
-            ]
-              .filter(Boolean)
-              .join('. ')}
-            accessibilityRole={hasDetails ? 'button' : undefined}
-            accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
-            disabled={!hasDetails}
-            hitSlop={8}
-            onPress={toggleDetails}
-            className="max-w-full">
-            {({ pressed }) => (
-              <GlassSurface
-                interactive={hasDetails}
-                tone="dark"
-                overlayColor={FLOATING_HEADER_OVERLAY}
-                tintColor={FLOATING_HEADER_TINT}
-                className="max-w-full rounded-[28px]"
-                style={[
-                  pressed && hasDetails ? styles.pressedTitleSurface : null,
-                  titleSurfaceStyle,
-                ]}
-                contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
-                <View className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
-                  <Text
-                    className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.72}
-                    style={styles.floatingTitle}>
-                    {title}
-                  </Text>
-                  {positionSharingEnabled != null ? (
-                    <Ionicons
-                      accessibilityElementsHidden
-                      importantForAccessibility="no"
-                      name={positionSharingEnabled ? 'navigate' : 'navigate-outline'}
-                      size={14}
-                      color={positionSharingEnabled ? '#8FE8A5' : 'rgba(255, 255, 255, 0.62)'}
-                    />
-                  ) : null}
-                </View>
-                {detailsExpanded && readinessLabel ? (
-                  <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
-                    {readinessLabel}
-                  </Text>
-                ) : null}
-                {detailsExpanded && allowedGameLabel ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={onAllowedGamePress}
-                    className="max-w-full">
-                    <Text
-                      className="text-center text-[11px] font-semibold leading-[14px] text-white/85"
-                      numberOfLines={1}>
-                      {allowedGameLabel}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {detailsExpanded && routeSummary ? (
-                  <AssignmentRouteSummary {...routeSummary} />
-                ) : null}
-              </GlassSurface>
-            )}
-          </Pressable>
+          <GlassSurface
+            tone="dark"
+            overlayColor={FLOATING_HEADER_OVERLAY}
+            tintColor={FLOATING_HEADER_TINT}
+            className="max-w-full rounded-[28px]"
+            style={titleSurfaceStyle}
+            contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
+            <Pressable
+              accessibilityLabel={[
+                title,
+                positionSharingLabel,
+                hasDetails
+                  ? detailsExpanded
+                    ? 'Dölj jaktinfo'
+                    : 'Visa jaktinfo'
+                  : null,
+              ]
+                .filter(Boolean)
+                .join('. ')}
+              accessibilityRole={hasDetails ? 'button' : undefined}
+              accessibilityState={hasDetails ? { expanded: detailsExpanded } : undefined}
+              disabled={!hasDetails}
+              hitSlop={8}
+              onPress={toggleDetails}
+              className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
+              <Text
+                className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}
+                style={styles.floatingTitle}>
+                {title}
+              </Text>
+              {positionSharingEnabled != null ? (
+                <Ionicons
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                  name={positionSharingEnabled ? 'navigate' : 'navigate-outline'}
+                  size={14}
+                  color={positionSharingEnabled ? '#8FE8A5' : 'rgba(255, 255, 255, 0.62)'}
+                />
+              ) : null}
+            </Pressable>
+            {detailsExpanded && readinessLabel ? (
+              <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
+                {readinessLabel}
+              </Text>
+            ) : null}
+            {detailsExpanded && allowedGameLabel ? (
+              <Text
+                className="text-center text-[11px] font-semibold leading-[14px] text-white/85"
+                numberOfLines={1}>
+                {allowedGameLabel}
+              </Text>
+            ) : null}
+            {detailsExpanded && routeSummary ? (
+              <AssignmentRouteSummary {...routeSummary} />
+            ) : null}
+          </GlassSurface>
         </View>
 
         {renderActionsMenu ? (
@@ -183,10 +167,7 @@ export function HuntMapTopNav({
             iconSize={21}
             onPress={onMore}
             accessibilityLabel="Jaktåtgärder"
-            overlayColor={FLOATING_HEADER_OVERLAY}
             surfaceClassName="size-11"
-            tintColor={FLOATING_HEADER_TINT}
-            tone="dark"
           />
         ) : (
           <View style={{ width: GLASS_NAV_HEIGHT }} />
@@ -217,9 +198,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
   } satisfies TextStyle,
-  pressedTitleSurface: {
-    transform: [{ scale: 1.025 }],
-  } satisfies ViewStyle,
   row: {
     alignItems: 'flex-start',
     flexDirection: 'row',

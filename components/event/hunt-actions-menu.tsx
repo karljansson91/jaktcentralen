@@ -16,9 +16,6 @@ const ACTION_TIMELINE = 'timeline';
 const ACTION_INVITE = 'invite';
 const ACTION_LEAVE_OR_END = 'leave-or-end';
 
-const FLOATING_HEADER_TINT = 'rgba(42, 108, 55, 0.84)';
-const FLOATING_HEADER_OVERLAY = 'rgba(29, 95, 43, 0.22)';
-
 type HuntActionsMenuProps = {
   currentUserId: Id<'users'>;
   event: EventLifecycleInput & {
@@ -156,11 +153,8 @@ export function HuntActionsMenu({
       actions={actions}
       icon="ellipsis-horizontal"
       onPressAction={handlePressAction}
-      overlayColor={FLOATING_HEADER_OVERLAY}
       style={isSubmitting ? { opacity: 0.5 } : undefined}
-      tintColor={FLOATING_HEADER_TINT}
       title="Jaktåtgärder"
-      tone="dark"
     />
   );
 }
