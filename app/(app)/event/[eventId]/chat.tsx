@@ -31,9 +31,7 @@ type ChatMessageItem = {
   userId: Id<'users'>;
 };
 
-type SystemMessageTone = {
-  backgroundColor: string;
-  borderColor: string;
+type EventMessageIcon = {
   color: string;
   icon: keyof typeof Ionicons.glyphMap;
 };
@@ -45,33 +43,25 @@ function formatTime(ts: number): string {
   });
 }
 
-function getSystemMessageTone(type: string): SystemMessageTone {
+function getEventMessageIcon(type: string): EventMessageIcon {
   switch (type) {
     case 'animal_sighting':
       return {
-        backgroundColor: 'rgba(201, 129, 34, 0.12)',
-        borderColor: 'rgba(201, 129, 34, 0.32)',
         color: '#C98122',
         icon: 'eye-outline',
       };
     case 'member_in_position':
       return {
-        backgroundColor: 'rgba(57, 128, 72, 0.12)',
-        borderColor: 'rgba(57, 128, 72, 0.32)',
         color: APP_COLORS.primary,
         icon: 'checkmark-circle-outline',
       };
     case 'member_left_position':
       return {
-        backgroundColor: 'rgba(99, 102, 121, 0.12)',
-        borderColor: 'rgba(99, 102, 121, 0.28)',
         color: APP_COLORS.textMuted,
         icon: 'exit-outline',
       };
     default:
       return {
-        backgroundColor: 'rgba(99, 102, 121, 0.1)',
-        borderColor: 'rgba(99, 102, 121, 0.24)',
         color: APP_COLORS.textMuted,
         icon: 'information-circle-outline',
       };
@@ -88,32 +78,7 @@ function ChatMessageRow({
   const messageType = message.type ?? 'text';
   const isSystemMessage = messageType !== 'text';
   const isMine = message.userId === currentUserId;
-
-  if (isSystemMessage) {
-    const tone = getSystemMessageTone(messageType);
-
-    return (
-      <View
-        className="max-w-[92%] self-start rounded-2xl border px-3 py-2"
-        style={{ backgroundColor: tone.backgroundColor, borderColor: tone.borderColor }}>
-        <View className="flex-row items-start gap-2">
-          <View
-            className="mt-0.5 size-7 items-center justify-center rounded-full"
-            style={{ backgroundColor: `${tone.color}24` }}>
-            <Ionicons name={tone.icon} size={16} color={tone.color} />
-          </View>
-          <View className="min-w-0 flex-1">
-            <Text className="text-sm font-semibold leading-5 text-foreground">
-              {message.body}
-            </Text>
-            <Text className="mt-0.5 text-[11px] text-muted-foreground">
-              {formatTime(message._creationTime)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
+  const eventIcon = isSystemMessage ? getEventMessageIcon(messageType) : null;
 
   return (
     <View
@@ -123,9 +88,17 @@ function ChatMessageRow({
           {message.user?.name ?? 'Okänd'}
         </Text>
       )}
-      <Text className={isMine ? 'text-primary-foreground' : 'text-foreground'}>
-        {message.body}
-      </Text>
+      <View className="flex-row items-start gap-2">
+        {eventIcon ? (
+          <View
+            className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}>
+            <Ionicons name={eventIcon.icon} size={15} color={eventIcon.color} />
+          </View>
+        ) : null}
+        <Text className={`shrink leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}>
+          {message.body}
+        </Text>
+      </View>
       <Text
         className={`mt-1 text-right text-[11px] ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
         {formatTime(message._creationTime)}
