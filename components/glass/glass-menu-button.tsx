@@ -5,7 +5,7 @@ import { APP_COLORS } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { MenuView } from '@expo/ui/community/menu';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 export function GlassMenuButton({
   accessibilityLabel,
@@ -38,7 +38,7 @@ export function GlassMenuButton({
         accessibilityRole="button"
         accessible
         className={cn(className)}
-        style={buttonSizeStyle}>
+        style={[styles.trigger, buttonSizeStyle]}>
         <GlassSurface
           interactive
           overlayColor={overlayColor}
@@ -53,3 +53,11 @@ export function GlassMenuButton({
     </MenuView>
   );
 }
+
+const styles = StyleSheet.create({
+  trigger: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+});
