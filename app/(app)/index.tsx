@@ -181,13 +181,9 @@ export default function HomeScreen() {
                         <View className="size-12 items-center justify-center rounded-2xl bg-secondary">
                           <Ionicons name="map-outline" size={22} color="#35523b" />
                         </View>
-                        <View className="flex-1 gap-1">
+                        <View className="flex-1">
                           <Text className="text-base font-semibold text-foreground">
                             {area.name}
-                          </Text>
-                          <Text className="text-sm text-muted-foreground" numberOfLines={2}>
-                            {area.description ||
-                              'Öppna området för att se gränser, jakter och medlemmar.'}
                           </Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color="#8b948d" />

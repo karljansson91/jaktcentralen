@@ -45,6 +45,7 @@ export default defineSchema({
 
   areas: defineTable({
     name: v.string(),
+    // Deprecated. New area writes no longer set this; remove after stored values are migrated away.
     description: v.optional(v.string()),
     creatorId: v.id("users"),
     deletedAt: v.optional(v.number()),

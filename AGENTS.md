@@ -6,6 +6,11 @@ When working on Convex code, **always read `convex/_generated/ai/guidelines.md` 
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 <!-- convex-ai-end -->
 
+## Copy
+
+When writing product copy, keep it short and simple. Do not state the obvious,
+and do not say the same thing twice.
+
 ## Commit Quality Gate
 
 Before creating any commit, always run the repo-local

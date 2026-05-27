@@ -68,8 +68,23 @@ export const backfillAreaFeaturesFromAreaPoints = migrations.define({
   },
 });
 
+export const removeAreaDescriptions = migrations.define({
+  table: "areas",
+  migrateOne: async (ctx, area) => {
+    if (area.description === undefined) {
+      return;
+    }
+
+    await ctx.db.patch(area._id, { description: undefined });
+  },
+});
+
 export const run = migrations.runner(
   internal.migrations.backfillAreaFeaturesFromAreaPoints
+);
+
+export const runRemoveAreaDescriptions = migrations.runner(
+  internal.migrations.removeAreaDescriptions
 );
 
 export const runOne = migrations.runner();

@@ -9,7 +9,6 @@ function isAreaDeleted(area: { deletedAt?: number }) {
 export const create = mutation({
   args: {
     name: v.string(),
-    description: v.optional(v.string()),
     polygon: v.array(
       v.object({ latitude: v.number(), longitude: v.number() })
     ),
@@ -19,7 +18,6 @@ export const create = mutation({
 
     const areaId = await ctx.db.insert("areas", {
       name: args.name,
-      description: args.description,
       creatorId: user._id,
       polygon: args.polygon,
     });
@@ -47,7 +45,6 @@ export const update = mutation({
   args: {
     areaId: v.id("areas"),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
     polygon: v.optional(
       v.array(v.object({ latitude: v.number(), longitude: v.number() }))
     ),

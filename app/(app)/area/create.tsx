@@ -12,7 +12,6 @@ export default function CreateAreaScreen() {
   const insets = useSafeAreaInsets();
   const [polygonPoints, setPolygonPoints] = useState<LngLat[] | null>(null);
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const topContentInset = Math.max(insets.top, 12);
   const bottomContentInset = Math.max(insets.bottom, 24);
 
@@ -49,14 +48,13 @@ export default function CreateAreaScreen() {
     try {
       const areaId = await createArea({
         name: name.trim(),
-        description: description.trim() || undefined,
         polygon,
       });
       replace(`/area/${areaId}`);
     } catch (e: any) {
       Alert.alert('Fel', e.message ?? 'Kunde inte skapa område');
     }
-  }, [createArea, description, name, polygonPoints, replace]);
+  }, [createArea, name, polygonPoints, replace]);
 
   // Step 1: Draw polygon
   if (!polygonPoints) {
@@ -103,17 +101,6 @@ export default function CreateAreaScreen() {
             placeholder="Områdesnamn"
             className="mb-4"
             autoFocus
-          />
-
-          <Text className="mb-1 font-medium">Beskrivning</Text>
-          <Input
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Valfri beskrivning"
-            multiline
-            numberOfLines={3}
-            className="mb-6 h-20"
-            textAlignVertical="top"
           />
 
           <Button onPress={handleSubmit} className="mb-3">
