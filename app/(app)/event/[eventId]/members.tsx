@@ -1,9 +1,11 @@
 import { Badge, Button, Card, CardContent, Text } from '@/components/ui';
 import { AllowedGameDetails } from '@/components/event/allowed-game-details';
 import { AllowedGameEditor } from '@/components/event/allowed-game-editor';
+import { HuntDateEditFields } from '@/components/event/hunt-date-edit-fields';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import type { AllowedGameRule } from '@/lib/allowed-game';
+import { formatEventInfoDateRange } from '@/lib/event-dates';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import {
   getEventLifecycle,
@@ -28,36 +30,6 @@ type AllowedGameSaveAction =
   | { type: 'idle' }
   | { type: 'saved' }
   | { type: 'saving' };
-
-function formatDateRange(startDate: number, endDate?: number) {
-  const start = new Date(startDate);
-  const date = start.toLocaleDateString('sv-SE', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-  const time = start.toLocaleTimeString('sv-SE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  if (!endDate) {
-    return `${date} kl. ${time}`;
-  }
-
-  const end = new Date(endDate);
-  const endDateLabel = end.toLocaleDateString('sv-SE', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-  const endTime = end.toLocaleTimeString('sv-SE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return `${date} kl. ${time} - ${endDateLabel} kl. ${endTime}`;
-}
 
 const EVENT_INFO_STATUS_LABELS: Record<EventLifecycle, string> = {
   active: 'Pågår',
@@ -328,6 +300,11 @@ export default function EventInfoScreen() {
     undefined;
   const acceptedCount = memberRows.filter((member) => member.status === 'accepted').length;
   const currentUserMembership = acceptedMembers?.find((member) => member.userId === currentUser?._id);
+  const canEditEventDates = Boolean(
+    event &&
+      currentUser &&
+      (event.creatorId === currentUser._id || currentUserMembership?.role === 'admin')
+  );
   const canEditAllowedGame =
     Boolean(currentUserMembership?.role === 'admin') &&
     getEventLifecycle(event ?? { startDate: 0, endDate: 0 }, currentTime) !== 'ended';
@@ -433,12 +410,21 @@ export default function EventInfoScreen() {
           </View>
 
           <View className="gap-4 border-y border-border py-4">
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="calendar-outline" size={18} color={APP_COLORS.textMuted} />
-              <Text className="flex-1 text-sm leading-5 text-foreground">
-                {formatDateRange(event.startDate, event.endDate)}
-              </Text>
-            </View>
+            {canEditEventDates ? (
+              <HuntDateEditFields
+                key={event.endDate}
+                endDate={event.endDate}
+                eventId={eventId as Id<'events'>}
+                startDate={event.startDate}
+              />
+            ) : (
+              <View className="flex-row items-center gap-3">
+                <Ionicons name="calendar-outline" size={18} color={APP_COLORS.textMuted} />
+                <Text className="flex-1 text-sm leading-5 text-foreground">
+                  {formatEventInfoDateRange(event.startDate, event.endDate)}
+                </Text>
+              </View>
+            )}
             <View className="flex-row items-center gap-3">
               <Ionicons name="people-outline" size={18} color={APP_COLORS.textMuted} />
               <Text className="flex-1 text-sm text-foreground">

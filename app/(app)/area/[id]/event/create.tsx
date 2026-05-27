@@ -6,6 +6,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
 import type { Doc, Id } from '@/convex/_generated/dataModel';
 import type { AllowedGameRule } from '@/lib/allowed-game';
+import { isValidEventDate, normalizeEventDate } from '@/lib/event-dates';
 import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import {
   createJoinCodeSuggestions,
@@ -27,14 +28,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function normalizeDate(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function isValidDate(date: Date | undefined): date is Date {
-  return date instanceof Date && !Number.isNaN(date.getTime());
-}
 
 type FriendInviteRowProps = {
   disabled?: boolean;
@@ -94,16 +87,16 @@ export default function CreateEventScreen() {
     defaultValues: {
       title: '',
       description: '',
-      startDate: normalizeDate(new Date()),
-      endDate: normalizeDate(new Date()),
+      startDate: normalizeEventDate(new Date()),
+      endDate: normalizeEventDate(new Date()),
       joinCode: '',
     },
     onSubmit: async ({ value }) => {
-      if (!isValidDate(value.startDate)) {
+      if (!isValidEventDate(value.startDate)) {
         Alert.alert('Fel', 'Välj ett startdatum.');
         return;
       }
-      if (!isValidDate(value.endDate)) {
+      if (!isValidEventDate(value.endDate)) {
         Alert.alert('Fel', 'Välj ett slutdatum.');
         return;
       }
@@ -231,7 +224,7 @@ export default function CreateEventScreen() {
         <form.Field
           name="startDate"
           validators={{
-            onSubmit: ({ value }) => (!isValidDate(value) ? 'Startdatum krävs' : undefined),
+            onSubmit: ({ value }) => (!isValidEventDate(value) ? 'Startdatum krävs' : undefined),
           }}>
           {(field) => (
             <>
@@ -239,7 +232,7 @@ export default function CreateEventScreen() {
                 label="Startdatum"
                 required
                 value={field.state.value}
-                onValueChange={(date) => field.handleChange(normalizeDate(date))}
+                onValueChange={(date) => field.handleChange(normalizeEventDate(date))}
               />
               {field.state.meta.errors.length > 0 && (
                 <Text className="mt-1 text-sm text-destructive">
@@ -254,7 +247,7 @@ export default function CreateEventScreen() {
         <form.Field
           name="endDate"
           validators={{
-            onSubmit: ({ value }) => (!isValidDate(value) ? 'Slutdatum krävs' : undefined),
+            onSubmit: ({ value }) => (!isValidEventDate(value) ? 'Slutdatum krävs' : undefined),
           }}>
           {(field) => (
             <>
@@ -262,7 +255,7 @@ export default function CreateEventScreen() {
                 label="Slutdatum"
                 required
                 value={field.state.value}
-                onValueChange={(date) => field.handleChange(normalizeDate(date))}
+                onValueChange={(date) => field.handleChange(normalizeEventDate(date))}
               />
               {field.state.meta.errors.length > 0 && (
                 <Text className="mt-1 text-sm text-destructive">

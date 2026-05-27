@@ -118,13 +118,14 @@ function normalizeAllowedGame(
   return normalized.length > 0 ? normalized : undefined;
 }
 
-async function requireEventAdmin(ctx: MutationCtx, eventId: Id<"events">, userId: Id<"users">) {
+async function requireEventAdmin(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  userId: Id<"users">
+) {
   const event = await ctx.db.get(eventId);
   if (!event) {
     throw new Error("Event not found");
-  }
-  if (isEventEnded(event)) {
-    throw new Error("Cannot edit an ended hunt");
   }
 
   const membership = await ctx.db
@@ -134,8 +135,24 @@ async function requireEventAdmin(ctx: MutationCtx, eventId: Id<"events">, userId
     )
     .unique();
 
-  if (event.creatorId !== userId && membership?.role !== "admin") {
+  if (
+    event.creatorId !== userId &&
+    (membership?.role !== "admin" || membership.status !== "accepted")
+  ) {
     throw new Error("Admin access required");
+  }
+
+  return event;
+}
+
+async function requireActiveEventAdmin(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  userId: Id<"users">
+) {
+  const event = await requireEventAdmin(ctx, eventId, userId);
+  if (isEventEnded(event)) {
+    throw new Error("Cannot edit an ended hunt");
   }
 
   return event;
@@ -197,7 +214,7 @@ export const updateAllowedGame = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    await requireEventAdmin(ctx, args.eventId, user._id);
+    await requireActiveEventAdmin(ctx, args.eventId, user._id);
 
     await ctx.db.patch(args.eventId, {
       allowedGame: normalizeAllowedGame(args.allowedGame),
@@ -259,6 +276,31 @@ export const update = mutation({
 
     if (updates.endDate !== undefined && updates.endDate !== previousEndDate) {
       await scheduleAutoEnd(ctx, eventId, updates.endDate);
+    }
+  },
+});
+
+export const updateEndDate = mutation({
+  args: {
+    endDate: v.number(),
+    eventId: v.id("events"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const event = await requireEventAdmin(ctx, args.eventId, user._id);
+
+    if (args.endDate < event.startDate) {
+      throw new Error("End date cannot be before start date");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.eventId, {
+      endDate: args.endDate,
+      endedAt: args.endDate <= now ? args.endDate : undefined,
+    });
+
+    if (args.endDate > now) {
+      await scheduleAutoEnd(ctx, args.eventId, args.endDate);
     }
   },
 });
