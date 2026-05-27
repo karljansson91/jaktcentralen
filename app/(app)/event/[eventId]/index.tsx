@@ -4,7 +4,6 @@ import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers'
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
-import { HuntMapLongPressActionSheet } from '@/components/event/hunt-map-long-press-action-sheet';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
@@ -24,6 +23,7 @@ import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import { distanceMeters, type LatLngPoint } from '@/lib/geo';
 import type { AssignmentTrail } from '@/lib/hunt-navigation';
+import { subscribeToHuntMapLongPressActions } from '@/lib/hunt-map-long-press-actions';
 import {
   IN_POSITION_RADIUS_METERS,
   NEAR_ASSIGNED_POSITION_RADIUS_METERS,
@@ -49,6 +49,7 @@ import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
 import {
   Camera,
+  CircleLayer,
   FillLayer,
   LineLayer,
   LocationPuck,
@@ -392,6 +393,21 @@ export default function EventMapScreen() {
   }, [currentUserMember]);
   const currentMeasurementStartCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
 
+  const longPressPointGeoJSON = useMemo<GeoJSON.Feature<GeoJSON.Point> | null>(() => {
+    if (!longPressActionPoint) {
+      return null;
+    }
+
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'Point',
+        coordinates: [longPressActionPoint.longitude, longPressActionPoint.latitude],
+      },
+    };
+  }, [longPressActionPoint]);
+
   const currentUserMarkedInPosition = Boolean(
     currentUserAssignedStation &&
       currentUserMember?.inPositionTargetKey === currentUserAssignedStation.targetKey
@@ -506,13 +522,14 @@ export default function EventMapScreen() {
       const point = pointFromMapLongPress(mapEvent);
       Vibration.vibrate(8);
       setLongPressActionPoint(point);
+      push(
+        `/event/${eventId}/map-point-actions?latitude=${point.latitude}&longitude=${point.longitude}&canMeasureFromUser=${
+          currentMeasurementStartCoordinate ? '1' : '0'
+        }`
+      );
     },
-    [isActiveHunt, setLongPressActionPoint]
+    [currentMeasurementStartCoordinate, eventId, isActiveHunt, push, setLongPressActionPoint]
   );
-
-  const handleCloseLongPressActionSheet = useCallback(() => {
-    setLongPressActionPoint(null);
-  }, [setLongPressActionPoint]);
 
   const handleMeasureToLongPressPoint = useCallback(
     (point: LatLngPoint) => {
@@ -535,15 +552,25 @@ export default function EventMapScreen() {
     [addMeasurementPoint, setLongPressActionPoint]
   );
 
-  const handleMarkAnimalSighting = useCallback(
-    (point: LatLngPoint) => {
-      setLongPressActionPoint(null);
-      push(
-        `/event/${eventId}/animal-sighting?latitude=${point.latitude}&longitude=${point.longitude}`
-      );
-    },
-    [eventId, push, setLongPressActionPoint]
-  );
+  useEffect(() => {
+    return subscribeToHuntMapLongPressActions((action) => {
+      switch (action.type) {
+        case 'addMeasurementPoint':
+          handleAddMeasurementPoint(action.point);
+          break;
+        case 'clearPoint':
+          setLongPressActionPoint(null);
+          break;
+        case 'measureToPoint':
+          handleMeasureToLongPressPoint(action.point);
+          break;
+      }
+    });
+  }, [
+    handleAddMeasurementPoint,
+    handleMeasureToLongPressPoint,
+    setLongPressActionPoint,
+  ]);
 
   const handleMarkSelfInPosition = useCallback(async () => {
     try {
@@ -763,6 +790,28 @@ export default function EventMapScreen() {
           />
         ) : null}
 
+        {longPressPointGeoJSON ? (
+          <ShapeSource id="event-long-press-point" shape={longPressPointGeoJSON}>
+            <CircleLayer
+              id="event-long-press-point-ring"
+              style={{
+                circleColor: '#ffffff',
+                circleOpacity: 0.86,
+                circleRadius: 14,
+                circleStrokeColor: APP_COLORS.primary,
+                circleStrokeWidth: 3,
+              }}
+            />
+            <CircleLayer
+              id="event-long-press-point-dot"
+              style={{
+                circleColor: APP_COLORS.primary,
+                circleRadius: 5,
+              }}
+            />
+          </ShapeSource>
+        ) : null}
+
         {liveMemberMarkers?.map((marker) => (
           <LiveMemberPositionMarker key={marker.id} marker={marker} />
         ))}
@@ -902,15 +951,6 @@ export default function EventMapScreen() {
         </View>
 
       </View>
-
-      <HuntMapLongPressActionSheet
-        canMeasureFromUser={Boolean(currentMeasurementStartCoordinate)}
-        coordinate={isActiveHunt ? longPressActionPoint : null}
-        onAddMeasurementPoint={handleAddMeasurementPoint}
-        onClose={handleCloseLongPressActionSheet}
-        onMarkAnimalSighting={handleMarkAnimalSighting}
-        onMeasureToPoint={handleMeasureToLongPressPoint}
-      />
       <AnimalSightingActionSheet
         currentTime={currentTime}
         sighting={selectedSighting}

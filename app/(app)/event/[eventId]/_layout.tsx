@@ -26,6 +26,17 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
+        name="map-point-actions"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: '#FCF8F2' },
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
         name="wind-direction"
         options={{
           presentation: 'modal',
