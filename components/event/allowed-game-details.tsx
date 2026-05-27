@@ -1,7 +1,7 @@
 import { Text } from '@/components/ui';
 import {
   formatAllowedGameDetails,
-  formatAllowedGameSummary,
+  getAllowedGameSpeciesLabel,
   type AllowedGameRule,
 } from '@/lib/allowed-game';
 import { View } from 'react-native';
@@ -11,18 +11,32 @@ type AllowedGameDetailsProps = {
 };
 
 export function AllowedGameDetails({ rules }: AllowedGameDetailsProps) {
-  const summary = formatAllowedGameSummary(rules, 8);
+  const allowedRules = rules ?? [];
 
   return (
-    <View className="gap-2">
-      <Text className="text-sm leading-5 text-muted-foreground">
-        {summary ?? 'Inget angivet'}
-      </Text>
-      {summary ? (
+    <View className="gap-3">
+      {allowedRules.length > 0 ? (
+        <>
+          <View className="flex-row flex-wrap gap-2">
+            {allowedRules.map((rule) => (
+              <View
+                key={rule.speciesId}
+                className="rounded-full border border-border bg-card px-3 py-2">
+                <Text className="text-sm font-semibold text-foreground">
+                  {getAllowedGameSpeciesLabel(rule)}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text className="text-sm leading-5 text-foreground">
+            {formatAllowedGameDetails(rules)}
+          </Text>
+        </>
+      ) : (
         <Text className="text-sm leading-5 text-foreground">
-          {formatAllowedGameDetails(rules)}
+          Inget angivet
         </Text>
-      ) : null}
+      )}
     </View>
   );
 }

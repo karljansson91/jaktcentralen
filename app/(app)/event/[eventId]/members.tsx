@@ -1,11 +1,8 @@
-import { Badge, Button, Card, CardContent, Text } from '@/components/ui';
-import { AllowedGameDetails } from '@/components/event/allowed-game-details';
-import { AllowedGameEditor } from '@/components/event/allowed-game-editor';
-import { HuntDateEditFields } from '@/components/event/hunt-date-edit-fields';
+import { Button, Card, CardContent, Text } from '@/components/ui';
+import { HuntInfoAdminFields, HuntInfoReadOnlyDetails } from '@/components/event/hunt-info-details';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import type { AllowedGameRule } from '@/lib/allowed-game';
-import { formatEventInfoDateRange } from '@/lib/event-dates';
+import { isValidEventDate, normalizeEventDate } from '@/lib/event-dates';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import {
   getEventLifecycle,
@@ -13,23 +10,34 @@ import {
   type EventLifecycle,
 } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
+import {
+  createHuntInfoDraft,
+  getHuntInfoDraftKey,
+  type HuntInfoDraft,
+} from '@/lib/hunt-info-draft';
+import { validateJoinCode } from '@/lib/join-code';
 import { APP_COLORS } from '@/lib/theme';
 import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type MemberStatus = 'accepted' | 'invited' | 'declined';
-type AllowedGameSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
-type AllowedGameSaveAction =
-  | { type: 'changed'; dirty: boolean }
-  | { type: 'error' }
-  | { type: 'idle' }
-  | { type: 'saved' }
-  | { type: 'saving' };
+type HuntInfoSaveStatus = 'idle' | 'saving' | 'saved';
+type HuntInfoDraftState = {
+  draft: HuntInfoDraft;
+  sourceKey: string;
+};
 
 const EVENT_INFO_STATUS_LABELS: Record<EventLifecycle, string> = {
   active: 'Pågår',
@@ -106,162 +114,6 @@ function getStatusTone(status: MemberStatus) {
   return { container: 'bg-destructive/10', text: 'text-destructive' };
 }
 
-const ALLOWED_GAME_SAVE_DELAY_MS = 800;
-
-function getAllowedGameSaveStatus(status: AllowedGameSaveStatus) {
-  switch (status) {
-    case 'pending':
-    case 'saving':
-      return {
-        color: APP_COLORS.textMuted,
-        icon: 'cloud-upload-outline' as const,
-        label: 'Sparar...',
-      };
-    case 'saved':
-      return {
-        color: APP_COLORS.primary,
-        icon: 'checkmark-circle-outline' as const,
-        label: 'Sparat',
-      };
-    case 'error':
-      return {
-        color: '#B64E4E',
-        icon: 'alert-circle-outline' as const,
-        label: 'Kunde inte spara',
-      };
-    default:
-      return null;
-  }
-}
-
-function allowedGameSaveStatusReducer(
-  status: AllowedGameSaveStatus,
-  action: AllowedGameSaveAction
-): AllowedGameSaveStatus {
-  switch (action.type) {
-    case 'changed':
-      return action.dirty ? 'pending' : 'idle';
-    case 'saving':
-      return status === 'saving' ? status : 'saving';
-    case 'saved':
-      return 'saved';
-    case 'error':
-      return 'error';
-    case 'idle':
-      return 'idle';
-    default:
-      return status;
-  }
-}
-
-function AllowedGameEditCard({
-  eventId,
-  initialRules,
-}: {
-  eventId: Id<'events'>;
-  initialRules: AllowedGameRule[];
-}) {
-  const [allowedGameDraft, setAllowedGameDraft] = useState(initialRules);
-  const [saveStatus, dispatchSaveStatus] = useReducer(
-    allowedGameSaveStatusReducer,
-    'idle'
-  );
-  const updateAllowedGame = useMutation(api.events.updateAllowedGame);
-  const allowedGameDraftJson = useMemo(
-    () => JSON.stringify(allowedGameDraft),
-    [allowedGameDraft]
-  );
-  const latestDraftJsonRef = useRef(allowedGameDraftJson);
-  const lastSavedJsonRef = useRef(JSON.stringify(initialRules));
-
-  useEffect(() => {
-    latestDraftJsonRef.current = allowedGameDraftJson;
-  }, [allowedGameDraftJson]);
-
-  useEffect(() => {
-    if (allowedGameDraftJson === lastSavedJsonRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const timeout = setTimeout(() => {
-      dispatchSaveStatus({ type: 'saving' });
-
-      void updateAllowedGame({
-        eventId,
-        allowedGame: allowedGameDraft,
-      })
-        .then(() => {
-          if (cancelled || latestDraftJsonRef.current !== allowedGameDraftJson) {
-            return;
-          }
-
-          lastSavedJsonRef.current = allowedGameDraftJson;
-          dispatchSaveStatus({ type: 'saved' });
-        })
-        .catch((error) => {
-          if (cancelled || latestDraftJsonRef.current !== allowedGameDraftJson) {
-            return;
-          }
-
-          console.error('Failed to auto-save allowed game:', error);
-          dispatchSaveStatus({ type: 'error' });
-        });
-    }, ALLOWED_GAME_SAVE_DELAY_MS);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [allowedGameDraft, allowedGameDraftJson, eventId, updateAllowedGame]);
-
-  useEffect(() => {
-    if (saveStatus !== 'saved') {
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      if (latestDraftJsonRef.current === lastSavedJsonRef.current) {
-        dispatchSaveStatus({ type: 'idle' });
-      }
-    }, 1400);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [saveStatus]);
-
-  const saveStatusDisplay = getAllowedGameSaveStatus(saveStatus);
-
-  return (
-    <View className="gap-4">
-      {saveStatusDisplay ? (
-        <View className="flex-row items-center justify-end gap-1.5 px-1">
-          <Ionicons
-            name={saveStatusDisplay.icon}
-            size={15}
-            color={saveStatusDisplay.color}
-          />
-          <Text className="text-xs font-semibold" style={{ color: saveStatusDisplay.color }}>
-            {saveStatusDisplay.label}
-          </Text>
-        </View>
-      ) : null}
-      <AllowedGameEditor
-        value={allowedGameDraft}
-        onChange={(draft) => {
-          setAllowedGameDraft(draft);
-          dispatchSaveStatus({
-            dirty: JSON.stringify(draft) !== lastSavedJsonRef.current,
-            type: 'changed',
-          });
-        }}
-      />
-    </View>
-  );
-}
-
 export default function EventInfoScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { push } = useRouter();
@@ -288,6 +140,14 @@ export default function EventInfoScreen() {
     isCreator ? { eventId: eventId as Id<'events'> } : 'skip'
   );
   const removeMember = useMutation(api.eventMembers.removeMember);
+  const updateEvent = useMutation(api.events.update);
+  const savedDraft = useMemo(() => (event ? createHuntInfoDraft(event) : null), [event]);
+  const savedDraftKey = useMemo(
+    () => (savedDraft ? getHuntInfoDraftKey(savedDraft) : ''),
+    [savedDraft]
+  );
+  const [draftState, setDraftState] = useState<HuntInfoDraftState | null>(null);
+  const [saveStatus, setSaveStatus] = useState<HuntInfoSaveStatus>('idle');
 
   const memberRows = useMemo(
     () => (isCreator ? inviteStatuses ?? [] : acceptedMembers ?? []),
@@ -299,15 +159,87 @@ export default function EventInfoScreen() {
     clerkUser?.primaryEmailAddress?.emailAddress ||
     undefined;
   const acceptedCount = memberRows.filter((member) => member.status === 'accepted').length;
-  const currentUserMembership = acceptedMembers?.find((member) => member.userId === currentUser?._id);
-  const canEditEventDates = Boolean(
-    event &&
-      currentUser &&
-      (event.creatorId === currentUser._id || currentUserMembership?.role === 'admin')
+  const activeDraft = draftState?.sourceKey === savedDraftKey ? draftState.draft : savedDraft;
+  const activeDraftKey = activeDraft ? getHuntInfoDraftKey(activeDraft) : '';
+  const hasDraftChanges = Boolean(activeDraft && activeDraftKey !== savedDraftKey);
+  const isSaving = saveStatus === 'saving';
+  const statusLabel = event
+    ? getEventStatus(event.startDate, event.endDate, currentTime, event.endedAt)
+    : '';
+
+  useEffect(() => {
+    if (saveStatus !== 'saved') {
+      return;
+    }
+
+    const timeout = setTimeout(() => setSaveStatus('idle'), 1400);
+    return () => clearTimeout(timeout);
+  }, [saveStatus]);
+
+  const handleResetDraft = useCallback(() => {
+    setDraftState(null);
+    setSaveStatus('idle');
+  }, []);
+
+  const handleDraftChange = useCallback(
+    (nextDraft: HuntInfoDraft) => {
+      setDraftState({ draft: nextDraft, sourceKey: savedDraftKey });
+      setSaveStatus('idle');
+    },
+    [savedDraftKey]
   );
-  const canEditAllowedGame =
-    Boolean(currentUserMembership?.role === 'admin') &&
-    getEventLifecycle(event ?? { startDate: 0, endDate: 0 }, currentTime) !== 'ended';
+
+  const handleSaveDraft = useCallback(async () => {
+    if (!activeDraft) {
+      return;
+    }
+
+    const startDate = normalizeEventDate(activeDraft.startDate);
+    const endDate = normalizeEventDate(activeDraft.endDate);
+
+    if (!activeDraft.title.trim()) {
+      Alert.alert('Fel', 'Titel krävs.');
+      return;
+    }
+    if (!isValidEventDate(startDate)) {
+      Alert.alert('Fel', 'Välj ett startdatum.');
+      return;
+    }
+    if (!isValidEventDate(endDate)) {
+      Alert.alert('Fel', 'Välj ett slutdatum.');
+      return;
+    }
+    if (endDate.getTime() < startDate.getTime()) {
+      Alert.alert('Fel', 'Slutdatum kan inte vara före startdatum.');
+      return;
+    }
+
+    const joinCodeError = validateJoinCode(activeDraft.joinCode);
+    if (joinCodeError) {
+      Alert.alert('Fel', joinCodeError);
+      return;
+    }
+
+    setSaveStatus('saving');
+    try {
+      await updateEvent({
+        eventId: eventId as Id<'events'>,
+        title: activeDraft.title.trim(),
+        description: activeDraft.description.trim(),
+        startDate: startDate.getTime(),
+        endDate: endDate.getTime(),
+        joinCode: activeDraft.joinCode.trim(),
+        allowedGame: activeDraft.allowedGame,
+      });
+      setSaveStatus('saved');
+    } catch (error) {
+      setSaveStatus('idle');
+      Alert.alert(
+        'Kunde inte spara',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    }
+  }, [activeDraft, eventId, updateEvent]);
 
   async function handleRemoveMember(userId: Id<'users'>) {
     setPendingUserId(userId);
@@ -370,97 +302,38 @@ export default function EventInfoScreen() {
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         className="flex-1 bg-background"
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerClassName="gap-6 px-5"
         contentContainerStyle={{
           paddingBottom: 16,
           paddingTop: 0,
         }}
-        contentInset={{ bottom: Math.max(insets.bottom, 16) }}
-        scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}
+        contentInset={{ bottom: Math.max(insets.bottom, 16) + (isCreator ? 80 : 0) }}
+        scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) + (isCreator ? 80 : 0) }}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        <View className="gap-5">
-          <View className="gap-3">
-            <View className="flex-row items-start gap-3">
-              <View className="size-12 items-center justify-center rounded-2xl bg-primary/10">
-                <Ionicons name="trail-sign-outline" size={24} color={APP_COLORS.primary} />
-              </View>
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-2xl font-semibold text-foreground" numberOfLines={2}>
-                  {event.title}
-                </Text>
-                <Text className="text-sm leading-5 text-muted-foreground">
-                  {area.name}
-                </Text>
-              </View>
-              <Badge className="rounded-full bg-primary/10">
-                <Text className="text-xs font-semibold text-primary">
-                  {getEventStatus(event.startDate, event.endDate, currentTime, event.endedAt)}
-                </Text>
-              </Badge>
-            </View>
-
-            {event.description ? (
-              <Text className="text-sm leading-5 text-muted-foreground">
-                {event.description}
-              </Text>
-            ) : null}
-          </View>
-
-          <View className="gap-4 border-y border-border py-4">
-            {canEditEventDates ? (
-              <HuntDateEditFields
-                key={event.endDate}
-                endDate={event.endDate}
-                eventId={eventId as Id<'events'>}
-                startDate={event.startDate}
-              />
-            ) : (
-              <View className="flex-row items-center gap-3">
-                <Ionicons name="calendar-outline" size={18} color={APP_COLORS.textMuted} />
-                <Text className="flex-1 text-sm leading-5 text-foreground">
-                  {formatEventInfoDateRange(event.startDate, event.endDate)}
-                </Text>
-              </View>
-            )}
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="people-outline" size={18} color={APP_COLORS.textMuted} />
-              <Text className="flex-1 text-sm text-foreground">
-                {acceptedCount} deltagare
-              </Text>
-            </View>
-            {isCreator && event.joinCode ? (
-              <View className="flex-row items-center gap-3">
-                <Ionicons name="key-outline" size={18} color={APP_COLORS.textMuted} />
-                <Text className="flex-1 text-sm text-foreground">
-                  Jaktkod: {event.joinCode}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        <View className="gap-4">
-          <View className="flex-row items-center justify-between gap-3 px-1">
-            <Text className="text-lg font-semibold text-foreground">Tillåtet vilt</Text>
-            {canEditAllowedGame ? (
-              <View className="rounded-full bg-primary/10 px-2.5 py-1">
-                <Text className="text-xs font-semibold text-primary">Redigerbar</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {canEditAllowedGame ? (
-            <AllowedGameEditCard
-              eventId={eventId as Id<'events'>}
-              initialRules={(event.allowedGame ?? []) as AllowedGameRule[]}
-            />
-          ) : (
-            <AllowedGameDetails rules={event.allowedGame as AllowedGameRule[] | undefined} />
-          )}
-        </View>
+        {isCreator && activeDraft ? (
+          <HuntInfoAdminFields
+            acceptedCount={acceptedCount}
+            areaName={area.name}
+            disabled={isSaving}
+            draft={activeDraft}
+            onChange={handleDraftChange}
+            statusLabel={statusLabel}
+          />
+        ) : (
+          <HuntInfoReadOnlyDetails
+            acceptedCount={acceptedCount}
+            areaName={area.name}
+            event={event}
+            statusLabel={statusLabel}
+          />
+        )}
 
         {isCreator ? (
           <Button
@@ -555,6 +428,29 @@ export default function EventInfoScreen() {
           )}
         </View>
       </ScrollView>
-    </View>
+
+      {isCreator && activeDraft ? (
+        <View
+          className="border-t border-border bg-background px-6 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+          <View className="flex-row items-center gap-3">
+            <Button
+              variant="ghost"
+              className="h-12 flex-1 rounded-xl"
+              disabled={!hasDraftChanges || isSaving}
+              onPress={handleResetDraft}>
+              <Text className="text-muted-foreground">Återställ</Text>
+            </Button>
+
+            <Button
+              className="h-12 flex-1 rounded-xl"
+              disabled={!hasDraftChanges || isSaving}
+              onPress={() => void handleSaveDraft()}>
+              <Text>{isSaving ? 'Sparar...' : saveStatus === 'saved' ? 'Sparat' : 'Spara'}</Text>
+            </Button>
+          </View>
+        </View>
+      ) : null}
+    </KeyboardAvoidingView>
   );
 }

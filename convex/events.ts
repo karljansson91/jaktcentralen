@@ -4,7 +4,7 @@ import { internalMutation, mutation, query, type MutationCtx } from "./_generate
 import { deleteEventCascade } from "./eventCleanup";
 import { getEffectiveEndedAt, isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 const JOIN_CODE_MIN_LENGTH = 3;
 const JOIN_CODE_MAX_LENGTH = 32;
@@ -254,6 +254,7 @@ export const update = mutation({
     joinCode: v.optional(v.string()),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
+    allowedGame: v.optional(v.array(allowedGameRuleValidator)),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -267,11 +268,28 @@ export const update = mutation({
     }
 
     const previousEndDate = event.endDate;
-    const { eventId, joinCode: rawJoinCode, ...updates } = args;
+    const shouldUpdateAllowedGame = Object.hasOwn(args, "allowedGame");
+    const { eventId, joinCode: rawJoinCode, allowedGame: rawAllowedGame, ...updates } = args;
     const joinCode = validateJoinCodeForStorage(rawJoinCode);
     await assertJoinCodeAvailable(ctx, joinCode, eventId);
 
-    const patch = rawJoinCode === undefined ? updates : { ...updates, joinCode };
+    const nextStartDate = updates.startDate ?? event.startDate;
+    const nextEndDate = updates.endDate ?? event.endDate;
+    if (nextEndDate < nextStartDate) {
+      throw new Error("End date cannot be before start date");
+    }
+
+    const patch: Partial<Doc<"events">> = {
+      ...updates,
+      ...(rawJoinCode === undefined ? {} : { joinCode }),
+      ...(shouldUpdateAllowedGame
+        ? { allowedGame: normalizeAllowedGame(rawAllowedGame) }
+        : {}),
+      ...(updates.endDate === undefined
+        ? {}
+        : { endedAt: nextEndDate <= Date.now() ? nextEndDate : undefined }),
+    };
+
     await ctx.db.patch(eventId, patch);
 
     if (updates.endDate !== undefined && updates.endDate !== previousEndDate) {
