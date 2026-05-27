@@ -1,11 +1,10 @@
-import { GlassScreenHeader } from '@/components/glass';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ElementRef } from 'react';
 import {
   ActivityIndicator,
@@ -140,7 +139,6 @@ export default function EventChatScreen() {
     eventId: string;
     focusComposer?: string;
   }>();
-  const { back, canGoBack, replace } = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scrollViewRef = useRef<ElementRef<typeof KeyboardChatScrollView>>(null);
@@ -199,24 +197,8 @@ export default function EventChatScreen() {
     await sendMessage({ eventId: eventId as Id<'events'>, body: trimmed });
   }, [body, eventId, sendMessage]);
 
-  const handleClose = useCallback(() => {
-    if (canGoBack()) {
-      back();
-      return;
-    }
-
-    replace(`/event/${eventId}`);
-  }, [back, canGoBack, eventId, replace]);
-
   return (
     <View style={{ flex: 1, backgroundColor: APP_COLORS.background }} collapsable={false}>
-      <GlassScreenHeader
-        title="Chat"
-        leftIcon="close"
-        leftAccessibilityLabel="Stäng chat"
-        onBack={handleClose}
-      />
-
       <KeyboardChatScrollView
         ref={scrollViewRef}
         className="min-h-0 flex-1"

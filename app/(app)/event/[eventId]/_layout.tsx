@@ -7,8 +7,15 @@ export default function EventLayout() {
       <Stack.Screen
         name="chat"
         options={{
-          presentation: 'fullScreenModal',
-          headerShown: false,
+          presentation: 'modal',
+          headerShown: true,
+          title: 'Chat',
+          headerBackVisible: false,
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#FCF8F2' },
+          headerTintColor: '#313444',
           contentStyle: { backgroundColor: '#FCF8F2' },
         }}
       />
