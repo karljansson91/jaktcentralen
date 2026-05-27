@@ -25,10 +25,8 @@ export default function EventLayout() {
           presentation: 'formSheet',
           headerShown: false,
           contentStyle: { backgroundColor: '#FCF8F2' },
-          sheetAllowedDetents: [0.48, 0.66],
-          sheetInitialDetentIndex: 0,
+          sheetAllowedDetents: 'fitToContents',
           sheetGrabberVisible: true,
-          sheetExpandsWhenScrolledToEdge: true,
           sheetCornerRadius: 28,
         }}
       />
