@@ -142,6 +142,17 @@ export default function AppLayout() {
           sheetCornerRadius: 28,
         }}
       />
+      <Stack.Screen
+        name="map-style"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
       <Stack.Screen name="area/[id]" />
       <Stack.Screen name="event/[eventId]" options={{ headerShown: false }} />
     </Stack>
