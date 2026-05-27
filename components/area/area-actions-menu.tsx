@@ -19,7 +19,7 @@ type AreaActionsMenuProps = {
 };
 
 export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
-  const { push, replace } = useRouter();
+  const { back, canGoBack, push, replace } = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const removeArea = useMutation(api.areas.remove);
   const handleSelectMapStyle = useMapStylePicker();
@@ -28,7 +28,11 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
     setIsSubmitting(true);
     try {
       await removeArea({ areaId });
-      replace('/');
+      if (canGoBack()) {
+        back();
+      } else {
+        replace('/');
+      }
     } catch (error) {
       Alert.alert(
         'Kunde inte ta bort område',
@@ -37,12 +41,12 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [areaId, removeArea, replace]);
+  }, [areaId, back, canGoBack, removeArea, replace]);
 
   const confirmDeleteArea = useCallback(() => {
     Alert.alert(
       'Ta bort område',
-      'Området tas bort från startsidan, men jakter och historik sparas. Vill du fortsätta?',
+      'Är du säker på att du vill ta bort området?',
       [
         { text: 'Avbryt', style: 'cancel' },
         {
