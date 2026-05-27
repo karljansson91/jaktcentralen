@@ -29,6 +29,10 @@ import {
   NEAR_ASSIGNED_POSITION_RADIUS_METERS,
   isMemberEffectivelyInPosition,
 } from '@/lib/hunt-in-position';
+import {
+  clearInPositionPromptIgnored,
+  getInPositionPromptIgnoreKey,
+} from '@/lib/in-position-prompt-ignore';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
   getCachedMapStyle,
@@ -412,6 +416,9 @@ export default function EventMapScreen() {
     currentUserAssignedStation &&
       currentUserMember?.inPositionTargetKey === currentUserAssignedStation.targetKey
   );
+  const currentUserAssignmentPromptIgnoreKey = currentUserAssignedStation
+    ? getInPositionPromptIgnoreKey(eventId, currentUserAssignedStation.targetKey)
+    : null;
   const currentUserInPositionEffective = Boolean(
     currentUserAssignedStation &&
       currentUserMember &&
@@ -575,20 +582,22 @@ export default function EventMapScreen() {
   const handleMarkSelfInPosition = useCallback(async () => {
     try {
       await markInPosition({ eventId: eventId as Id<'events'> });
+      await clearInPositionPromptIgnored(currentUserAssignmentPromptIgnoreKey);
     } catch (error) {
       console.error('Failed to mark in position:', error);
       Alert.alert('Kunde inte markera på plats', 'Försök igen om en stund.');
     }
-  }, [eventId, markInPosition]);
+  }, [currentUserAssignmentPromptIgnoreKey, eventId, markInPosition]);
 
   const handleClearSelfInPosition = useCallback(async () => {
     try {
       await clearInPosition({ eventId: eventId as Id<'events'> });
+      await clearInPositionPromptIgnored(currentUserAssignmentPromptIgnoreKey);
     } catch (error) {
       console.error('Failed to clear in-position status:', error);
       Alert.alert('Kunde inte ta bort status', 'Försök igen om en stund.');
     }
-  }, [clearInPosition, eventId]);
+  }, [clearInPosition, currentUserAssignmentPromptIgnoreKey, eventId]);
 
   const handleToggleOwnPositionSharing = useCallback(async () => {
     const nextEnabled = !isOwnPositionSharingEnabled;
@@ -630,6 +639,7 @@ export default function EventMapScreen() {
     isPastInPositionRadius: isCurrentUserPastInPositionRadius,
     onClearInPosition: handleClearSelfInPosition,
     onMarkInPosition: handleMarkSelfInPosition,
+    promptIgnoreKey: currentUserAssignmentPromptIgnoreKey,
   });
 
   const renderHuntActionsMenu = useCallback(() => {

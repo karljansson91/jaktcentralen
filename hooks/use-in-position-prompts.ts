@@ -1,5 +1,9 @@
+import {
+  getInPositionPromptIgnored,
+  setInPositionPromptIgnored,
+} from '@/lib/in-position-prompt-ignore';
 import { IN_POSITION_PROMPT_DELAY_MS } from '@/lib/hunt-in-position';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
 type PromptTimerRef = {
@@ -11,6 +15,7 @@ type UseInPositionPromptsArgs = {
   isPastInPositionRadius: boolean;
   onClearInPosition: () => void;
   onMarkInPosition: () => void;
+  promptIgnoreKey: string | null;
 };
 
 function clearPromptTimer(timerRef: PromptTimerRef) {
@@ -27,16 +32,44 @@ export function useInPositionPrompts({
   isPastInPositionRadius,
   onClearInPosition,
   onMarkInPosition,
+  promptIgnoreKey,
 }: UseInPositionPromptsArgs) {
   const movedAwayPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const movedAwayPromptShownRef = useRef(false);
   const nearAssignmentPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nearAssignmentPromptShownRef = useRef(false);
+  const [promptIgnored, setPromptIgnored] = useState(false);
+
+  const ignorePrompt = useCallback(() => {
+    setPromptIgnored(true);
+    void setInPositionPromptIgnored(promptIgnoreKey);
+  }, [promptIgnoreKey]);
 
   useEffect(() => {
-    if (!isPastInPositionRadius) {
+    let cancelled = false;
+    setPromptIgnored(false);
+    clearPromptTimer(movedAwayPromptTimerRef);
+    clearPromptTimer(nearAssignmentPromptTimerRef);
+    movedAwayPromptShownRef.current = false;
+    nearAssignmentPromptShownRef.current = false;
+
+    void getInPositionPromptIgnored(promptIgnoreKey).then((ignored) => {
+      if (!cancelled) {
+        setPromptIgnored(ignored);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [promptIgnoreKey]);
+
+  useEffect(() => {
+    if (!isPastInPositionRadius || promptIgnored) {
       clearPromptTimer(movedAwayPromptTimerRef);
-      movedAwayPromptShownRef.current = false;
+      if (!promptIgnored) {
+        movedAwayPromptShownRef.current = false;
+      }
       return;
     }
 
@@ -51,21 +84,23 @@ export function useInPositionPrompts({
         'Du verkar ha lämnat passet',
         'Vill du ta bort din på plats-status?',
         [
-          { text: 'Behåll', style: 'cancel' },
+          { text: 'Ignorera', style: 'cancel', onPress: ignorePrompt },
           {
-            text: 'Ta bort',
+            text: 'Ta bort från pass',
             style: 'destructive',
             onPress: onClearInPosition,
           },
         ]
       );
     }, IN_POSITION_PROMPT_DELAY_MS);
-  }, [isPastInPositionRadius, onClearInPosition]);
+  }, [ignorePrompt, isPastInPositionRadius, onClearInPosition, promptIgnored]);
 
   useEffect(() => {
-    if (!isNearUnmarkedAssignment) {
+    if (!isNearUnmarkedAssignment || promptIgnored) {
       clearPromptTimer(nearAssignmentPromptTimerRef);
-      nearAssignmentPromptShownRef.current = false;
+      if (!promptIgnored) {
+        nearAssignmentPromptShownRef.current = false;
+      }
       return;
     }
 
@@ -80,15 +115,15 @@ export function useInPositionPrompts({
         'Du är vid ditt pass',
         'Vill du markera dig som på plats?',
         [
-          { text: 'Inte nu', style: 'cancel' },
+          { text: 'Ignorera', style: 'cancel', onPress: ignorePrompt },
           {
-            text: 'Markera',
+            text: 'Markera på plats',
             onPress: onMarkInPosition,
           },
         ]
       );
     }, IN_POSITION_PROMPT_DELAY_MS);
-  }, [isNearUnmarkedAssignment, onMarkInPosition]);
+  }, [ignorePrompt, isNearUnmarkedAssignment, onMarkInPosition, promptIgnored]);
 
   useEffect(
     () => () => {
