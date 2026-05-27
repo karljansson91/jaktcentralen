@@ -7,7 +7,6 @@ const ACTION_CLEAR_IN_POSITION = 'clear-in-position';
 const ACTION_TOGGLE_OWN_SHARING = 'toggle-own-sharing';
 const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
 const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
-const ACTION_CLEAR_SCENT_DIRECTION = 'clear-scent-direction';
 const ACTION_TOGGLE_ROUTE = 'toggle-route';
 const ACTION_TOGGLE_ANIMAL_SIGHTINGS = 'toggle-animal-sightings';
 const ACTION_LOCATE = 'locate';
@@ -39,7 +38,6 @@ type HuntMapToolsMenuProps = {
   scent: {
     hasDirection: boolean;
     isSetting: boolean;
-    onClear: () => void;
     onSet: () => void;
   };
 };
@@ -77,12 +75,6 @@ export function HuntMapToolsMenu({
         image: 'wind',
         state: scent.isSetting || scent.hasDirection ? 'on' : 'off',
         title: scent.hasDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
-      },
-      {
-        attributes: { hidden: !scent.hasDirection },
-        id: ACTION_CLEAR_SCENT_DIRECTION,
-        image: 'xmark.circle',
-        title: 'Rensa vindriktning',
       },
       {
         attributes: { hidden: !route.available },
@@ -136,9 +128,6 @@ export function HuntMapToolsMenu({
         case ACTION_SET_SCENT_DIRECTION:
           requestAnimationFrame(scent.onSet);
           break;
-        case ACTION_CLEAR_SCENT_DIRECTION:
-          requestAnimationFrame(scent.onClear);
-          break;
         case ACTION_TOGGLE_ROUTE:
           requestAnimationFrame(route.onToggle);
           break;
@@ -158,7 +147,6 @@ export function HuntMapToolsMenu({
       positions.onToggleOthers,
       positions.onToggleOwnSharing,
       route.onToggle,
-      scent.onClear,
       scent.onSet,
     ],
   );

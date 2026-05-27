@@ -19,6 +19,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { formatAllowedGameSummary } from '@/lib/allowed-game';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
+import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { isEventActive } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import { distanceMeters, type LatLngPoint } from '@/lib/geo';
@@ -242,29 +243,17 @@ export default function EventMapScreen() {
 
   const polygonGeoJSON = useMemo(() => {
     if (!area) return null;
-    const coords = area.polygon.map((p) => [p.longitude, p.latitude] as [number, number]);
-    return {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: {
-        type: 'Polygon' as const,
-        coordinates: [[...coords, coords[0]]],
-      },
-    };
+    return buildAreaPolygonFeature(area);
   }, [area]);
 
   const cameraBounds = useMemo(() => {
-    if (!area || area.polygon.length < 2) return null;
-    const lngs = area.polygon.map((p) => p.longitude);
-    const lats = area.polygon.map((p) => p.latitude);
-    return {
-      ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
-      sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-      paddingTop: Math.max(insets.top + 92, 112),
-      paddingBottom: Math.max(insets.bottom + 132, 160),
-      paddingLeft: 42,
-      paddingRight: 42,
-    };
+    if (!area) return null;
+    return getAreaCameraBounds(area, {
+      top: Math.max(insets.top + 92, 112),
+      bottom: Math.max(insets.bottom + 132, 160),
+      left: 42,
+      right: 42,
+    });
   }, [area, insets.bottom, insets.top]);
 
   const liveMemberMarkers = useMemo(() => {
@@ -590,13 +579,13 @@ export default function EventMapScreen() {
     }
   }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
 
-  const handleClearScentDirection = useCallback(() => {
-    setWindSourceDirectionDegrees(null);
-  }, []);
-
   const handleStartSettingScentDirection = useCallback(() => {
-    push(`/event/${eventId}/wind-direction`);
-  }, [eventId, push]);
+    const initialDegrees =
+      windSourceDirectionDegrees == null
+        ? ''
+        : `?initialDegrees=${encodeURIComponent(String(Math.round(windSourceDirectionDegrees)))}`;
+    push(`/event/${eventId}/wind-direction${initialDegrees}`);
+  }, [eventId, push, windSourceDirectionDegrees]);
 
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
@@ -873,7 +862,6 @@ export default function EventMapScreen() {
               scent={{
                 hasDirection: activeWindSourceDirectionDegrees != null,
                 isSetting: false,
-                onClear: handleClearScentDirection,
                 onSet: handleStartSettingScentDirection,
               }}
             />

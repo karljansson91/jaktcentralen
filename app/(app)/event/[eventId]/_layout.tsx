@@ -28,8 +28,15 @@ export default function EventLayout() {
       <Stack.Screen
         name="wind-direction"
         options={{
-          presentation: 'fullScreenModal',
-          headerShown: false,
+          presentation: 'modal',
+          headerShown: true,
+          title: 'Vindriktning',
+          headerBackVisible: false,
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#FCF8F2' },
+          headerTintColor: '#313444',
           contentStyle: { backgroundColor: '#FCF8F2' },
         }}
       />

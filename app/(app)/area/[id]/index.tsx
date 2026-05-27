@@ -6,6 +6,7 @@ import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { getAreaFeatureTargetKey } from '@/lib/area-features';
+import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
@@ -73,29 +74,17 @@ export default function ViewAreaScreen() {
 
   const polygonGeoJSON = useMemo(() => {
     if (!area) return null;
-    const coords = area.polygon.map((p) => [p.longitude, p.latitude] as [number, number]);
-    return {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: {
-        type: 'Polygon' as const,
-        coordinates: [[...coords, coords[0]]],
-      },
-    };
+    return buildAreaPolygonFeature(area);
   }, [area]);
 
   const cameraBounds = useMemo(() => {
-    if (!area || area.polygon.length < 2) return null;
-    const lngs = area.polygon.map((p) => p.longitude);
-    const lats = area.polygon.map((p) => p.latitude);
-    return {
-      ne: [Math.max(...lngs), Math.max(...lats)] as [number, number],
-      sw: [Math.min(...lngs), Math.min(...lats)] as [number, number],
-      paddingTop: Math.max(insets.top + 92, 112),
-      paddingBottom: Math.max(insets.bottom + 96, 120),
-      paddingLeft: 40,
-      paddingRight: 40,
-    };
+    if (!area) return null;
+    return getAreaCameraBounds(area, {
+      top: Math.max(insets.top + 92, 112),
+      bottom: Math.max(insets.bottom + 96, 120),
+      left: 40,
+      right: 40,
+    });
   }, [area, insets.bottom, insets.top]);
 
   const visibleAreaFeatures = useMemo(() => {

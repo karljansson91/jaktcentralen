@@ -1,8 +1,8 @@
-type WindDirectionListener = (directionDegrees: number) => void;
+type WindDirectionListener = (directionDegrees: number | null) => void;
 
 const listeners = new Set<WindDirectionListener>();
 
-export function publishWindDirectionSelection(directionDegrees: number) {
+export function publishWindDirectionSelection(directionDegrees: number | null) {
   listeners.forEach((listener) => listener(directionDegrees));
 }
 
