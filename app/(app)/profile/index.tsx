@@ -181,6 +181,15 @@ export default function ProfileScreen() {
             <Ionicons name="create-outline" size={18} color={APP_COLORS.primary} />
             <Text>Redigera profil</Text>
           </Button>
+
+          <Button
+            variant="outline"
+            className="h-11 rounded-xl bg-background/70"
+            onPress={() => push('/issues' as Href)}
+            accessibilityLabel="Visa ärenden">
+            <Ionicons name="list-outline" size={18} color={APP_COLORS.primary} />
+            <Text>Ärenden</Text>
+          </Button>
         </CardContent>
       </Card>
 

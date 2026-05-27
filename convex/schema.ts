@@ -233,4 +233,27 @@ export default defineSchema({
       })
     )
   ).index("by_eventId", ["eventId"]),
+
+  issues: defineTable({
+    title: v.string(),
+    description: v.string(),
+    type: v.union(v.literal("bug"), v.literal("feature")),
+    status: v.union(
+      v.literal("triage"),
+      v.literal("ready_to_implement"),
+      v.literal("ongoing"),
+      v.literal("completed")
+    ),
+    reporterUserId: v.optional(v.id("users")),
+    reporterName: v.string(),
+    reporterEmail: v.optional(v.string()),
+    screenshotFileId: v.optional(v.id("_storage")),
+    screenPath: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"])
+    .index("by_reporterUserId_and_createdAt", ["reporterUserId", "createdAt"]),
 });

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jaktcentralen Issues"
+  short_description: "Work with Convex-backed app issues"
+  default_prompt: "Use $jaktcentralen-issues to list, update, and complete Jaktcentralen issues."
