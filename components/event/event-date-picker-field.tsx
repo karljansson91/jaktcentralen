@@ -1,4 +1,3 @@
-import { EventDatePickerSheet } from '@/components/event/event-date-picker-sheet';
 import { formatEventDate } from '@/components/event/event-date-picker-utils';
 import { Text } from '@/components/ui';
 import { APP_COLORS } from '@/lib/theme';
@@ -26,14 +25,13 @@ export function EventDatePickerField({
   required,
   value,
 }: EventDatePickerFieldProps) {
-  const [androidPickerVisible, setAndroidPickerVisible] = useState(false);
-  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [dialogVisible, setDialogVisible] = useState(false);
   const formattedValue = formatEventDate(value);
-  const showAndroidDialog = Platform.OS === 'android' && androidPickerVisible;
+  const showInlinePicker = Platform.OS === 'ios';
+  const showDialogPicker = Platform.OS === 'android' && dialogVisible;
 
   const handleValueChange = (date: Date) => {
-    setAndroidPickerVisible(false);
-    setCalendarVisible(false);
+    setDialogVisible(false);
     onValueChange(date);
   };
 
@@ -51,26 +49,34 @@ export function EventDatePickerField({
         ) : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${formattedValue}`}
-        onPress={() => {
-          if (Platform.OS === 'android') {
-            setAndroidPickerVisible(true);
-          } else {
-            setCalendarVisible(true);
-          }
-        }}
-        className="relative min-h-12 flex-row items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 active:bg-accent">
-        <View className="min-w-0 flex-1">
-          <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-            {formattedValue}
-          </Text>
+      {showInlinePicker ? (
+        <View className="items-start">
+          <DateTimePicker
+            value={value}
+            mode="date"
+            display="compact"
+            accentColor={APP_COLORS.primary}
+            locale="sv_SE"
+            onValueChange={(_, date) => handleValueChange(date)}
+            style={{ minWidth: 160 }}
+          />
         </View>
-        <Ionicons name="calendar-outline" size={20} color={APP_COLORS.textMuted} />
-      </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${formattedValue}`}
+          onPress={() => setDialogVisible(true)}
+          className="relative min-h-12 flex-row items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 active:bg-accent">
+          <View className="min-w-0 flex-1">
+            <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+              {formattedValue}
+            </Text>
+          </View>
+          <Ionicons name="calendar-outline" size={20} color={APP_COLORS.textMuted} />
+        </Pressable>
+      )}
 
-      {showAndroidDialog ? (
+      {showDialogPicker ? (
         <DateTimePicker
           value={value}
           mode="date"
@@ -79,17 +85,8 @@ export function EventDatePickerField({
           accentColor={APP_COLORS.primary}
           positiveButton={{ label: 'Välj' }}
           negativeButton={{ label: 'Avbryt' }}
-          onDismiss={() => setAndroidPickerVisible(false)}
+          onDismiss={() => setDialogVisible(false)}
           onValueChange={(_, date) => handleValueChange(date)}
-        />
-      ) : null}
-
-      {Platform.OS !== 'android' && calendarVisible ? (
-        <EventDatePickerSheet
-          label={label}
-          onClose={() => setCalendarVisible(false)}
-          onSelect={handleValueChange}
-          value={value}
         />
       ) : null}
 
