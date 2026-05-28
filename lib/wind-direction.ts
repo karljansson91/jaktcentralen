@@ -29,5 +29,5 @@ export function getWindDirectionDisplay(degrees: number): WindDirectionDisplay {
 
 export function formatWindDirectionIndicator(degrees: number) {
   const display = getWindDirectionDisplay(degrees);
-  return `Vind ${display.label} ${display.arrow}`;
+  return `Vind ${display.label} ${Math.round(normalizeDegrees(degrees))}°`;
 }
