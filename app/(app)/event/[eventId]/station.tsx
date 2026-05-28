@@ -124,7 +124,7 @@ export default function EventStationAssignmentScreen() {
     areaFeatures === undefined
   ) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
+      <View className="items-center justify-center bg-background px-6 py-10">
         <ActivityIndicator size="small" color={APP_COLORS.primary} />
       </View>
     );
@@ -132,10 +132,10 @@ export default function EventStationAssignmentScreen() {
 
   if (event === null || currentUser === null || !feature) {
     return (
-      <View className="flex-1 bg-background px-6 pt-5">
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-center text-muted-foreground">Passet kunde inte hittas.</Text>
-        </View>
+      <View
+        className="items-center justify-center bg-background px-6 pt-8"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }}>
+        <Text className="text-center text-muted-foreground">Passet kunde inte hittas.</Text>
       </View>
     );
   }
@@ -143,13 +143,21 @@ export default function EventStationAssignmentScreen() {
   const isCreator = event.creatorId === currentUser._id;
   const isActiveHunt = isEventActive(event, currentTime);
   const canEdit = isCreator && isActiveHunt;
+  const bottomContentInset = Math.max(insets.bottom, 16) + 16;
 
   return (
-    <View
-      className="flex-1 bg-background px-6 pt-5"
-      style={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }}
-      collapsable={false}>
-      <View className="gap-5" collapsable={false}>
+    <ScrollView
+      className="bg-background"
+      contentContainerStyle={{
+        gap: 20,
+        paddingBottom: 16,
+        paddingHorizontal: 24,
+        paddingTop: 20,
+      }}
+      contentInset={{ bottom: bottomContentInset }}
+      contentInsetAdjustmentBehavior="automatic"
+      scrollIndicatorInsets={{ bottom: bottomContentInset }}
+      keyboardShouldPersistTaps="handled">
         <View className="gap-1">
           <Text variant="h3" className="text-left">
             {feature.name}
@@ -243,7 +251,6 @@ export default function EventStationAssignmentScreen() {
             </Text>
           </View>
         )}
-      </View>
-    </View>
+    </ScrollView>
   );
 }

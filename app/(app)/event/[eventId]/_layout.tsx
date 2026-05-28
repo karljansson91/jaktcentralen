@@ -50,6 +50,7 @@ export default function EventLayout() {
           contentStyle: { backgroundColor: '#FCF8F2' },
           sheetAllowedDetents: 'fitToContents',
           sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
         }}
       />
       <Stack.Screen name="timeline" options={{ headerShown: false }} />
