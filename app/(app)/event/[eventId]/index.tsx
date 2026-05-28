@@ -1,5 +1,5 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
-import { AnimalSightingActionSheet } from '@/components/event/animal-sighting-action-sheet';
+import { showAnimalSightingActionMenu } from '@/components/event/animal-sighting-action-menu';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
@@ -17,6 +17,7 @@ import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { formatAllowedGameSummary } from '@/lib/allowed-game';
+import type { AnimalSightingMapItem } from '@/lib/animal-sightings';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { isEventActive } from '@/lib/event-lifecycle';
@@ -163,13 +164,23 @@ export default function EventMapScreen() {
   const ownPositionSharingEnabledRef = useRef(true);
   const {
     hasLocallyHiddenCurrentSightings,
-    handleCloseSightingSheet,
     handleHideSighting,
-    handlePressSighting,
     handleToggleVisibility: handleToggleAnimalSightingVisibility,
-    selectedSighting,
     visibleSightings: visibleAnimalSightings,
   } = useAnimalSightingMapVisibility(animalSightings);
+
+  const handlePressSighting = useCallback(
+    (sighting: AnimalSightingMapItem) => {
+      showAnimalSightingActionMenu({
+        currentTime,
+        sighting,
+        onHide: () => {
+          void handleHideSighting(sighting);
+        },
+      });
+    },
+    [currentTime, handleHideSighting]
+  );
 
   useEffect(() => {
     return subscribeToMapStyleChanges((style) => {
@@ -959,14 +970,7 @@ export default function EventMapScreen() {
             </View>
           ) : null}
         </View>
-
       </View>
-      <AnimalSightingActionSheet
-        currentTime={currentTime}
-        sighting={selectedSighting}
-        onClose={handleCloseSightingSheet}
-        onHide={handleHideSighting}
-      />
     </View>
   );
 }
