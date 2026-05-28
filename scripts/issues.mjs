@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 const AGENT_IDENTITY = {
   issuer: 'codex-agent',
@@ -19,7 +20,9 @@ function printHelp() {
   npm run issues -- create --title "..." --description "..." --type bug|feature
   npm run issues -- update <issueId> [--title "..."] [--description "..."] [--type bug|feature] [--status triage|ready_to_implement|ongoing|completed]
   npm run issues -- status <issueId> <status>
-  npm run issues -- delete <issueId>`);
+  npm run issues -- delete <issueId>
+
+The script reads CODEX_CONVEX_KEY or CONVEX_DEPLOY_KEY from your shell, .env.local, or .env.`);
 }
 
 function readFlag(args, name) {
@@ -63,10 +66,34 @@ function requireStatus(status) {
   return status;
 }
 
+function hasDeployKey() {
+  return Boolean(process.env.CODEX_CONVEX_KEY || process.env.CONVEX_DEPLOY_KEY);
+}
+
+function loadLocalEnv() {
+  if (hasDeployKey() || typeof process.loadEnvFile !== 'function') {
+    return;
+  }
+
+  for (const envFile of ['.env.local', '.env']) {
+    if (!existsSync(envFile)) {
+      continue;
+    }
+
+    process.loadEnvFile(envFile);
+
+    if (hasDeployKey()) {
+      return;
+    }
+  }
+}
+
 function getConvexEnv() {
+  loadLocalEnv();
+
   const deployKey = process.env.CODEX_CONVEX_KEY || process.env.CONVEX_DEPLOY_KEY;
   if (!deployKey) {
-    throw new Error('Set CODEX_CONVEX_KEY or CONVEX_DEPLOY_KEY before running this script.');
+    throw new Error('Set CODEX_CONVEX_KEY or CONVEX_DEPLOY_KEY in your shell, .env.local, or .env before running this script.');
   }
 
   return {

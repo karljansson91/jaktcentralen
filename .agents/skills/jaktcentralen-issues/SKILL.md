@@ -9,6 +9,9 @@ Use the repo script as the stable interface to production issues. It maps
 `CODEX_CONVEX_KEY` to `CONVEX_DEPLOY_KEY` and calls Convex with the agent
 identity expected by `convex/issues.ts`.
 
+The script loads `CODEX_CONVEX_KEY` or `CONVEX_DEPLOY_KEY` from the shell,
+`.env.local`, or `.env`, so run the commands directly from the repo root.
+
 ## Commands
 
 Run from the repo root:

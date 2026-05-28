@@ -44,6 +44,10 @@ If any implementation touches Convex, read
    npm run issues -- list
    ```
 
+   The issues command loads `CODEX_CONVEX_KEY` or `CONVEX_DEPLOY_KEY` from the
+   shell, `.env.local`, or `.env`; do not prefix the command with a manual
+   `source .env` unless debugging the environment itself.
+
 2. Select all `ready_to_implement` issues.
 3. Inspect titles/descriptions for dependencies, duplicates, and overlap.
 4. Write down the intended order before coding.
