@@ -1,10 +1,12 @@
 import { Button, Input, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Doc } from '@/convex/_generated/dataModel';
+import { APP_COLORS } from '@/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type EditAreaFormProps = {
@@ -38,6 +40,30 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
     <KeyboardAvoidingView
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View
+        className="border-b border-border bg-background px-5 pb-3"
+        style={{ paddingTop: Math.max(insets.top, 12) }}>
+        <View className="h-11 flex-row items-center justify-between gap-3">
+          <View className="size-10" />
+          <Text
+            className="min-w-0 flex-1 text-center text-base font-semibold"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}>
+            Uppdatera info
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Stäng"
+            hitSlop={10}
+            onPress={() => back()}
+            className="size-10 items-center justify-center rounded-full border border-border bg-card"
+            style={{ boxShadow: '0 5px 14px rgba(49, 52, 68, 0.10)' }}>
+            <Ionicons name="close" size={22} color={APP_COLORS.text} />
+          </Pressable>
+        </View>
+      </View>
+
       <ScrollView
         className="flex-1 bg-background"
         contentInsetAdjustmentBehavior="automatic"

@@ -19,13 +19,7 @@ export default function AreaLayout() {
         name="edit"
         options={{
           presentation: 'modal',
-          headerShown: true,
-          title: 'Uppdatera info',
-          headerLargeTitle: false,
-          headerTitleAlign: 'center',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: APP_COLORS.background },
-          headerTintColor: APP_COLORS.text,
+          headerShown: false,
           contentStyle: { backgroundColor: APP_COLORS.background },
         }}
       />
