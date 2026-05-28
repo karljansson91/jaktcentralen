@@ -37,7 +37,7 @@ export default function IssueDetailsScreen() {
       back();
     } catch (error) {
       Alert.alert(
-        'Kunde inte spara ärende',
+        'Kunde inte spara feedback',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
       setIsSaving(false);
@@ -45,7 +45,7 @@ export default function IssueDetailsScreen() {
   }
 
   function confirmDelete() {
-    Alert.alert('Ta bort ärende?', undefined, [
+    Alert.alert('Ta bort feedback?', undefined, [
       { text: 'Avbryt', style: 'cancel' },
       {
         text: 'Ta bort',
@@ -68,7 +68,7 @@ export default function IssueDetailsScreen() {
       back();
     } catch (error) {
       Alert.alert(
-        'Kunde inte ta bort ärende',
+        'Kunde inte ta bort feedback',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
       setIsDeleting(false);
@@ -86,7 +86,7 @@ export default function IssueDetailsScreen() {
   if (!issue) {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
-        <Text className="text-center text-muted-foreground">Ärendet kunde inte laddas.</Text>
+        <Text className="text-center text-muted-foreground">Feedback kunde inte laddas.</Text>
         <Button variant="outline" className="h-11 rounded-xl bg-background" onPress={() => back()}>
           <Text>Tillbaka</Text>
         </Button>
@@ -110,7 +110,7 @@ export default function IssueDetailsScreen() {
       screenshotUrl={issue.screenshotUrl}
       showStatusEditor
       submitLabel="Spara"
-      title="Ärende"
+      title="Feedback"
     />
   );
 }

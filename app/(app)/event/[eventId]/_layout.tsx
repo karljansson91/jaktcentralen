@@ -8,14 +8,7 @@ export default function EventLayout() {
         name="chat"
         options={{
           presentation: 'modal',
-          headerShown: true,
-          title: 'Chat',
-          headerBackVisible: false,
-          headerLargeTitle: false,
-          headerTitleAlign: 'center',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: '#FCF8F2' },
-          headerTintColor: '#313444',
+          headerShown: false,
           contentStyle: { backgroundColor: '#FCF8F2' },
         }}
       />
@@ -45,14 +38,7 @@ export default function EventLayout() {
         name="wind-direction"
         options={{
           presentation: 'modal',
-          headerShown: true,
-          title: 'Vindriktning',
-          headerBackVisible: false,
-          headerLargeTitle: false,
-          headerTitleAlign: 'center',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: '#FCF8F2' },
-          headerTintColor: '#313444',
+          headerShown: false,
           contentStyle: { backgroundColor: '#FCF8F2' },
         }}
       />

@@ -27,11 +27,19 @@ Create only when asked or when turning a clear user request into an app issue:
 npm run issues -- create --title "Kort titel" --description "Vad som ska göras" --type bug
 ```
 
+If the issue comes from a completed `grill-me` session with a locked spec, promote it
+right after creation:
+
+```bash
+npm run issues -- status <issueId> ready_to_implement
+```
+
 ## Workflow
 
 1. Read `AGENTS.md` first.
 2. List issues before choosing work.
 3. Move the issue to `ongoing` when starting substantial implementation.
-4. Keep app-created issues in `triage` until someone intentionally changes status.
-5. Mark `completed` only after implementation, simulator verification, thermo review, commit, and push.
-6. Do not delete production issues unless the user asked for deletion.
+4. Keep rough app-created issues in `triage`.
+5. If `grill-me` produced a clear, approved spec, set the new issue to `ready_to_implement`.
+6. Mark `completed` only after implementation, simulator verification, thermo review, commit, and push.
+7. Do not delete production issues unless the user asked for deletion.

@@ -171,7 +171,7 @@ export function IssueForm({
             className="h-12 rounded-xl"
             disabled={isSaving || isDeleting}
             onPress={onDelete}>
-            <Text>{isDeleting ? 'Tar bort...' : 'Ta bort ärende'}</Text>
+            <Text>{isDeleting ? 'Tar bort...' : 'Ta bort feedback'}</Text>
           </Button>
         ) : null}
       </ScrollView>

@@ -4,7 +4,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ElementRef } from 'react';
 import {
   ActivityIndicator,
@@ -112,6 +112,7 @@ export default function EventChatScreen() {
     eventId: string;
     focusComposer?: string;
   }>();
+  const { back, canGoBack, replace } = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scrollViewRef = useRef<ElementRef<typeof KeyboardChatScrollView>>(null);
@@ -170,8 +171,28 @@ export default function EventChatScreen() {
     await sendMessage({ eventId: eventId as Id<'events'>, body: trimmed });
   }, [body, eventId, sendMessage]);
 
+  const closeChat = useCallback(() => {
+    if (canGoBack()) {
+      back();
+      return;
+    }
+
+    replace(`/event/${eventId}`);
+  }, [back, canGoBack, eventId, replace]);
+
   return (
     <View style={{ flex: 1, backgroundColor: APP_COLORS.background }} collapsable={false}>
+      <View className="h-12 shrink-0 flex-row items-center justify-center border-b border-border bg-background px-4">
+        <Text className="text-base font-semibold text-foreground">Chat</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Stäng chat"
+          className="absolute right-4 size-9 items-center justify-center rounded-full bg-card active:bg-muted"
+          onPress={closeChat}>
+          <Ionicons name="close" size={22} color={APP_COLORS.text} />
+        </Pressable>
+      </View>
+
       <KeyboardChatScrollView
         ref={scrollViewRef}
         className="min-h-0 flex-1"

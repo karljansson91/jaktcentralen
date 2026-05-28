@@ -54,7 +54,7 @@ export default function IssueReportScreen() {
       replace('/issues' as Href);
     } catch (error) {
       Alert.alert(
-        'Kunde inte skapa ärende',
+        'Kunde inte skapa feedback',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
       setIsSaving(false);
@@ -68,7 +68,7 @@ export default function IssueReportScreen() {
       onSubmit={(values) => void handleSubmit(values)}
       screenshotUrl={draft?.screenshotUri}
       submitLabel="Skapa"
-      title="Nytt ärende"
+      title="Ny feedback"
     />
   );
 }

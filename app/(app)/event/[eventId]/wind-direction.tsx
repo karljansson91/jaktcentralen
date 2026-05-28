@@ -1,9 +1,9 @@
-import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
+import { GlassIconButton } from '@/components/glass/glass-icon-button';
+import { GlassSurface } from '@/components/glass/glass-surface';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
   getCachedMapStyle,
@@ -18,14 +18,7 @@ import {
 } from '@/lib/wind-direction';
 import { publishWindDirectionSelection } from '@/lib/wind-direction-selection';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  Camera,
-  FillLayer,
-  LineLayer,
-  LocationPuck,
-  MapView,
-  ShapeSource,
-} from '@rnmapbox/maps';
+import { Camera, LocationPuck, MapView } from '@rnmapbox/maps';
 import { useQuery } from 'convex/react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,17 +32,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const COMPASS_TOUCH_DEAD_ZONE = 18;
+const COMPASS_TOUCH_DEAD_ZONE = 10;
+const FALLBACK_MAP_CENTER: [number, number] = [16, 62];
+const FALLBACK_MAP_ZOOM = 4;
+const USER_WIND_MAP_ZOOM = 15;
 
 const COMPASS_LABELS = [
-  { label: 'N', style: { left: '50%', top: 5, transform: [{ translateX: -8 }] } },
-  { label: 'NO', style: { right: 24, top: 30 } },
-  { label: 'O', style: { right: 9, top: '50%', transform: [{ translateY: -9 }] } },
-  { label: 'SO', style: { bottom: 30, right: 24 } },
-  { label: 'S', style: { bottom: 5, left: '50%', transform: [{ translateX: -7 }] } },
-  { label: 'SV', style: { bottom: 30, left: 24 } },
-  { label: 'V', style: { left: 9, top: '50%', transform: [{ translateY: -9 }] } },
-  { label: 'NV', style: { left: 24, top: 30 } },
+  { label: 'N', style: { left: '50%', top: 4, transform: [{ translateX: -7 }] } },
+  { label: 'NO', style: { right: 15, top: 17 } },
+  { label: 'O', style: { right: 6, top: '50%', transform: [{ translateY: -8 }] } },
+  { label: 'SO', style: { bottom: 17, right: 15 } },
+  { label: 'S', style: { bottom: 4, left: '50%', transform: [{ translateX: -6 }] } },
+  { label: 'SV', style: { bottom: 17, left: 15 } },
+  { label: 'V', style: { left: 6, top: '50%', transform: [{ translateY: -8 }] } },
+  { label: 'NV', style: { left: 15, top: 17 } },
 ] as const;
 
 function parseInitialDegrees(value: string | string[] | undefined) {
@@ -89,19 +85,12 @@ export default function WindDirectionScreen() {
   const [draftDegrees, setDraftDegrees] = useState(initialWindDirectionDegrees ?? 0);
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
-  const compassSize = Math.min(252, Math.max(212, width - 64));
+  const [isLocatingUser, setIsLocatingUser] = useState(true);
+  const compassSize = Math.min(148, Math.max(124, width * 0.34));
 
   const event = useQuery(api.events.get, {
     eventId: eventId as Id<'events'>,
   });
-  const area = useQuery(
-    api.areas.getForEvent,
-    event ? { eventId: eventId as Id<'events'> } : 'skip'
-  );
-  const areaFeatures = useQuery(
-    api.areaFeatures.listForEvent,
-    event ? { eventId: eventId as Id<'events'> } : 'skip'
-  );
 
   const close = useCallback(() => {
     if (canGoBack()) {
@@ -128,11 +117,23 @@ export default function WindDirectionScreen() {
         }
       });
 
-      void getCurrentUserCoordinate().then((coordinate) => {
-        if (!cancelled && coordinate) {
-          setCurrentCoordinate(coordinate);
-        }
-      });
+      setIsLocatingUser(true);
+      void getCurrentUserCoordinate()
+        .then((coordinate) => {
+          if (!cancelled) {
+            setCurrentCoordinate(coordinate ?? null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setCurrentCoordinate(null);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setIsLocatingUser(false);
+          }
+        });
 
       return () => {
         cancelled = true;
@@ -167,23 +168,10 @@ export default function WindDirectionScreen() {
     [updateDraftFromTouch]
   );
 
-  const polygonGeoJSON = useMemo(() => {
-    if (!area) return null;
-    return buildAreaPolygonFeature(area);
-  }, [area]);
-
-  const cameraBounds = useMemo(() => {
-    if (!area) return null;
-    return getAreaCameraBounds(area, {
-      top: Math.max(insets.top + 32, 64),
-      bottom: Math.max(insets.bottom + 328, 360),
-      left: 32,
-      right: 32,
-    });
-  }, [area, insets.bottom, insets.top]);
-
   const windDisplay = getWindDirectionDisplay(draftDegrees);
   const scentPreviewDirection = oppositeDirectionDegrees(draftDegrees);
+  const mapCenterCoordinate = currentCoordinate ?? FALLBACK_MAP_CENTER;
+  const mapZoomLevel = currentCoordinate ? USER_WIND_MAP_ZOOM : FALLBACK_MAP_ZOOM;
 
   const handleApply = useCallback(() => {
     Vibration.vibrate(8);
@@ -197,12 +185,7 @@ export default function WindDirectionScreen() {
     close();
   }, [close]);
 
-  const loading =
-    event === undefined ||
-    (event !== null && area === undefined) ||
-    (event !== null &&
-      area !== null &&
-      (areaFeatures === undefined || cameraBounds === null));
+  const loading = event === undefined || isLocatingUser;
 
   if (loading) {
     return (
@@ -212,10 +195,10 @@ export default function WindDirectionScreen() {
     );
   }
 
-  if (event === null || area === null) {
+  if (event === null) {
     return (
       <View className="flex-1 items-center justify-center bg-background p-6">
-        <Text variant="h3">Kartan hittades inte</Text>
+        <Text variant="h3">Jakten hittades inte</Text>
       </View>
     );
   }
@@ -230,18 +213,12 @@ export default function WindDirectionScreen() {
         style={{ flex: 1 }}
         styleURL={mapStyleURL}
         zoomEnabled>
-        {cameraBounds && <Camera bounds={cameraBounds} animationDuration={0} />}
+        <Camera
+          centerCoordinate={mapCenterCoordinate}
+          zoomLevel={mapZoomLevel}
+          animationDuration={0}
+        />
         <LocationPuck puckBearing="heading" puckBearingEnabled />
-
-        {polygonGeoJSON && (
-          <ShapeSource id="wind-area-polygon" shape={polygonGeoJSON}>
-            <FillLayer id="wind-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
-            <LineLayer
-              id="wind-area-line"
-              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 2.5 }}
-            />
-          </ShapeSource>
-        )}
 
         {currentCoordinate ? (
           <ScentPlumeLayer
@@ -249,56 +226,72 @@ export default function WindDirectionScreen() {
             originCoordinate={currentCoordinate}
           />
         ) : null}
-
-        <AreaFeatureLayers
-          features={areaFeatures ?? []}
-          idPrefix="wind-area-features"
-        />
       </MapView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
         <View
+          pointerEvents="box-none"
+          className="absolute left-4 right-4 flex-row items-center justify-between gap-3"
+          style={{ top: Math.max(insets.top, 12) + 8 }}>
+          <GlassIconButton
+            icon="chevron-back"
+            iconSize={21}
+            onPress={close}
+            accessibilityLabel="Gå tillbaka"
+            surfaceClassName="size-11"
+          />
+          <GlassSurface
+            tone="dark"
+            className="rounded-[28px]"
+            style={{ height: 44 }}
+            contentClassName="h-full items-center justify-center px-5">
+            <Text className="text-[16px] font-semibold text-white">Vindriktning</Text>
+          </GlassSurface>
+          <View style={{ width: 44 }} />
+        </View>
+
+        <View
           className="absolute left-4 right-4 rounded-[28px] border border-border bg-background/95 p-4"
           style={{ bottom: Math.max(insets.bottom, 16) + 8, boxShadow: '0 18px 42px rgba(49, 52, 68, 0.18)' }}>
-          <View className="flex-row items-center justify-between gap-3">
-            <View>
+          <View className="flex-row items-center justify-between gap-4">
+            <View className="min-w-0 flex-1 gap-2">
               <Text className="text-sm font-semibold uppercase text-muted-foreground">
                 Vind från
               </Text>
-              <Text className="text-3xl font-black text-foreground">
+              <Text className="text-4xl font-black leading-[44px] text-foreground">
                 {windDisplay.label} {draftDegrees}°
               </Text>
+              {initialWindDirectionDegrees != null ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Rensa vindriktning"
+                  className="self-start rounded-full border border-border px-4 py-2 active:bg-muted"
+                  onPress={handleClear}>
+                  <Text className="text-sm font-semibold text-foreground">Rensa</Text>
+                </Pressable>
+              ) : null}
             </View>
-            {initialWindDirectionDegrees != null ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Rensa vindriktning"
-                className="rounded-full border border-border px-4 py-2 active:bg-muted"
-                onPress={handleClear}>
-                <Text className="text-sm font-semibold text-foreground">Rensa</Text>
-              </Pressable>
-            ) : null}
-          </View>
 
-          <View
-            {...panResponder.panHandlers}
-            accessibilityLabel="Välj vindriktning"
-            accessibilityRole="adjustable"
-            className="mt-4 self-center rounded-full border border-border bg-card"
-            style={{ height: compassSize, width: compassSize }}>
-            {COMPASS_LABELS.map((item) => (
-              <Text
-                key={item.label}
-                className="absolute text-xs font-bold text-muted-foreground"
-                style={item.style}>
-                {item.label}
-              </Text>
-            ))}
-            <View className="absolute inset-12 items-center justify-center rounded-full border border-border bg-background">
-              <View
-                className="size-20 items-center justify-center rounded-full bg-primary"
-                style={{ transform: [{ rotateZ: `${draftDegrees}deg` }] }}>
-                <Ionicons name="arrow-up" size={42} color={APP_COLORS.surface} />
+            <View
+              {...panResponder.panHandlers}
+              accessibilityLabel="Välj vindriktning"
+              accessibilityRole="adjustable"
+              className="rounded-full border border-border bg-card"
+              style={{ height: compassSize, width: compassSize }}>
+              {COMPASS_LABELS.map((item) => (
+                <Text
+                  key={item.label}
+                  className="absolute text-[10px] font-bold leading-[12px] text-muted-foreground"
+                  style={item.style}>
+                  {item.label}
+                </Text>
+              ))}
+              <View className="absolute inset-8 items-center justify-center rounded-full border border-border bg-background/90">
+                <View
+                  className="size-12 items-center justify-center rounded-full bg-primary"
+                  style={{ transform: [{ rotateZ: `${draftDegrees}deg` }] }}>
+                  <Ionicons name="arrow-up" size={28} color={APP_COLORS.surface} />
+                </View>
               </View>
             </View>
           </View>

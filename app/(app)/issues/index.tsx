@@ -73,9 +73,9 @@ export default function IssuesScreen() {
         <Button
           className="h-12 rounded-xl"
           onPress={() => push('/issue-report' as Href)}
-          accessibilityLabel="Skapa ärende">
+          accessibilityLabel="Skapa feedback">
           <Ionicons name="add" size={19} color={APP_COLORS.surface} />
-          <Text>Nytt ärende</Text>
+          <Text>Ny feedback</Text>
         </Button>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -145,7 +145,7 @@ export default function IssuesScreen() {
         </View>
       ) : (
         <View className="items-center justify-center rounded-2xl border border-border bg-card p-6">
-          <Text className="text-center text-muted-foreground">Inga ärenden.</Text>
+          <Text className="text-center text-muted-foreground">Ingen feedback.</Text>
         </View>
       )}
     </ScrollView>

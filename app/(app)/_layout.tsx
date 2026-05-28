@@ -106,7 +106,7 @@ export default function AppLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="profile" options={appHeaderOptions('', true)} />
-        <Stack.Screen name="issues" options={appHeaderOptions('Ärenden')} />
+        <Stack.Screen name="issues" options={appHeaderOptions('Feedback')} />
         <Stack.Screen name="issues/[issueId]" options={issueSheetOptions} />
         <Stack.Screen name="issue-report" options={issueSheetOptions} />
         <Stack.Screen
