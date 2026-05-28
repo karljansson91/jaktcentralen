@@ -5,6 +5,7 @@ import {
   AssignmentRouteSummary,
   type AssignmentRouteSummaryProps,
 } from '@/components/event/assignment-route-summary';
+import { normalizeMapHeading } from '@/lib/map-heading';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, type ReactNode } from 'react';
 import {
@@ -39,8 +40,10 @@ const HEADER_DETAILS_ANIMATION = {
 type HuntMapTopNavProps = {
   allowedGameLabel?: string | null;
   actionsMenu?: ReactNode;
+  compassHeading?: number;
   forceDetailsVisible?: boolean;
   onBack: () => void;
+  onCompassPress?: () => void;
   onMore?: () => void;
   positionSharingEnabled?: boolean;
   readinessLabel?: string | null;
@@ -50,11 +53,41 @@ type HuntMapTopNavProps = {
   windDirectionLabel?: string | null;
 };
 
+function NorthCompassButton({
+  heading,
+  onPress,
+}: {
+  heading: number;
+  onPress: () => void;
+}) {
+  const normalizedHeading = normalizeMapHeading(heading);
+
+  return (
+    <Pressable
+      accessibilityLabel="Norr upp"
+      accessibilityRole="button"
+      hitSlop={8}
+      onPress={onPress}
+      style={styles.compassButton}>
+      <View
+        style={[
+          styles.compassNeedle,
+          { transform: [{ rotate: `${-normalizedHeading}deg` }] },
+        ]}>
+        <Text className="text-[9px] font-bold leading-[10px] text-white">N</Text>
+        <Ionicons name="navigate" size={14} color="#8FE8A5" />
+      </View>
+    </Pressable>
+  );
+}
+
 export function HuntMapTopNav({
   allowedGameLabel,
   actionsMenu,
+  compassHeading,
   forceDetailsVisible = false,
   onBack,
+  onCompassPress,
   onMore,
   positionSharingEnabled,
   readinessLabel,
@@ -64,6 +97,7 @@ export function HuntMapTopNav({
   windDirectionLabel,
 }: HuntMapTopNavProps) {
   const [detailsVisible, setDetailsVisible] = useState(false);
+  const hasCompass = compassHeading != null && Boolean(onCompassPress);
   const hasDetails = Boolean(readinessLabel || allowedGameLabel || routeSummary);
   const detailsExpanded = hasDetails && (detailsVisible || forceDetailsVisible);
   const canToggleDetails = hasDetails && !forceDetailsVisible;
@@ -77,7 +111,9 @@ export function HuntMapTopNav({
       : styles.compactTitleSurface;
   const titleSurfaceStyle = detailsExpanded
     ? expandedTitleSurfaceStyle
-    : styles.compactTitleSurface;
+    : hasCompass
+      ? styles.compassTitleSurface
+      : styles.compactTitleSurface;
   const positionSharingLabel =
     positionSharingEnabled == null
       ? null
@@ -108,50 +144,56 @@ export function HuntMapTopNav({
             className="max-w-full rounded-[28px]"
             style={titleSurfaceStyle}
             contentClassName="h-full items-center justify-center gap-1 px-4 py-2">
-            <Pressable
-              accessibilityLabel={[
-                title,
-                positionSharingLabel,
-                windDirectionLabel,
-                canToggleDetails
-                  ? detailsExpanded
-                    ? 'Dölj jaktinfo'
-                    : 'Visa jaktinfo'
-                  : null,
-              ]
-                .filter(Boolean)
-                .join('. ')}
-              accessibilityRole={canToggleDetails ? 'button' : undefined}
-              accessibilityState={canToggleDetails ? { expanded: detailsExpanded } : undefined}
-              disabled={!canToggleDetails}
-              hitSlop={8}
-              onPress={toggleDetails}
-              className="min-h-6 max-w-full flex-row items-center justify-center gap-1.5">
-              <Text
-                className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
-                style={styles.floatingTitle}>
-                {title}
-              </Text>
-              {positionSharingEnabled != null ? (
-                <Ionicons
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                  name={positionSharingEnabled ? 'navigate' : 'navigate-outline'}
-                  size={14}
-                  color={positionSharingEnabled ? '#8FE8A5' : 'rgba(255, 255, 255, 0.62)'}
-                />
-              ) : null}
-              {windDirectionLabel ? (
+            <View className="min-h-6 max-w-full flex-row items-center justify-center gap-2">
+              <Pressable
+                accessibilityLabel={[
+                  title,
+                  positionSharingLabel,
+                  windDirectionLabel,
+                  canToggleDetails
+                    ? detailsExpanded
+                      ? 'Dölj jaktinfo'
+                      : 'Visa jaktinfo'
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join('. ')}
+                accessibilityRole={canToggleDetails ? 'button' : undefined}
+                accessibilityState={canToggleDetails ? { expanded: detailsExpanded } : undefined}
+                disabled={!canToggleDetails}
+                hitSlop={8}
+                onPress={toggleDetails}
+                className="min-w-0 shrink flex-row items-center justify-center gap-1.5">
                 <Text
-                  className="text-[11px] font-bold leading-[14px] text-white/85"
-                  numberOfLines={1}>
-                  {windDirectionLabel}
+                  className="min-w-0 shrink text-center text-[16px] font-semibold leading-[21px] text-white"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  style={styles.floatingTitle}>
+                  {title}
                 </Text>
+                {positionSharingEnabled != null ? (
+                  <Ionicons
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                    name={positionSharingEnabled ? 'navigate' : 'navigate-outline'}
+                    size={14}
+                    color={positionSharingEnabled ? '#8FE8A5' : 'rgba(255, 255, 255, 0.62)'}
+                  />
+                ) : null}
+                {windDirectionLabel ? (
+                  <Text
+                    className="text-[11px] font-bold leading-[14px] text-white/85"
+                    numberOfLines={1}>
+                    {windDirectionLabel}
+                  </Text>
+                ) : null}
+              </Pressable>
+
+              {compassHeading != null && onCompassPress ? (
+                <NorthCompassButton heading={compassHeading} onPress={onCompassPress} />
               ) : null}
-            </Pressable>
+            </View>
             {detailsExpanded && readinessLabel ? (
               <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
                 {readinessLabel}
@@ -193,6 +235,23 @@ export function HuntMapTopNav({
 const styles = StyleSheet.create({
   compactTitleSurface: {
     height: 40,
+  } satisfies ViewStyle,
+  compassTitleSurface: {
+    height: 48,
+  } satisfies ViewStyle,
+  compassButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(254, 253, 251, 0.14)',
+    borderColor: 'rgba(254, 253, 251, 0.22)',
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  } satisfies ViewStyle,
+  compassNeedle: {
+    alignItems: 'center',
+    justifyContent: 'center',
   } satisfies ViewStyle,
   expandedTitleSurface: {
     minHeight: 68,

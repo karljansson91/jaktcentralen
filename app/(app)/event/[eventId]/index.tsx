@@ -52,6 +52,7 @@ import { useCurrentTime } from '@/hooks/use-current-time';
 import { useHuntMapMeasurement } from '@/hooks/use-hunt-map-measurement';
 import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
+import { useMapHeading } from '@/hooks/use-map-heading';
 import {
   Camera,
   CircleLayer,
@@ -90,6 +91,11 @@ export default function EventMapScreen() {
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const currentTime = useCurrentTime();
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
+  const {
+    handleCameraChanged,
+    heading: mapHeading,
+    resetHeading: handleResetMapNorth,
+  } = useMapHeading(cameraRef);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
   const [windSourceDirectionDegrees, setWindSourceDirectionDegrees] = useState<number | null>(null);
   const {
@@ -768,9 +774,10 @@ export default function EventMapScreen() {
         styleURL={mapStyleURL}
         scrollEnabled
         zoomEnabled
-        rotateEnabled={false}
+        rotateEnabled
         pitchEnabled={false}
         attributionEnabled={false}
+        onCameraChanged={handleCameraChanged}
         onLongPress={isActiveHunt ? handleMapLongPress : undefined}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         {!currentUserInPositionEffective ? (
@@ -860,11 +867,13 @@ export default function EventMapScreen() {
           style={{ top: Math.max(insets.top, 8) + 8 }}>
           <HuntMapTopNav
             allowedGameLabel={allowedGameSummary}
+            compassHeading={mapHeading}
             forceDetailsVisible={visibleMeasurementActive}
             renderActionsMenu={renderHuntActionsMenu}
             title={event.title}
             windDirectionLabel={windDirectionLabel}
             onBack={() => back()}
+            onCompassPress={handleResetMapNorth}
             positionSharingEnabled={isActiveHunt ? isOwnPositionSharingEnabled : undefined}
             readinessLabel={
               isActiveHunt && readinessSummary?.total
