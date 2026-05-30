@@ -4,6 +4,7 @@ import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers'
 import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
+import { HuntMapMeasurementControls } from '@/components/event/hunt-map-measurement-controls';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
@@ -41,10 +42,7 @@ import {
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
-import {
-  formatWindDirectionIndicator,
-  oppositeDirectionDegrees,
-} from '@/lib/wind-direction';
+import { oppositeDirectionDegrees } from '@/lib/wind-direction';
 import { subscribeToWindDirectionSelection } from '@/lib/wind-direction-selection';
 import { useAnimalSightingMapVisibility } from '@/hooks/use-animal-sighting-map-visibility';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
@@ -118,6 +116,7 @@ export default function EventMapScreen() {
     routeGeoJSON: measurementRouteGeoJSON,
     routeStatus: measurementRouteStatus,
     toggleMode: toggleMeasurementMode,
+    undoLastPoint: undoMeasurementPoint,
     updatePointCoordinate: updateMeasurementPointCoordinate,
   } = useHuntMapMeasurement();
 
@@ -162,10 +161,6 @@ export default function EventMapScreen() {
     activeWindSourceDirectionDegrees == null
       ? null
       : oppositeDirectionDegrees(activeWindSourceDirectionDegrees);
-  const windDirectionLabel =
-    activeWindSourceDirectionDegrees == null
-      ? null
-      : formatWindDirectionIndicator(activeWindSourceDirectionDegrees);
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
   const ownPositionSharingEnabledRef = useRef(true);
   const {
@@ -545,6 +540,13 @@ export default function EventMapScreen() {
 
       const point = pointFromMapLongPress(mapEvent);
       Vibration.vibrate(8);
+
+      if (measurementActive) {
+        addMeasurementPoint(point);
+        setLongPressActionPoint(null);
+        return;
+      }
+
       setLongPressActionPoint(point);
       push(
         `/event/${eventId}/map-point-actions?latitude=${point.latitude}&longitude=${point.longitude}&canMeasureFromUser=${
@@ -552,7 +554,15 @@ export default function EventMapScreen() {
         }`
       );
     },
-    [currentMeasurementStartCoordinate, eventId, isActiveHunt, push, setLongPressActionPoint]
+    [
+      addMeasurementPoint,
+      currentMeasurementStartCoordinate,
+      eventId,
+      isActiveHunt,
+      measurementActive,
+      push,
+      setLongPressActionPoint,
+    ]
   );
 
   const handleMeasureToLongPressPoint = useCallback(
@@ -869,9 +879,10 @@ export default function EventMapScreen() {
             allowedGameLabel={allowedGameSummary}
             compassHeading={mapHeading}
             forceDetailsVisible={visibleMeasurementActive}
-            renderActionsMenu={renderHuntActionsMenu}
+            measurementOnly={visibleMeasurementActive}
+            renderActionsMenu={visibleMeasurementActive ? undefined : renderHuntActionsMenu}
             title={event.title}
-            windDirectionLabel={windDirectionLabel}
+            windDirectionDegrees={activeWindSourceDirectionDegrees}
             onBack={() => back()}
             onCompassPress={handleResetMapNorth}
             positionSharingEnabled={isActiveHunt ? isOwnPositionSharingEnabled : undefined}
@@ -888,17 +899,9 @@ export default function EventMapScreen() {
           className="absolute left-6"
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
           {visibleMeasurementActive ? (
-            <GlassIconButton
-              accessibilityLabel="Rensa mätning"
-              className="size-14"
-              color={APP_COLORS.surface}
-              icon="close"
-              iconSize={24}
-              onPress={clearMeasurement}
-              overlayColor="rgba(49, 52, 68, 0.18)"
-              surfaceClassName="size-14"
-              tintColor="rgba(49, 52, 68, 0.82)"
-              tone="dark"
+            <HuntMapMeasurementControls
+              onClear={clearMeasurement}
+              onUndo={undoMeasurementPoint}
             />
           ) : isActiveHunt ? (
             <HuntMapToolsMenu
@@ -947,38 +950,40 @@ export default function EventMapScreen() {
           ) : null}
         </View>
 
-        <View
-          className="absolute right-6"
-          style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
-          <GlassIconButton
-            onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
-            accessibilityLabel={
-              unreadMessageCount
-                ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`
-                : 'Öppna chat'
-            }
-            className="relative size-16"
-            color={APP_COLORS.surface}
-            icon="chatbubbles"
-            iconSize={29}
-            overlayColor="rgba(29, 95, 43, 0.22)"
-            surfaceClassName="size-16"
-            tintColor={APP_COLORS.primary}
-            tone="dark"
-            style={{
-              borderColor: 'rgba(254, 253, 251, 0.7)',
-              borderWidth: 1,
-              boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
-            }}
-          />
-          {unreadMessageCount ? (
-            <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
-              <Text className="text-[11px] font-bold leading-4 text-white">
-                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+        {!visibleMeasurementActive ? (
+          <View
+            className="absolute right-6"
+            style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
+            <GlassIconButton
+              onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
+              accessibilityLabel={
+                unreadMessageCount
+                  ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`
+                  : 'Öppna chat'
+              }
+              className="relative size-16"
+              color={APP_COLORS.surface}
+              icon="chatbubbles"
+              iconSize={29}
+              overlayColor="rgba(29, 95, 43, 0.22)"
+              surfaceClassName="size-16"
+              tintColor={APP_COLORS.primary}
+              tone="dark"
+              style={{
+                borderColor: 'rgba(254, 253, 251, 0.7)',
+                borderWidth: 1,
+                boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
+              }}
+            />
+            {unreadMessageCount ? (
+              <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
+                <Text className="text-[11px] font-bold leading-4 text-white">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </View>
   );

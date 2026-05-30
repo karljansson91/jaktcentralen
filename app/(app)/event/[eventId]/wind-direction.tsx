@@ -1,14 +1,23 @@
 import { Button, Text } from '@/components/ui';
 import { APP_COLORS } from '@/lib/theme';
-import { normalizeDegrees } from '@/lib/wind-direction';
+import { getWindDirectionDisplay, normalizeDegrees } from '@/lib/wind-direction';
 import { publishWindDirectionSelection } from '@/lib/wind-direction-selection';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PanResponder, View, useWindowDimensions } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type GestureResponderEvent,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const COMPASS_TOUCH_DEAD_ZONE = 10;
+const COMPASS_TOUCH_DEAD_ZONE = 14;
+const COMPASS_TICKS = Array.from({ length: 24 }, (_, index) => index * 15);
 const COMPASS_DIRECTIONS = [
   { degrees: 0, label: 'N' },
   { degrees: 45, label: 'NO' },
@@ -44,14 +53,14 @@ function degreesFromTouch(x: number, y: number, size: number) {
 
 function getCompassLabelStyle(degrees: number, size: number) {
   const angle = (degrees * Math.PI) / 180;
-  const radius = size * 0.38;
+  const radius = size * 0.39;
   const x = size / 2 + Math.sin(angle) * radius;
   const y = size / 2 - Math.cos(angle) * radius;
 
   return {
-    left: x - 15,
-    top: y - 8,
-    width: 30,
+    left: x - 17,
+    top: y - 9,
+    width: 34,
   };
 }
 
@@ -68,7 +77,7 @@ export default function WindDirectionScreen() {
     [initialDegrees]
   );
   const [draftDegrees, setDraftDegrees] = useState(initialWindDirectionDegrees ?? 0);
-  const compassSize = Math.min(244, Math.max(214, width - 96));
+  const compassSize = Math.min(256, Math.max(218, width - 96));
 
   const close = useCallback(() => {
     if (canGoBack()) {
@@ -84,13 +93,18 @@ export default function WindDirectionScreen() {
   }, [initialWindDirectionDegrees]);
 
   const setWindDirection = useCallback((degrees: number) => {
-    setDraftDegrees(degrees);
-    publishWindDirectionSelection(degrees);
+    const nextDegrees = Math.round(normalizeDegrees(degrees));
+    setDraftDegrees(nextDegrees);
+    publishWindDirectionSelection(nextDegrees);
   }, []);
 
-  const updateDraftFromTouch = useCallback(
-    (x: number, y: number) => {
-      const nextDegrees = degreesFromTouch(x, y, compassSize);
+  const handleCompassPress = useCallback(
+    (event: GestureResponderEvent) => {
+      const nextDegrees = degreesFromTouch(
+        event.nativeEvent.locationX,
+        event.nativeEvent.locationY,
+        compassSize
+      );
       if (nextDegrees == null) {
         return;
       }
@@ -100,25 +114,12 @@ export default function WindDirectionScreen() {
     [compassSize, setWindDirection]
   );
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponder: () => true,
-        onPanResponderGrant: (event) => {
-          updateDraftFromTouch(event.nativeEvent.locationX, event.nativeEvent.locationY);
-        },
-        onPanResponderMove: (event) => {
-          updateDraftFromTouch(event.nativeEvent.locationX, event.nativeEvent.locationY);
-        },
-      }),
-    [updateDraftFromTouch]
-  );
-
   const handleClear = useCallback(() => {
     publishWindDirectionSelection(null);
     close();
   }, [close]);
+  const selectedWindLabel = getWindDirectionDisplay(draftDegrees).label;
+  const selectedDegrees = Math.round(normalizeDegrees(draftDegrees));
 
   return (
     <View
@@ -130,28 +131,79 @@ export default function WindDirectionScreen() {
         </Text>
       </View>
 
-      <View
-        {...panResponder.panHandlers}
-        accessibilityLabel="Välj vindriktning"
-        accessibilityRole="adjustable"
-        className="mt-5 rounded-full border border-border bg-card"
-        style={{ height: compassSize, width: compassSize }}>
+      <Pressable
+        accessibilityLabel={`Välj vindriktning. Vald ${selectedWindLabel}, ${selectedDegrees} grader`}
+        accessibilityRole="button"
+        hitSlop={6}
+        onPress={handleCompassPress}
+        style={[
+          styles.compassPicker,
+          {
+            borderRadius: compassSize / 2,
+            height: compassSize,
+            marginTop: 20,
+            width: compassSize,
+          },
+        ]}>
+        {COMPASS_TICKS.map((degrees, index) => (
+          <View
+            key={degrees}
+            pointerEvents="none"
+            style={[styles.compassTickRing, { transform: [{ rotate: `${degrees}deg` }] }]}>
+            <View style={index % 6 === 0 ? styles.compassMajorTick : styles.compassTick} />
+          </View>
+        ))}
+
         {COMPASS_DIRECTIONS.map((item) => (
           <Text
             key={item.label}
-            className="absolute text-center text-[11px] font-bold leading-[16px] text-muted-foreground"
-            style={getCompassLabelStyle(item.degrees, compassSize)}>
+            pointerEvents="none"
+            style={[
+              styles.compassLabel,
+              item.label === selectedWindLabel ? styles.compassLabelSelected : null,
+              getCompassLabelStyle(item.degrees, compassSize),
+            ]}>
             {item.label}
           </Text>
         ))}
 
-        <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
-          <View style={{ transform: [{ rotateZ: `${draftDegrees}deg` }] }}>
-            <Ionicons name="arrow-up" size={54} color={APP_COLORS.primary} />
+        <View
+          pointerEvents="none"
+          style={[styles.windNeedleRing, { paddingTop: compassSize * 0.14 }]}>
+          <View
+            style={[
+              styles.windNeedle,
+              {
+                transform: [{ rotate: `${selectedDegrees}deg` }],
+              },
+            ]}>
+            <Ionicons
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+              name="caret-up"
+              size={34}
+              color={APP_COLORS.primary}
+            />
+            <View style={[styles.windNeedleStem, { height: compassSize * 0.21 }]} />
           </View>
-          <View className="absolute size-2 rounded-full bg-primary" />
         </View>
-      </View>
+
+        <View pointerEvents="none" style={styles.compassCenterBadge}>
+          <Text style={styles.compassCenterLabel}>{selectedWindLabel}</Text>
+          <Text style={styles.compassCenterDegrees}>{selectedDegrees}°</Text>
+        </View>
+
+        <View pointerEvents="none" style={styles.northNeedle}>
+          <Ionicons
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            name="caret-up"
+            size={20}
+            color="#FF4B4B"
+            style={styles.northNeedleIcon}
+          />
+        </View>
+      </Pressable>
 
       <View className="mt-5 w-full flex-row gap-3">
         <Button
@@ -167,3 +219,108 @@ export default function WindDirectionScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  compassCenterBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(19, 23, 37, 0.94)',
+    borderColor: 'rgba(143, 232, 165, 0.34)',
+    borderRadius: 34,
+    borderWidth: 1,
+    height: 68,
+    justifyContent: 'center',
+    left: '50%',
+    marginLeft: -34,
+    marginTop: -34,
+    position: 'absolute',
+    top: '50%',
+    width: 68,
+  } satisfies ViewStyle,
+  compassCenterDegrees: {
+    color: 'rgba(255, 255, 255, 0.72)',
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '700',
+    lineHeight: 15,
+  } satisfies TextStyle,
+  compassCenterLabel: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 26,
+  } satisfies TextStyle,
+  compassLabel: {
+    color: 'rgba(255, 255, 255, 0.54)',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    position: 'absolute',
+    textAlign: 'center',
+  } satisfies TextStyle,
+  compassLabelSelected: {
+    color: APP_COLORS.primary,
+    fontSize: 13,
+  } satisfies TextStyle,
+  compassMajorTick: {
+    backgroundColor: 'rgba(255, 255, 255, 0.74)',
+    borderRadius: 999,
+    height: 14,
+    width: 2,
+  } satisfies ViewStyle,
+  compassPicker: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 20, 38, 0.98)',
+    borderColor: 'rgba(112, 92, 207, 0.72)',
+    borderWidth: 2,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  } satisfies ViewStyle,
+  compassTick: {
+    backgroundColor: 'rgba(255, 255, 255, 0.32)',
+    borderRadius: 999,
+    height: 8,
+    width: 1,
+  } satisfies ViewStyle,
+  compassTickRing: {
+    alignItems: 'center',
+    bottom: 0,
+    left: 0,
+    paddingTop: 8,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  } satisfies ViewStyle,
+  northNeedle: {
+    alignItems: 'center',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  } satisfies ViewStyle,
+  northNeedleIcon: {
+    transform: [{ translateY: -4 }],
+  } satisfies TextStyle,
+  windNeedle: {
+    alignItems: 'center',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  } satisfies ViewStyle,
+  windNeedleRing: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  } satisfies ViewStyle,
+  windNeedleStem: {
+    backgroundColor: APP_COLORS.primary,
+    borderRadius: 999,
+    marginTop: -2,
+    opacity: 0.86,
+    width: 4,
+  } satisfies ViewStyle,
+});

@@ -54,8 +54,8 @@ export function MeasurementPointMarkers({ onDragPoint, points }: MeasurementPoin
               setDraggingPoint(null);
               onDragPoint(point.id, getPayloadCoordinate(payload));
             }}>
-            <View style={styles.touchTarget}>
-              <View style={styles.point}>
+            <View collapsable={false} style={styles.touchTarget}>
+              <View collapsable={false} style={styles.point}>
                 <Text style={styles.pointLabel}>{label}</Text>
               </View>
             </View>

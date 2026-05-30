@@ -105,6 +105,21 @@ export function useHuntMapMeasurement() {
     setWalkingRouteResult(null);
   }, []);
 
+  const undoLastPoint = useCallback(() => {
+    setPoints((current) => {
+      const nextPoints = current.slice(0, -1);
+
+      if (nextPoints.length < 2) {
+        setWalkingRouteResult(null);
+      }
+      if (nextPoints.length === 0) {
+        setMode('direct');
+      }
+
+      return nextPoints;
+    });
+  }, []);
+
   const toggleMode = useCallback(() => {
     setMode((current) => (current === 'walking' ? 'direct' : 'walking'));
   }, []);
@@ -122,6 +137,7 @@ export function useHuntMapMeasurement() {
     routeStatus,
     setMode,
     toggleMode,
+    undoLastPoint,
     updatePointCoordinate,
   };
 }
