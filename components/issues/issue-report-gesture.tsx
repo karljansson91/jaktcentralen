@@ -1,23 +1,12 @@
 import { setPendingIssueReportDraft } from '@/lib/issue-report-draft';
 import { Href, usePathname, useRouter } from 'expo-router';
-import { PropsWithChildren, useCallback, useEffect, useRef } from 'react';
-import {
-  GestureResponderEvent,
-  NativeModules,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
+import { NativeModules, TextInput, View, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 const REPORT_GESTURE_DURATION_MS = 5000;
 const REPORT_GESTURE_MAX_DISTANCE = 96;
 const REPORT_CAPTURE_MAX_WIDTH = 480;
-
-type TouchPoint = {
-  id: string;
-  pageX: number;
-  pageY: number;
-};
 
 function isReportScreen(pathname: string) {
   return pathname.startsWith('/issue-report');
@@ -35,7 +24,7 @@ async function captureIssueScreenshot(width: number, height: number) {
       format: 'jpg',
       height: Math.round(height * scale),
       quality: 0.62,
-      result: 'data-uri',
+      result: 'tmpfile',
       width: Math.round(width * scale),
     });
   } catch {
@@ -43,49 +32,28 @@ async function captureIssueScreenshot(width: number, height: number) {
   }
 }
 
-function readTouchPoints(event: GestureResponderEvent) {
-  return Array.from(event.nativeEvent.touches)
-    .slice(0, 2)
-    .map((touch, index) => ({
-      id: String(touch.identifier ?? index),
-      pageX: touch.pageX,
-      pageY: touch.pageY,
-    }))
-    .sort((a, b) => a.id.localeCompare(b.id));
-}
-
-function didMoveTooFar(startTouches: TouchPoint[], currentTouches: TouchPoint[]) {
-  return startTouches.some((startTouch, index) => {
-    const currentTouch =
-      currentTouches.find((touch) => touch.id === startTouch.id) ?? currentTouches[index];
-    if (!currentTouch) return true;
-
-    const distance = Math.hypot(
-      currentTouch.pageX - startTouch.pageX,
-      currentTouch.pageY - startTouch.pageY
-    );
-    return distance > REPORT_GESTURE_MAX_DISTANCE;
-  });
-}
-
 export function IssueReportGesture({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const { push } = useRouter();
   const dimensions = useWindowDimensions();
-  const isOpeningRef = useRef(false);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const holdStartTouchesRef = useRef<TouchPoint[]>([]);
+  const [isOpening, setIsOpening] = useState(false);
 
-  const clearHoldTimer = useCallback(() => {
-    if (holdTimerRef.current) {
-      clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
+  useEffect(() => {
+    if (!isOpening) {
+      return;
     }
-    holdStartTouchesRef.current = [];
-  }, []);
+
+    const timeoutId = setTimeout(() => {
+      setIsOpening(false);
+    }, 750);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isOpening]);
 
   const openIssueReport = useCallback(async () => {
-    if (isOpeningRef.current || isReportScreen(pathname)) {
+    if (isOpening || isReportScreen(pathname)) {
       return;
     }
 
@@ -93,7 +61,7 @@ export function IssueReportGesture({ children }: PropsWithChildren) {
       return;
     }
 
-    isOpeningRef.current = true;
+    setIsOpening(true);
     try {
       const screenshotUri = await captureIssueScreenshot(dimensions.width, dimensions.height);
 
@@ -104,80 +72,30 @@ export function IssueReportGesture({ children }: PropsWithChildren) {
       });
       push('/issue-report' as Href);
     } catch {
-      isOpeningRef.current = false;
+      setIsOpening(false);
       return;
     }
+  }, [dimensions.height, dimensions.width, isOpening, pathname, push]);
 
-    setTimeout(() => {
-      isOpeningRef.current = false;
-    }, 750);
-  }, [dimensions.height, dimensions.width, pathname, push]);
-
-  const startHoldTimer = useCallback(
-    (event: GestureResponderEvent) => {
-      if (holdTimerRef.current || isOpeningRef.current || isReportScreen(pathname)) {
-        return;
-      }
-
-      const touches = readTouchPoints(event);
-      if (touches.length < 2) {
-        clearHoldTimer();
-        return;
-      }
-
-      holdStartTouchesRef.current = touches;
-      holdTimerRef.current = setTimeout(() => {
-        holdTimerRef.current = null;
-        holdStartTouchesRef.current = [];
-        void openIssueReport();
-      }, REPORT_GESTURE_DURATION_MS);
-    },
-    [clearHoldTimer, openIssueReport, pathname]
+  const reportGesture = useMemo(
+    () =>
+      Gesture.LongPress()
+        .enabled(!isReportScreen(pathname))
+        .minDuration(REPORT_GESTURE_DURATION_MS)
+        .maxDistance(REPORT_GESTURE_MAX_DISTANCE)
+        .numberOfPointers(2)
+        .cancelsTouchesInView(false)
+        .shouldCancelWhenOutside(false)
+        .runOnJS(true)
+        .onStart(() => {
+          void openIssueReport();
+        }),
+    [openIssueReport, pathname]
   );
-
-  const handleTouchStart = useCallback(
-    (event: GestureResponderEvent) => {
-      if (event.nativeEvent.touches.length >= 2) {
-        startHoldTimer(event);
-      }
-    },
-    [startHoldTimer]
-  );
-
-  const handleTouchMove = useCallback(
-    (event: GestureResponderEvent) => {
-      if (!holdTimerRef.current) return;
-
-      const touches = readTouchPoints(event);
-      if (
-        touches.length < 2 ||
-        didMoveTooFar(holdStartTouchesRef.current, touches)
-      ) {
-        clearHoldTimer();
-      }
-    },
-    [clearHoldTimer]
-  );
-
-  const handleTouchEnd = useCallback(
-    (event: GestureResponderEvent) => {
-      if (event.nativeEvent.touches.length < 2) {
-        clearHoldTimer();
-      }
-    },
-    [clearHoldTimer]
-  );
-
-  useEffect(() => clearHoldTimer, [clearHoldTimer]);
 
   return (
-    <View
-      className="flex-1"
-      onTouchCancel={clearHoldTimer}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
-      onTouchStart={handleTouchStart}>
-      {children}
-    </View>
+    <GestureDetector gesture={reportGesture}>
+      <View className="flex-1">{children}</View>
+    </GestureDetector>
   );
 }

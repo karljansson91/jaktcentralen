@@ -62,8 +62,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Låt appen välja bilder till markörer.",
-          "cameraPermission": "Låt appen ta bilder till markörer."
+          "photosPermission": "Låt appen välja bilder till feedback och markörer.",
+          "cameraPermission": "Låt appen ta bilder till feedback och markörer."
         }
       ],
       "expo-status-bar",

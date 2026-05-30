@@ -247,6 +247,7 @@ export default defineSchema({
     reporterUserId: v.optional(v.id("users")),
     reporterName: v.string(),
     reporterEmail: v.optional(v.string()),
+    imageFileIds: v.optional(v.array(v.id("_storage"))),
     screenshotFileId: v.optional(v.id("_storage")),
     screenPath: v.optional(v.string()),
     createdAt: v.number(),

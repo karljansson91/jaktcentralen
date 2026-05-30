@@ -96,14 +96,17 @@ export default function IssueDetailsScreen() {
 
   return (
     <IssueForm
+      attachmentImages={issue.images.map((image) => ({
+        id: image.fileId,
+        url: image.url,
+      }))}
+      busyState={isDeleting ? 'deleting' : isSaving ? 'saving' : 'idle'}
       initialValues={{
         description: issue.description,
         status: issue.status,
         title: issue.title,
         type: issue.type,
       }}
-      isDeleting={isDeleting}
-      isSaving={isSaving}
       onCancel={() => back()}
       onDelete={confirmDelete}
       onSubmit={(values) => void handleSubmit(values)}
