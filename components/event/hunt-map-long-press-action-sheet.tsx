@@ -11,6 +11,8 @@ type HuntMapLongPressActionSheetProps = {
   onAddMeasurementPoint: (coordinate: LatLngPoint) => void;
   onMarkAnimalSighting: (coordinate: LatLngPoint) => void;
   onMeasureToPoint: (coordinate: LatLngPoint) => void;
+  onSelectSat: (satId: string) => void;
+  satOptions: { id: string; name: string }[];
 };
 
 type ActionRowProps = {
@@ -48,6 +50,8 @@ export function HuntMapLongPressActionSheet({
   onAddMeasurementPoint,
   onMarkAnimalSighting,
   onMeasureToPoint,
+  onSelectSat,
+  satOptions,
 }: HuntMapLongPressActionSheetProps) {
   const insets = useSafeAreaInsets();
 
@@ -86,6 +90,15 @@ export function HuntMapLongPressActionSheet({
             subtitle="Välj djur och skicka observationen till jakten."
             onPress={() => onMarkAnimalSighting(coordinate)}
           />
+          {satOptions.map((sat) => (
+            <ActionRow
+              key={sat.id}
+              icon="map-outline"
+              label={sat.name}
+              subtitle="Öppna såten för den här jakten."
+              onPress={() => onSelectSat(sat.id)}
+            />
+          ))}
         </View>
       ) : (
         <View className="mt-8 items-center justify-center rounded-2xl border border-border bg-card p-5">

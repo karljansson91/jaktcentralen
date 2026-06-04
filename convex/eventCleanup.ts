@@ -5,7 +5,16 @@ export async function deleteEventCascade(
   ctx: MutationCtx,
   eventId: Id<"events">
 ) {
-  const [members, assignments, trails, sightings, sightingAcknowledgements, messages] =
+  const [
+    members,
+    assignments,
+    selectedPasses,
+    excludedMembers,
+    trails,
+    sightings,
+    sightingAcknowledgements,
+    messages,
+  ] =
     await Promise.all([
       ctx.db
         .query("eventMembers")
@@ -13,6 +22,14 @@ export async function deleteEventCascade(
         .collect(),
       ctx.db
         .query("eventPointAssignments")
+        .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+        .collect(),
+      ctx.db
+        .query("eventSelectedPasses")
+        .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+        .collect(),
+      ctx.db
+        .query("eventAssignmentExcludedMembers")
         .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
         .collect(),
       ctx.db
@@ -38,6 +55,12 @@ export async function deleteEventCascade(
   }
   for (const assignment of assignments) {
     await ctx.db.delete(assignment._id);
+  }
+  for (const selectedPass of selectedPasses) {
+    await ctx.db.delete(selectedPass._id);
+  }
+  for (const excludedMember of excludedMembers) {
+    await ctx.db.delete(excludedMember._id);
   }
   for (const trail of trails) {
     await ctx.db.delete(trail._id);

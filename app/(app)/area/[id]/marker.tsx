@@ -10,7 +10,6 @@ import {
   AREA_FEATURE_COLOR_PALETTE,
   AreaFeatureCategory,
   AreaFeatureDraft,
-  AreaFeatureGeometryType,
   AreaFeatureImage,
   getDefaultColorForCategory,
 } from '@/lib/area-features';
@@ -23,7 +22,6 @@ import {
   buildMarkerFormValues,
   getPlacementSummary,
   getPointFallback,
-  getPolygonFallback,
   hasMarkerFormChanges,
 } from '@/lib/area-marker-form';
 import { APP_COLORS } from '@/lib/theme';
@@ -120,7 +118,6 @@ export default function MarkerFormScreen() {
       activeForm.setFieldValue('geometryType', nextValues.geometryType);
       activeForm.setFieldValue('color', nextValues.color);
       activeForm.setFieldValue('point', nextValues.point);
-      activeForm.setFieldValue('polygon', nextValues.polygon);
       activeForm.setFieldValue('images', nextValues.images);
       setDraft(nextDraft);
     }, [draftId])
@@ -174,14 +171,11 @@ export default function MarkerFormScreen() {
     values: MarkerFormValues,
     textValues: Pick<MarkerFormValues, 'name' | 'description'>
   ) {
-    const selectedPoint = getPointFallback(values.point, values.polygon);
+    const selectedPoint = getPointFallback(values.point);
     const imageFileIds = values.images.map((image) => image.fileId);
 
-    if (values.geometryType === 'point' && !selectedPoint) {
+    if (!selectedPoint) {
       throw new Error('Placera en punkt för markören.');
-    }
-    if (values.geometryType === 'polygon' && (!values.polygon || values.polygon.length < 3)) {
-      throw new Error('Rita ett område med minst tre punkter.');
     }
 
     await saveFeature({
@@ -189,17 +183,12 @@ export default function MarkerFormScreen() {
       description: textValues.description,
       category: values.category,
       color: values.color,
-      geometryType: values.geometryType,
       imageFileIds,
       ...(activeDraft.mode === 'create' ? { areaId: id as Id<'areas'> } : {}),
       ...(activeDraft.mode === 'edit' && activeDraft.featureId
         ? { featureId: activeDraft.featureId }
         : {}),
-      ...(activeDraft.mode === 'legacy' && activeDraft.legacyPointId
-        ? { legacyPointId: activeDraft.legacyPointId }
-        : {}),
-      ...(values.geometryType === 'point' && selectedPoint ? { point: selectedPoint } : {}),
-      ...(values.geometryType === 'polygon' && values.polygon ? { polygon: values.polygon } : {}),
+      point: selectedPoint,
     });
   }
 
@@ -208,38 +197,12 @@ export default function MarkerFormScreen() {
       return;
     }
 
-    await removeFeature(
-      activeDraft.mode === 'edit' && activeDraft.featureId
-        ? { featureId: activeDraft.featureId }
-        : { legacyPointId: activeDraft.legacyPointId! }
-    );
+    await removeFeature({ featureId: activeDraft.featureId! });
   }
 
   function handleCategoryChange(nextCategory: AreaFeatureCategory) {
     form.setFieldValue('category', nextCategory);
     form.setFieldValue('color', getDefaultColorForCategory(nextCategory));
-
-    if (nextCategory !== 'custom') {
-      form.setFieldValue('geometryType', 'point');
-      form.setFieldValue('point', (current) =>
-        getPointFallback(current, form.state.values.polygon)
-      );
-    }
-  }
-
-  function handleGeometryTypeChange(nextGeometryType: AreaFeatureGeometryType) {
-    form.setFieldValue('geometryType', nextGeometryType);
-
-    if (nextGeometryType === 'point') {
-      form.setFieldValue('point', (current) =>
-        getPointFallback(current, form.state.values.polygon)
-      );
-      return;
-    }
-
-    form.setFieldValue('polygon', (current) =>
-      getPolygonFallback(current, form.state.values.point)
-    );
   }
 
   async function handleDelete() {
@@ -329,7 +292,6 @@ export default function MarkerFormScreen() {
   return (
     <form.Subscribe selector={(state) => ({ values: state.values, isSubmitting: state.isSubmitting })}>
       {({ values, isSubmitting }) => {
-        const isCustomCategory = values.category === 'custom';
         const canDelete = activeDraft.mode !== 'create';
         const hasChanges =
           Boolean(activeDraft.hasUnsavedChanges) ||
@@ -390,28 +352,11 @@ export default function MarkerFormScreen() {
                 )}
               </View>
 
-              {isCustomCategory && (
-                <>
-                  <Text className="mb-2 font-medium">Geometri</Text>
-                  <View className="mb-5 flex-row flex-wrap justify-between gap-y-3">
-                    {(['point', 'polygon'] as const).map((option) => (
-                      <ChoiceChip
-                        key={option}
-                        label={option === 'point' ? 'Punkt' : 'Område'}
-                        icon={option === 'point' ? 'location-outline' : 'scan-outline'}
-                        selected={values.geometryType === option}
-                        onPress={() => handleGeometryTypeChange(option)}
-                      />
-                    ))}
-                  </View>
-                </>
-              )}
-
               <Text className="mb-2 font-medium">Placering</Text>
               <View className="mb-5 rounded-2xl border border-border bg-card px-4 py-3">
                 <View className="min-w-0 flex-1">
                   <Text className="text-sm text-muted-foreground">
-                    {getPlacementSummary(values.geometryType, values.point, values.polygon)}
+                    {getPlacementSummary(values.geometryType, values.point)}
                   </Text>
                 </View>
               </View>

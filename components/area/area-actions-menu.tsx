@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 const ACTION_CREATE_HUNT = 'create-hunt';
+const ACTION_CREATE_SAT = 'create-sat';
 const ACTION_REDRAW_AREA = 'redraw-area';
 const ACTION_EDIT_AREA = 'edit-area';
 const ACTION_MAP_STYLE = 'map-style';
@@ -16,9 +17,11 @@ const ACTION_DELETE_AREA = 'delete-area';
 
 type AreaActionsMenuProps = {
   areaId: Id<'areas'>;
+  onCreateSat?: () => void;
+  onRedrawArea?: () => void;
 };
 
-export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
+export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActionsMenuProps) {
   const { back, canGoBack, push, replace } = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const removeArea = useMutation(api.areas.remove);
@@ -69,7 +72,13 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
         title: 'Skapa jakt',
       },
       {
-        attributes: { disabled: isSubmitting },
+        attributes: { disabled: isSubmitting || !onCreateSat },
+        id: ACTION_CREATE_SAT,
+        image: 'map',
+        title: 'Ny såt',
+      },
+      {
+        attributes: { disabled: isSubmitting || !onRedrawArea },
         id: ACTION_REDRAW_AREA,
         image: 'pencil.and.outline',
         title: 'Rita om area',
@@ -93,7 +102,7 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
         title: 'Ta bort område',
       },
     ],
-    [isSubmitting]
+    [isSubmitting, onCreateSat, onRedrawArea]
   );
 
   const handlePressAction = useCallback(
@@ -102,8 +111,11 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
         case ACTION_CREATE_HUNT:
           push(`/area/${areaId}/event/create`);
           break;
+        case ACTION_CREATE_SAT:
+          onCreateSat?.();
+          break;
         case ACTION_REDRAW_AREA:
-          push(`/area/${areaId}/redraw`);
+          onRedrawArea?.();
           break;
         case ACTION_EDIT_AREA:
           push(`/area/${areaId}/edit`);
@@ -116,7 +128,7 @@ export function AreaActionsMenu({ areaId }: AreaActionsMenuProps) {
           break;
       }
     },
-    [areaId, confirmDeleteArea, handleSelectMapStyle, push]
+    [areaId, confirmDeleteArea, handleSelectMapStyle, onCreateSat, onRedrawArea, push]
   );
 
   return (

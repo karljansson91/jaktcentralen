@@ -15,11 +15,12 @@ function parseCoordinate(value: string | string[] | undefined) {
 }
 
 export default function MapPointActionsScreen() {
-  const { eventId, latitude, longitude, canMeasureFromUser } = useLocalSearchParams<{
+  const { eventId, latitude, longitude, canMeasureFromUser, satOptions } = useLocalSearchParams<{
     canMeasureFromUser?: string;
     eventId: string;
     latitude?: string;
     longitude?: string;
+    satOptions?: string;
   }>();
   const { back, canGoBack, replace } = useRouter();
 
@@ -35,6 +36,22 @@ export default function MapPointActionsScreen() {
       longitude: parsedLongitude,
     };
   }, [latitude, longitude]);
+  const parsedSatOptions = useMemo(() => {
+    if (!satOptions || Array.isArray(satOptions)) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(satOptions) as { id?: unknown; name?: unknown }[];
+      return parsed.flatMap((option) =>
+        typeof option.id === 'string' && typeof option.name === 'string'
+          ? [{ id: option.id, name: option.name }]
+          : []
+      );
+    } catch {
+      return [];
+    }
+  }, [satOptions]);
 
   const closeSheet = useCallback(() => {
     if (canGoBack()) {
@@ -79,6 +96,16 @@ export default function MapPointActionsScreen() {
     [eventId, replace]
   );
 
+  const handleSelectSat = useCallback(
+    (satId: string) => {
+      if (coordinate) {
+        publishHuntMapLongPressAction({ point: coordinate, type: 'clearPoint' });
+      }
+      replace(`/event/${eventId}/sat?satId=${satId}`);
+    },
+    [coordinate, eventId, replace]
+  );
+
   return (
     <HuntMapLongPressActionSheet
       canMeasureFromUser={canMeasureFromUser === '1'}
@@ -86,6 +113,8 @@ export default function MapPointActionsScreen() {
       onAddMeasurementPoint={handleAddMeasurementPoint}
       onMarkAnimalSighting={handleMarkAnimalSighting}
       onMeasureToPoint={handleMeasureToPoint}
+      onSelectSat={handleSelectSat}
+      satOptions={parsedSatOptions}
     />
   );
 }

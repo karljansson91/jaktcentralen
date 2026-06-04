@@ -9,6 +9,7 @@ const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
 const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
 const ACTION_TOGGLE_ROUTE = 'toggle-route';
 const ACTION_TOGGLE_ANIMAL_SIGHTINGS = 'toggle-animal-sightings';
+const ACTION_TOGGLE_OTHER_MARKERS = 'toggle-other-markers';
 const ACTION_LOCATE = 'locate';
 
 type HuntMapToolsMenuProps = {
@@ -24,6 +25,11 @@ type HuntMapToolsMenuProps = {
     onMark: () => void;
   };
   onLocate: () => void;
+  otherMarkers: {
+    available: boolean;
+    onToggle: () => void;
+    showing: boolean;
+  };
   positions: {
     onToggleOthers: () => void;
     onToggleOwnSharing: () => void;
@@ -46,6 +52,7 @@ export function HuntMapToolsMenu({
   animalSightings,
   inPosition,
   onLocate,
+  otherMarkers,
   positions,
   route,
   scent,
@@ -84,6 +91,13 @@ export function HuntMapToolsMenu({
         title: 'Visa väg till pass',
       },
       {
+        attributes: { hidden: !otherMarkers.available },
+        id: ACTION_TOGGLE_OTHER_MARKERS,
+        image: otherMarkers.showing ? 'eye' : 'eye.slash',
+        state: otherMarkers.showing ? 'on' : 'off',
+        title: otherMarkers.showing ? 'Dölj övriga pass' : 'Visa övriga pass',
+      },
+      {
         attributes: { hidden: !animalSightings.available },
         id: ACTION_TOGGLE_ANIMAL_SIGHTINGS,
         image: animalSightings.showing ? 'eye.slash' : 'eye',
@@ -101,6 +115,8 @@ export function HuntMapToolsMenu({
       animalSightings.showing,
       inPosition.available,
       inPosition.marked,
+      otherMarkers.available,
+      otherMarkers.showing,
       positions.ownSharingEnabled,
       positions.showOthers,
       route.available,
@@ -134,6 +150,9 @@ export function HuntMapToolsMenu({
         case ACTION_TOGGLE_ANIMAL_SIGHTINGS:
           requestAnimationFrame(animalSightings.onToggle);
           break;
+        case ACTION_TOGGLE_OTHER_MARKERS:
+          requestAnimationFrame(otherMarkers.onToggle);
+          break;
         case ACTION_LOCATE:
           requestAnimationFrame(onLocate);
           break;
@@ -144,6 +163,7 @@ export function HuntMapToolsMenu({
       inPosition.onClear,
       inPosition.onMark,
       onLocate,
+      otherMarkers.onToggle,
       positions.onToggleOthers,
       positions.onToggleOwnSharing,
       route.onToggle,

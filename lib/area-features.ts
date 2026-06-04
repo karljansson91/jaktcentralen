@@ -1,21 +1,19 @@
 import { Id } from "@/convex/_generated/dataModel";
 
 export const AREA_FEATURE_CATEGORY_LABELS = {
-  tower: "Jaktorn",
+  pass: "Pass",
   parking: "Parkering",
   meeting: "Samlingsplats",
-  custom: "Anpassad",
 } as const;
 
 const AREA_FEATURE_CATEGORY_COLORS = {
-  tower: "#8b5cf6",
+  pass: "#2f7d46",
   parking: "#6b7280",
   meeting: "#3b82f6",
-  custom: "#f59e0b",
 } as const;
 
 export const AREA_FEATURE_COLOR_PALETTE = [
-  "#8b5cf6",
+  "#2f7d46",
   "#6b7280",
   "#3b82f6",
   "#f59e0b",
@@ -26,7 +24,7 @@ export const AREA_FEATURE_COLOR_PALETTE = [
 ] as const;
 
 export type AreaFeatureCategory = keyof typeof AREA_FEATURE_CATEGORY_LABELS;
-export type AreaFeatureGeometryType = "point" | "polygon";
+export type AreaFeatureGeometryType = "point";
 
 export type LatLngPoint = {
   latitude: number;
@@ -39,24 +37,21 @@ export type AreaFeatureImage = {
 };
 
 export type AreaFeatureListItem = {
-  id: Id<"areaFeatures"> | Id<"areaPoints">;
-  source: "feature" | "legacy";
+  id: Id<"areaFeatures">;
   name: string;
   description?: string;
   category: AreaFeatureCategory;
   color: string;
   geometryType: AreaFeatureGeometryType;
-  point?: LatLngPoint;
-  polygon?: LatLngPoint[];
+  point: LatLngPoint;
   images: AreaFeatureImage[];
   imageUrls: string[];
 };
 
 export type AreaFeatureDraft = {
-  mode: "create" | "edit" | "legacy";
+  mode: "create" | "edit";
   areaId: Id<"areas">;
   featureId?: Id<"areaFeatures">;
-  legacyPointId?: Id<"areaPoints">;
   hasUnsavedChanges?: boolean;
   category: AreaFeatureCategory;
   geometryType: AreaFeatureGeometryType;
@@ -64,7 +59,6 @@ export type AreaFeatureDraft = {
   description: string;
   color: string;
   point?: LatLngPoint;
-  polygon?: LatLngPoint[];
   images: AreaFeatureImage[];
 };
 
@@ -93,6 +87,6 @@ export function polygonCentroid(points: LatLngPoint[]): [number, number] {
   return [total.longitude / points.length, total.latitude / points.length];
 }
 
-export function getAreaFeatureTargetKey(feature: Pick<AreaFeatureListItem, "id" | "source">) {
-  return `${feature.source}:${String(feature.id)}`;
+export function getAreaFeatureTargetKey(feature: Pick<AreaFeatureListItem, "id">) {
+  return String(feature.id);
 }

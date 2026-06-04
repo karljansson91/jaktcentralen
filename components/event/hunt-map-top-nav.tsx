@@ -60,6 +60,7 @@ type HuntMapTopNavProps = {
   readinessLabel?: string | null;
   renderActionsMenu?: () => ReactNode;
   routeSummary?: AssignmentRouteSummaryProps | null;
+  satLabel?: string | null;
   title: string;
   windDirectionDegrees?: number | null;
 };
@@ -84,6 +85,7 @@ function getTitleSurfaceWidth({
   title,
   hasSideContent,
   readinessLabel,
+  satLabel,
 }: {
   allowedGameLabel?: string | null;
   detailsExpanded: boolean;
@@ -92,6 +94,7 @@ function getTitleSurfaceWidth({
   title: string;
   hasSideContent: boolean;
   readinessLabel?: string | null;
+  satLabel?: string | null;
 }) {
   const trimmedTitleLength = Math.max(title.trim().length, 4);
   const minimumWidth = hasSideContent
@@ -105,7 +108,8 @@ function getTitleSurfaceWidth({
   const detailsWidth = detailsExpanded
     ? Math.max(
         getTextWidthEstimate(readinessLabel, TITLE_DETAIL_CHAR_WIDTH),
-        getTextWidthEstimate(allowedGameLabel, TITLE_DETAIL_CHAR_WIDTH)
+        getTextWidthEstimate(allowedGameLabel, TITLE_DETAIL_CHAR_WIDTH),
+        getTextWidthEstimate(satLabel, TITLE_DETAIL_CHAR_WIDTH)
       ) + TITLE_DETAIL_BASE_WIDTH
     : 0;
   const routeWidth = detailsExpanded && hasRouteSummary ? TITLE_ROUTE_MIN_WIDTH : 0;
@@ -268,6 +272,7 @@ export function HuntMapTopNav({
   readinessLabel,
   renderActionsMenu,
   routeSummary,
+  satLabel,
   title,
   windDirectionDegrees,
 }: HuntMapTopNavProps) {
@@ -275,10 +280,11 @@ export function HuntMapTopNav({
   const { width } = useWindowDimensions();
   const hasWindDirection = windDirectionDegrees != null;
   const hasTitleSideContent = hasWindDirection || positionSharingEnabled != null;
-  const hasDetails = Boolean(readinessLabel || allowedGameLabel || routeSummary);
+  const hasDetails = Boolean(readinessLabel || allowedGameLabel || routeSummary || satLabel);
   const detailsExpanded = hasDetails && (detailsVisible || forceDetailsVisible);
   const canToggleDetails = hasDetails && !forceDetailsVisible;
-  const subtitleCount = Number(Boolean(readinessLabel)) + Number(Boolean(allowedGameLabel));
+  const subtitleCount =
+    Number(Boolean(satLabel)) + Number(Boolean(readinessLabel)) + Number(Boolean(allowedGameLabel));
   const titleSurfaceFrameStyle = {
     height: getTitleSurfaceHeight({
       detailsExpanded,
@@ -293,6 +299,7 @@ export function HuntMapTopNav({
       hasSideContent: hasTitleSideContent,
       maxWidth: Math.max(TITLE_MIN_WIDTH, width - HEADER_HORIZONTAL_SPACE),
       readinessLabel,
+      satLabel,
       title,
     }),
   };
@@ -430,6 +437,13 @@ export function HuntMapTopNav({
                   {readinessLabel ? (
                     <Text className="text-center text-[11px] font-semibold leading-[14px] text-white/85">
                       {readinessLabel}
+                    </Text>
+                  ) : null}
+                  {satLabel ? (
+                    <Text
+                      className="text-center text-[11px] font-semibold leading-[14px] text-white/85"
+                      numberOfLines={1}>
+                      {satLabel}
                     </Text>
                   ) : null}
                   {allowedGameLabel ? (

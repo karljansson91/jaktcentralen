@@ -51,7 +51,7 @@ export function DraggableAreaPointMarkers({
         return (
           <PointAnnotation
             key={featureKey}
-            id={`${idPrefix}-${feature.source}-${String(feature.id)}`}
+            id={`${idPrefix}-${String(feature.id)}`}
             coordinate={areaFeaturePointToLngLat(feature.point)}
             draggable
             anchor={{ x: 0.5, y: 0.5 }}

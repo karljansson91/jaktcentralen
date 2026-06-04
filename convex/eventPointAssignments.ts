@@ -4,26 +4,6 @@ import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
 import type { Id } from "./_generated/dataModel";
 
-type TargetRef =
-  | { source: "feature"; id: Id<"areaFeatures"> }
-  | { source: "legacy"; id: Id<"areaPoints"> };
-
-function parseTargetKey(targetKey: string): TargetRef {
-  const [source, id, ...rest] = targetKey.split(":");
-  if (rest.length > 0 || !id) {
-    throw new Error("Invalid assignment target");
-  }
-
-  if (source === "feature") {
-    return { source, id: id as Id<"areaFeatures"> };
-  }
-  if (source === "legacy") {
-    return { source, id: id as Id<"areaPoints"> };
-  }
-
-  throw new Error("Invalid assignment target");
-}
-
 async function requireEventMember(
   ctx: QueryCtx | MutationCtx,
   eventId: Id<"events">,
@@ -62,7 +42,7 @@ async function requireEventCreator(
   return event;
 }
 
-async function assertTargetBelongsToEventArea(
+async function assertTargetIsSelectedPass(
   ctx: QueryCtx | MutationCtx,
   eventId: Id<"events">,
   targetKey: string
@@ -71,20 +51,48 @@ async function assertTargetBelongsToEventArea(
   if (!event) {
     throw new Error("Event not found");
   }
+  if (!event.activeSatId) {
+    throw new Error("No active såt");
+  }
 
-  const target = parseTargetKey(targetKey);
-  if (target.source === "feature") {
-    const feature = await ctx.db.get(target.id);
-    if (!feature || feature.areaId !== event.areaId || feature.geometryType !== "point") {
-      throw new Error("Point marker not found in this hunt area");
-    }
+  const feature = await ctx.db.get(targetKey as Id<"areaFeatures">);
+  if (!feature || feature.areaId !== event.areaId || feature.category !== "pass") {
+    throw new Error("Pass not found in this hunt area");
+  }
+
+  const selected = await ctx.db
+    .query("eventSelectedPasses")
+    .withIndex("by_eventId_and_targetKey", (q) =>
+      q.eq("eventId", eventId).eq("targetKey", targetKey)
+    )
+    .unique();
+
+  if (!selected) {
+    throw new Error("Pass is not selected for the active såt");
+  }
+}
+
+async function clearInPositionForAssignment(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  userId: Id<"users">,
+  targetKey: string
+) {
+  const membership = await ctx.db
+    .query("eventMembers")
+    .withIndex("by_eventId_and_userId", (q) =>
+      q.eq("eventId", eventId).eq("userId", userId)
+    )
+    .unique();
+
+  if (membership?.inPositionTargetKey !== targetKey) {
     return;
   }
 
-  const point = await ctx.db.get(target.id);
-  if (!point || point.areaId !== event.areaId) {
-    throw new Error("Point marker not found in this hunt area");
-  }
+  await ctx.db.patch(membership._id, {
+    inPositionMarkedAt: undefined,
+    inPositionTargetKey: undefined,
+  });
 }
 
 async function deleteAssignmentsForTarget(
@@ -128,29 +136,6 @@ async function deleteAssignmentsForUser(
   }
 }
 
-async function clearInPositionForAssignment(
-  ctx: MutationCtx,
-  eventId: Id<"events">,
-  userId: Id<"users">,
-  targetKey: string
-) {
-  const membership = await ctx.db
-    .query("eventMembers")
-    .withIndex("by_eventId_and_userId", (q) =>
-      q.eq("eventId", eventId).eq("userId", userId)
-    )
-    .unique();
-
-  if (membership?.inPositionTargetKey !== targetKey) {
-    return;
-  }
-
-  await ctx.db.patch(membership._id, {
-    inPositionMarkedAt: undefined,
-    inPositionTargetKey: undefined,
-  });
-}
-
 export const listByEvent = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -181,7 +166,7 @@ export const assign = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     await requireEventCreator(ctx, args.eventId, user._id);
-    await assertTargetBelongsToEventArea(ctx, args.eventId, args.targetKey);
+    await assertTargetIsSelectedPass(ctx, args.eventId, args.targetKey);
 
     const assignedMembership = await requireEventMember(
       ctx,
@@ -213,7 +198,7 @@ export const clear = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     await requireEventCreator(ctx, args.eventId, user._id);
-    await assertTargetBelongsToEventArea(ctx, args.eventId, args.targetKey);
+    await assertTargetIsSelectedPass(ctx, args.eventId, args.targetKey);
     await deleteAssignmentsForTarget(ctx, args.eventId, args.targetKey);
   },
 });

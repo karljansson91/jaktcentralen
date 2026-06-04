@@ -11,6 +11,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 const ACTION_INFO = 'info';
+const ACTION_SAT = 'sat';
 const ACTION_MAP_STYLE = 'map-style';
 const ACTION_TIMELINE = 'timeline';
 const ACTION_INVITE = 'invite';
@@ -103,6 +104,12 @@ export function HuntActionsMenu({
         title: 'Ändra kartvy',
       },
       {
+        attributes: { disabled: isSubmitting, hidden: isEnded },
+        id: ACTION_SAT,
+        image: 'map.circle',
+        title: 'Såt',
+      },
+      {
         attributes: { disabled: isSubmitting, hidden: !isEnded },
         id: ACTION_TIMELINE,
         image: 'chart.line.uptrend.xyaxis',
@@ -132,6 +139,9 @@ export function HuntActionsMenu({
           break;
         case ACTION_MAP_STYLE:
           handleSelectMapStyle();
+          break;
+        case ACTION_SAT:
+          push(`/event/${eventId}/sat`);
           break;
         case ACTION_TIMELINE:
           push(`/event/${eventId}/timeline`);

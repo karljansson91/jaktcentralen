@@ -22,11 +22,11 @@ function createPointDraft(areaId: Id<"areas">, point: LatLngPoint): AreaFeatureD
   return {
     mode: "create",
     areaId,
-    category: "tower",
+    category: "pass",
     geometryType: "point",
     name: "",
     description: "",
-    color: getDefaultColorForCategory("tower"),
+    color: getDefaultColorForCategory("pass"),
     point,
     images: [],
   };
@@ -37,19 +37,15 @@ function createFeatureDraft(
   feature: AreaFeatureListItem
 ): AreaFeatureDraft {
   return {
-    mode: feature.source === "feature" ? "edit" : "legacy",
+    mode: "edit",
     areaId,
-    featureId:
-      feature.source === "feature" ? (feature.id as Id<"areaFeatures">) : undefined,
-    legacyPointId:
-      feature.source === "legacy" ? (feature.id as Id<"areaPoints">) : undefined,
+    featureId: feature.id,
     category: feature.category,
     geometryType: feature.geometryType,
     name: feature.name,
     description: feature.description ?? "",
     color: feature.color,
     point: feature.point,
-    polygon: feature.polygon,
     images: feature.images,
   };
 }
@@ -160,14 +156,11 @@ export function useAreaMarkerGestures(areaId: Id<"areas">) {
 
       try {
         await saveFeature({
-          ...(feature.source === "feature"
-            ? { featureId: feature.id as Id<"areaFeatures"> }
-            : { legacyPointId: feature.id as Id<"areaPoints"> }),
+          featureId: feature.id,
           name: feature.name,
           description: feature.description,
           category: feature.category,
           color: feature.color,
-          geometryType: "point",
           point,
           imageFileIds: feature.images.map((image) => image.fileId),
         });
