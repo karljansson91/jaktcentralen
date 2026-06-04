@@ -92,6 +92,12 @@ export function HuntActionsMenu({
   const actions = useMemo<MenuAction[]>(
     () => [
       {
+        attributes: { disabled: isSubmitting, hidden: isEnded },
+        id: ACTION_SAT,
+        image: 'map.circle',
+        title: 'Såt',
+      },
+      {
         attributes: { disabled: isSubmitting },
         id: ACTION_INFO,
         image: 'info.circle',
@@ -102,12 +108,6 @@ export function HuntActionsMenu({
         id: ACTION_MAP_STYLE,
         image: 'map',
         title: 'Ändra kartvy',
-      },
-      {
-        attributes: { disabled: isSubmitting, hidden: isEnded },
-        id: ACTION_SAT,
-        image: 'map.circle',
-        title: 'Såt',
       },
       {
         attributes: { disabled: isSubmitting, hidden: !isEnded },

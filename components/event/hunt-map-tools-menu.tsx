@@ -43,7 +43,6 @@ type HuntMapToolsMenuProps = {
   };
   scent: {
     hasDirection: boolean;
-    isSetting: boolean;
     onSet: () => void;
   };
 };
@@ -57,6 +56,8 @@ export function HuntMapToolsMenu({
   route,
   scent,
 }: HuntMapToolsMenuProps) {
+  const { hasDirection: hasScentDirection, onSet: handleSetScentDirection } = scent;
+
   const actions = useMemo<MenuAction[]>(
     () => [
       {
@@ -80,8 +81,7 @@ export function HuntMapToolsMenu({
       {
         id: ACTION_SET_SCENT_DIRECTION,
         image: 'wind',
-        state: scent.isSetting || scent.hasDirection ? 'on' : 'off',
-        title: scent.hasDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+        title: hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
       },
       {
         attributes: { hidden: !route.available },
@@ -121,8 +121,7 @@ export function HuntMapToolsMenu({
       positions.showOthers,
       route.available,
       route.visible,
-      scent.hasDirection,
-      scent.isSetting,
+      hasScentDirection,
     ],
   );
 
@@ -142,7 +141,7 @@ export function HuntMapToolsMenu({
           requestAnimationFrame(positions.onToggleOthers);
           break;
         case ACTION_SET_SCENT_DIRECTION:
-          requestAnimationFrame(scent.onSet);
+          handleSetScentDirection();
           break;
         case ACTION_TOGGLE_ROUTE:
           requestAnimationFrame(route.onToggle);
@@ -167,7 +166,7 @@ export function HuntMapToolsMenu({
       positions.onToggleOthers,
       positions.onToggleOwnSharing,
       route.onToggle,
-      scent.onSet,
+      handleSetScentDirection,
     ],
   );
 

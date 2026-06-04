@@ -78,6 +78,15 @@ function pointFromMapLongPress(event: GeoJSON.Feature): LatLngPoint {
   };
 }
 
+function getWindEditorCameraPadding(insets: { bottom: number; top: number }) {
+  return {
+    paddingBottom: Math.max(insets.bottom + 360, 380),
+    paddingLeft: 36,
+    paddingRight: 36,
+    paddingTop: Math.max(insets.top + 96, 124),
+  };
+}
+
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { back, push } = useRouter();
@@ -542,13 +551,50 @@ export default function EventMapScreen() {
     }
   }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
 
+  const focusMapForWindEditor = useCallback(
+    (coordinate: [number, number]) => {
+      setCurrentCoordinate(coordinate);
+      cameraRef.current?.setCamera({
+        animationDuration: 650,
+        animationMode: 'easeTo',
+        centerCoordinate: coordinate,
+        padding: getWindEditorCameraPadding(insets),
+        pitch: 0,
+        zoomLevel: 16.5,
+      });
+    },
+    [insets]
+  );
+
   const handleStartSettingScentDirection = useCallback(() => {
+    const existingCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
+    if (existingCoordinate) {
+      focusMapForWindEditor(existingCoordinate);
+    } else {
+      void getCurrentUserCoordinate()
+        .then((coordinate) => {
+          if (coordinate) {
+            focusMapForWindEditor(coordinate);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to focus map for wind direction editing:', error);
+        });
+    }
+
     const initialDegrees =
       windSourceDirectionDegrees == null
         ? ''
         : `?initialDegrees=${encodeURIComponent(String(Math.round(windSourceDirectionDegrees)))}`;
     push(`/event/${eventId}/wind-direction${initialDegrees}`);
-  }, [eventId, push, windSourceDirectionDegrees]);
+  }, [
+    currentCoordinate,
+    currentUserMemberCoordinate,
+    eventId,
+    focusMapForWindEditor,
+    push,
+    windSourceDirectionDegrees,
+  ]);
 
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
@@ -691,7 +737,8 @@ export default function EventMapScreen() {
         pitchEnabled={false}
         attributionEnabled={false}
         onCameraChanged={handleCameraChanged}
-        onLongPress={isActiveHunt ? handleMapLongPress : undefined}>
+        onLongPress={isActiveHunt ? handleMapLongPress : undefined}
+        scaleBarPosition={{ bottom: Math.max(insets.bottom, 20) + 92, left: 16 }}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         {!currentUserInPositionEffective ? (
           <LocationPuck puckBearingEnabled puckBearing="heading" />
@@ -861,7 +908,6 @@ export default function EventMapScreen() {
               }}
               scent={{
                 hasDirection: activeWindSourceDirectionDegrees != null,
-                isSetting: false,
                 onSet: handleStartSettingScentDirection,
               }}
             />
