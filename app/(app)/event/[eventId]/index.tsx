@@ -10,6 +10,7 @@ import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
 import { LiveMemberPositionMarker } from '@/components/event/live-member-position-marker';
+import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { Text } from '@/components/ui';
@@ -46,7 +47,7 @@ import { useHuntMapMeasurement } from '@/hooks/use-hunt-map-measurement';
 import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
 import { useLiveMemberPositionMarkers } from '@/hooks/use-live-member-position-markers';
-import { useMapHeading } from '@/hooks/use-map-heading';
+import { useMapCameraState } from '@/hooks/use-map-camera-state';
 import {
   Camera,
   CircleLayer,
@@ -98,7 +99,8 @@ export default function EventMapScreen() {
     handleCameraChanged,
     heading: mapHeading,
     resetHeading: handleResetMapNorth,
-  } = useMapHeading(cameraRef);
+    scale: mapScale,
+  } = useMapCameraState(cameraRef);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
   const [windSourceDirectionDegrees, setWindSourceDirectionDegrees] = useState<number | null>(null);
   const [showOtherPassMarkers, setShowOtherPassMarkers] = useState(false);
@@ -738,7 +740,7 @@ export default function EventMapScreen() {
         attributionEnabled={false}
         onCameraChanged={handleCameraChanged}
         onLongPress={isActiveHunt ? handleMapLongPress : undefined}
-        scaleBarPosition={{ bottom: Math.max(insets.bottom, 20) + 92, left: 16 }}>
+        scaleBarEnabled={false}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         {!currentUserInPositionEffective ? (
           <LocationPuck puckBearingEnabled puckBearing="heading" />
@@ -854,6 +856,14 @@ export default function EventMapScreen() {
             satLabel={activeSat ? `Såt: ${activeSat.name}` : null}
           />
         </View>
+
+        {mapScale ? (
+          <MapScaleBar
+            latitude={mapScale.latitude}
+            zoom={mapScale.zoom}
+            style={{ left: 16, top: Math.max(insets.top, 8) + 128 }}
+          />
+        ) : null}
 
         <View
           className="absolute left-6"

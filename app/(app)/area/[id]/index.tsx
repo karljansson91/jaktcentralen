@@ -6,6 +6,7 @@ import { PolygonDrawingControls } from '@/components/area/polygon-drawing-contro
 import { PolygonDrawingLayers } from '@/components/area/polygon-drawing-layers';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
 import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
+import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { NorthCompassButton } from '@/components/map/north-compass-button';
 import { Button, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
@@ -21,7 +22,7 @@ import {
   latLngPointFromMapFeature,
 } from '@/lib/area-map';
 import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
-import { useMapHeading } from '@/hooks/use-map-heading';
+import { useMapCameraState } from '@/hooks/use-map-camera-state';
 import { usePolygonEditing } from '@/hooks/use-polygon-editing';
 import { getDefaultAreaSatColor } from '@/lib/area-sats';
 import { saveAreaSatDraft } from '@/lib/area-sat-draft-store';
@@ -64,7 +65,8 @@ export default function ViewAreaScreen() {
     handleCameraChanged,
     heading: mapHeading,
     resetHeading: handleResetMapNorth,
-  } = useMapHeading(cameraRef);
+    scale: mapScale,
+  } = useMapCameraState(cameraRef);
   const satFreehandLastPointRef = useRef<LatLngPoint | null>(null);
   const satFreehandBasePolygonRef = useRef<LatLngPoint[] | null>(null);
   const satFreehandStrokeRef = useRef<LatLngPoint[]>([]);
@@ -462,7 +464,7 @@ export default function ViewAreaScreen() {
           onCameraChanged={handleCameraChanged}
           onPress={isEditingPolygon && !isSatFreehandDrawing ? handlePressMapWhileDrawing : undefined}
           onLongPress={isEditingPolygon ? undefined : handleMapLongPress}
-          scaleBarPosition={{ bottom: Math.max(insets.bottom, 16) + 76, left: 16 }}
+          scaleBarEnabled={false}
         >
           {cameraBounds && (
             <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />
@@ -569,6 +571,14 @@ export default function ViewAreaScreen() {
           style={{ top: Math.max(insets.top, 8) + 60 }}>
           <NorthCompassButton heading={mapHeading} onPress={handleResetMapNorth} />
         </View>
+
+        {mapScale ? (
+          <MapScaleBar
+            latitude={mapScale.latitude}
+            zoom={mapScale.zoom}
+            style={{ left: 16, top: Math.max(insets.top, 8) + 128 }}
+          />
+        ) : null}
 
         {isDrawingSat && satDrawingPoints ? (
           <PolygonDrawingControls
