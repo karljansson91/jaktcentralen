@@ -2,6 +2,7 @@ import { Input, Text } from '@/components/ui';
 import {
   ALLOWED_GAME_GROUPS,
   CUSTOM_ALLOWED_GAME_SPECIES_ID,
+  getAllowedGameNotePlaceholder,
   isCustomAllowedGameSpeciesId,
   type AllowedGameRule,
   type AllowedGameSpecies,
@@ -216,7 +217,7 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
                         ) : null}
                         <Input
                           editable={!disabled}
-                          placeholder="Anteckning, t.ex. taggintervall"
+                          placeholder={getAllowedGameNotePlaceholder(species)}
                           value={selected.rule.note ?? ''}
                           onChangeText={(note) =>
                             replaceRule(selected.index, { ...selected.rule, note })

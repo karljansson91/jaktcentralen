@@ -17,6 +17,7 @@ export type AllowedGameSpecies = {
   groupId: string;
   id: string;
   label: string;
+  notePlaceholder?: string;
   options?: AllowedGameOption[];
 };
 
@@ -32,6 +33,15 @@ export function isCustomAllowedGameSpeciesId(speciesId: string) {
   return speciesId === CUSTOM_ALLOWED_GAME_SPECIES_ID || speciesId.startsWith(`${CUSTOM_ALLOWED_GAME_SPECIES_ID}:`);
 }
 
+const GENERIC_ALLOWED_GAME_NOTE_PLACEHOLDER = 'Anteckning';
+const ANTLER_ALLOWED_GAME_NOTE_PLACEHOLDER = 'Anteckning, t.ex. taggintervall';
+
+export function getAllowedGameNotePlaceholder(
+  species: Pick<AllowedGameSpecies, 'notePlaceholder'>
+) {
+  return species.notePlaceholder ?? GENERIC_ALLOWED_GAME_NOTE_PLACEHOLDER;
+}
+
 export const ALLOWED_GAME_GROUPS: AllowedGameGroup[] = [
   {
     id: 'hoofed',
@@ -41,6 +51,7 @@ export const ALLOWED_GAME_GROUPS: AllowedGameGroup[] = [
         groupId: 'hoofed',
         id: 'elk',
         label: 'Älg',
+        notePlaceholder: ANTLER_ALLOWED_GAME_NOTE_PLACEHOLDER,
         options: [
           { id: 'calf', label: 'Kalv' },
           { id: 'cow', label: 'Ko' },
