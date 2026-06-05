@@ -6,6 +6,7 @@ import { PolygonDrawingControls } from '@/components/area/polygon-drawing-contro
 import { PolygonDrawingLayers } from '@/components/area/polygon-drawing-layers';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
 import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
+import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { NorthCompassButton } from '@/components/map/north-compass-button';
 import { Button, Text } from '@/components/ui';
@@ -78,6 +79,7 @@ export default function ViewAreaScreen() {
   const [isEditingAreaPolygon, setIsEditingAreaPolygon] = useState(false);
   const [areaEditingError, setAreaEditingError] = useState<string | null>(null);
   const [isUpdatingAreaPolygon, setIsUpdatingAreaPolygon] = useState(false);
+  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
   const updateArea = useMutation(api.areas.update);
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
   const areaFeatures = useQuery(
@@ -390,15 +392,28 @@ export default function ViewAreaScreen() {
     areaPolygonEditing.handleDone();
   }, [areaPolygonEditing]);
 
+  const handleToggleTopoOverlay = useCallback(() => {
+    setShowTopoOverlay((visible) => !visible);
+  }, []);
+
   const renderAreaActionsMenu = useCallback(
     () => (
       <AreaActionsMenu
         areaId={id as Id<'areas'>}
         onCreateSat={isEditingPolygon ? undefined : handleStartSatDrawing}
         onRedrawArea={isEditingPolygon ? undefined : handleStartAreaDrawing}
+        onToggleTopoOverlay={handleToggleTopoOverlay}
+        showTopoOverlay={showTopoOverlay}
       />
     ),
-    [handleStartAreaDrawing, handleStartSatDrawing, id, isEditingPolygon]
+    [
+      handleStartAreaDrawing,
+      handleStartSatDrawing,
+      handleToggleTopoOverlay,
+      id,
+      isEditingPolygon,
+      showTopoOverlay,
+    ]
   );
 
   const handleGoToMyPosition = useCallback(async () => {
@@ -471,6 +486,11 @@ export default function ViewAreaScreen() {
           )}
           <LocationPuck puckBearingEnabled puckBearing="heading" />
 
+          <LantmaterietTopoLayer
+            idPrefix="area-view-lantmateriet-topo"
+            visible={showTopoOverlay}
+          />
+
           {polygonGeoJSON && (
             <ShapeSource id="area-polygon" shape={polygonGeoJSON}>
               <FillLayer
@@ -478,8 +498,12 @@ export default function ViewAreaScreen() {
                 style={{ fillColor: APP_COLORS.mapAreaFill }}
               />
               <LineLayer
+                id="area-line-halo"
+                style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6 }}
+              />
+              <LineLayer
                 id="area-line"
-                style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 2 }}
+                style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3 }}
               />
             </ShapeSource>
           )}

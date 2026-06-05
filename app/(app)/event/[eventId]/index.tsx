@@ -9,6 +9,7 @@ import { HuntMapMeasurementControls } from '@/components/event/hunt-map-measurem
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
+import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { LiveMemberPositionMarker } from '@/components/event/live-member-position-marker';
 import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
@@ -104,6 +105,7 @@ export default function EventMapScreen() {
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
   const [windSourceDirectionDegrees, setWindSourceDirectionDegrees] = useState<number | null>(null);
   const [showOtherPassMarkers, setShowOtherPassMarkers] = useState(false);
+  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
   const {
     longPressActionPoint,
     setLongPressActionPoint,
@@ -617,6 +619,10 @@ export default function EventMapScreen() {
     promptIgnoreKey: currentUserAssignmentPromptIgnoreKey,
   });
 
+  const handleToggleTopoOverlay = useCallback(() => {
+    setShowTopoOverlay((visible) => !visible);
+  }, []);
+
   const renderHuntActionsMenu = useCallback(() => {
     if (!event || !currentUser) {
       return undefined;
@@ -627,9 +633,11 @@ export default function EventMapScreen() {
         currentUserId={currentUser._id}
         event={event}
         eventId={eventId as Id<'events'>}
+        onToggleTopoOverlay={handleToggleTopoOverlay}
+        showTopoOverlay={showTopoOverlay}
       />
     );
-  }, [currentUser, event, eventId]);
+  }, [currentUser, event, eventId, handleToggleTopoOverlay, showTopoOverlay]);
 
   const handleGoToMyPosition = useCallback(async () => {
     try {
@@ -746,12 +754,21 @@ export default function EventMapScreen() {
           <LocationPuck puckBearingEnabled puckBearing="heading" />
         ) : null}
 
+        <LantmaterietTopoLayer
+          idPrefix="event-lantmateriet-topo"
+          visible={showTopoOverlay}
+        />
+
         {polygonGeoJSON && (
           <ShapeSource id="event-area-polygon" shape={polygonGeoJSON}>
             <FillLayer id="event-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
             <LineLayer
+              id="event-area-line-halo"
+              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6.5 }}
+            />
+            <LineLayer
               id="event-area-line"
-              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 2.5 }}
+              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3.25 }}
             />
           </ShapeSource>
         )}

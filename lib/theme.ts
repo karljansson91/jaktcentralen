@@ -5,6 +5,7 @@ export const APP_COLORS = {
   text: '#313444',
   textMuted: '#636679',
   border: '#E7DDCE',
-  mapAreaFill: 'rgba(57, 128, 72, 0.22)',
-  mapAreaLine: '#398048',
+  mapAreaFill: 'rgba(57, 128, 72, 0.34)',
+  mapAreaHalo: 'rgba(254, 253, 251, 0.92)',
+  mapAreaLine: '#246B36',
 } as const;

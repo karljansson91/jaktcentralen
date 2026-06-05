@@ -1,4 +1,5 @@
 import { Button, Text } from '@/components/ui';
+import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import {
   getCachedMapStyle,
   getSavedMapStyle,
@@ -87,6 +88,11 @@ export function PointPlacementDrawer({
           animationDuration={0}
         />
         <LocationPuck puckBearingEnabled puckBearing="heading" />
+
+        <LantmaterietTopoLayer
+          idPrefix="point-placement-lantmateriet-topo"
+          visible
+        />
 
         {pointGeoJSON ? (
           <ShapeSource id="placement-point" shape={pointGeoJSON}>

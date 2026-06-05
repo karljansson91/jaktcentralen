@@ -13,15 +13,24 @@ const ACTION_CREATE_SAT = 'create-sat';
 const ACTION_REDRAW_AREA = 'redraw-area';
 const ACTION_EDIT_AREA = 'edit-area';
 const ACTION_MAP_STYLE = 'map-style';
+const ACTION_TOPO_OVERLAY = 'topo-overlay';
 const ACTION_DELETE_AREA = 'delete-area';
 
 type AreaActionsMenuProps = {
   areaId: Id<'areas'>;
   onCreateSat?: () => void;
   onRedrawArea?: () => void;
+  onToggleTopoOverlay: () => void;
+  showTopoOverlay: boolean;
 };
 
-export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActionsMenuProps) {
+export function AreaActionsMenu({
+  areaId,
+  onCreateSat,
+  onRedrawArea,
+  onToggleTopoOverlay,
+  showTopoOverlay,
+}: AreaActionsMenuProps) {
   const { back, canGoBack, push, replace } = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const removeArea = useMutation(api.areas.remove);
@@ -96,13 +105,20 @@ export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActio
         title: 'Ändra kartvy',
       },
       {
+        attributes: { disabled: isSubmitting },
+        id: ACTION_TOPO_OVERLAY,
+        image: 'square.3.layers.3d',
+        state: showTopoOverlay ? 'on' : 'off',
+        title: 'Topo',
+      },
+      {
         attributes: { destructive: true, disabled: isSubmitting },
         id: ACTION_DELETE_AREA,
         image: 'trash',
         title: 'Ta bort område',
       },
     ],
-    [isSubmitting, onCreateSat, onRedrawArea]
+    [isSubmitting, onCreateSat, onRedrawArea, showTopoOverlay]
   );
 
   const handlePressAction = useCallback(
@@ -123,12 +139,23 @@ export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActio
         case ACTION_MAP_STYLE:
           handleSelectMapStyle();
           break;
+        case ACTION_TOPO_OVERLAY:
+          requestAnimationFrame(onToggleTopoOverlay);
+          break;
         case ACTION_DELETE_AREA:
           confirmDeleteArea();
           break;
       }
     },
-    [areaId, confirmDeleteArea, handleSelectMapStyle, onCreateSat, onRedrawArea, push]
+    [
+      areaId,
+      confirmDeleteArea,
+      handleSelectMapStyle,
+      onCreateSat,
+      onRedrawArea,
+      onToggleTopoOverlay,
+      push,
+    ]
   );
 
   return (

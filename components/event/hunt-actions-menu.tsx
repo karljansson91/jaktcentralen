@@ -13,6 +13,7 @@ import { Alert } from 'react-native';
 const ACTION_INFO = 'info';
 const ACTION_SAT = 'sat';
 const ACTION_MAP_STYLE = 'map-style';
+const ACTION_TOPO_OVERLAY = 'topo-overlay';
 const ACTION_TIMELINE = 'timeline';
 const ACTION_INVITE = 'invite';
 const ACTION_LEAVE_OR_END = 'leave-or-end';
@@ -23,12 +24,16 @@ type HuntActionsMenuProps = {
     creatorId: Id<'users'>;
   };
   eventId: Id<'events'>;
+  onToggleTopoOverlay: () => void;
+  showTopoOverlay: boolean;
 };
 
 export function HuntActionsMenu({
   currentUserId,
   event,
   eventId,
+  onToggleTopoOverlay,
+  showTopoOverlay,
 }: HuntActionsMenuProps) {
   const { push, replace } = useRouter();
   const currentTime = useCurrentTime();
@@ -110,6 +115,13 @@ export function HuntActionsMenu({
         title: 'Ändra kartvy',
       },
       {
+        attributes: { disabled: isSubmitting },
+        id: ACTION_TOPO_OVERLAY,
+        image: 'square.3.layers.3d',
+        state: showTopoOverlay ? 'on' : 'off',
+        title: 'Topo',
+      },
+      {
         attributes: { disabled: isSubmitting, hidden: !isEnded },
         id: ACTION_TIMELINE,
         image: 'chart.line.uptrend.xyaxis',
@@ -128,7 +140,7 @@ export function HuntActionsMenu({
         title: destructiveTitle,
       },
     ],
-    [destructiveTitle, isCreator, isEnded, isSubmitting]
+    [destructiveTitle, isCreator, isEnded, isSubmitting, showTopoOverlay]
   );
 
   const handlePressAction = useCallback(
@@ -139,6 +151,9 @@ export function HuntActionsMenu({
           break;
         case ACTION_MAP_STYLE:
           handleSelectMapStyle();
+          break;
+        case ACTION_TOPO_OVERLAY:
+          requestAnimationFrame(onToggleTopoOverlay);
           break;
         case ACTION_SAT:
           push(`/event/${eventId}/sat`);
@@ -154,7 +169,7 @@ export function HuntActionsMenu({
           break;
       }
     },
-    [confirmLeaveOrEnd, eventId, handleSelectMapStyle, push]
+    [confirmLeaveOrEnd, eventId, handleSelectMapStyle, onToggleTopoOverlay, push]
   );
 
   return (
