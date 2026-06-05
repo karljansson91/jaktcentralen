@@ -13,17 +13,3 @@ export function formatEventInfoDate(date: number): string {
     year: 'numeric',
   });
 }
-
-export function formatEventInfoDateRange(startDate: number, endDate?: number): string {
-  const startDateLabel = formatEventInfoDate(startDate);
-  if (!endDate) {
-    return startDateLabel;
-  }
-
-  const endDateLabel = formatEventInfoDate(endDate);
-  if (startDateLabel === endDateLabel) {
-    return startDateLabel;
-  }
-
-  return `${startDateLabel} - ${endDateLabel}`;
-}

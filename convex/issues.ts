@@ -7,6 +7,7 @@ const ISSUE_TITLE_MAX_LENGTH = 120;
 const ISSUE_DESCRIPTION_MAX_LENGTH = 4000;
 const DEFAULT_ISSUE_LIMIT = 100;
 const MAX_ISSUE_LIMIT = 200;
+const MAX_ISSUE_IMAGE_COUNT = 4;
 const AGENT_ISSUER = "codex-agent";
 const AGENT_TOKEN_IDENTIFIER = "codex-agent:issues";
 
@@ -17,6 +18,7 @@ const issueStatusValidator = v.union(
   v.literal("ongoing"),
   v.literal("completed")
 );
+const issueImageFileIdsValidator = v.optional(v.array(v.id("_storage")));
 
 type IssueStatus = Doc<"issues">["status"];
 type IssueType = Doc<"issues">["type"];
@@ -60,12 +62,42 @@ function normalizeScreenPath(screenPath?: string) {
   return normalized ? normalized.slice(0, 240) : undefined;
 }
 
+function normalizeImageFileIds(imageFileIds?: Id<"_storage">[]) {
+  if (!imageFileIds || imageFileIds.length === 0) {
+    return undefined;
+  }
+
+  if (imageFileIds.length > MAX_ISSUE_IMAGE_COUNT) {
+    throw new Error("Max 4 images per issue");
+  }
+
+  return imageFileIds;
+}
+
 function getReporterSnapshot(user: Doc<"users">) {
   return {
     reporterEmail: user.email || undefined,
     reporterName: user.name || user.email || "Jägare",
     reporterUserId: user._id,
   };
+}
+
+async function buildIssueImages(
+  ctx: QueryCtx,
+  imageFileIds?: Id<"_storage">[]
+): Promise<{ fileId: Id<"_storage">; url: string }[]> {
+  if (!imageFileIds || imageFileIds.length === 0) {
+    return [];
+  }
+
+  const images = await Promise.all(
+    imageFileIds.map(async (fileId) => {
+      const url = await ctx.storage.getUrl(fileId);
+      return url ? { fileId, url } : null;
+    })
+  );
+
+  return images.filter((image): image is { fileId: Id<"_storage">; url: string } => image !== null);
 }
 
 async function getIssueView(
@@ -76,9 +108,12 @@ async function getIssueView(
   const screenshotUrl = issue.screenshotFileId
     ? await ctx.storage.getUrl(issue.screenshotFileId)
     : null;
+  const images = await buildIssueImages(ctx, issue.imageFileIds);
 
   return {
     ...issue,
+    images,
+    imageUrls: images.map((image) => image.url),
     reporter: reporter
       ? {
           _id: reporter._id,
@@ -181,9 +216,15 @@ async function removeIssue(ctx: MutationCtx, issueId: Id<"issues">) {
     return;
   }
 
+  const fileIds = new Set<Id<"_storage">>();
   if (issue.screenshotFileId) {
-    await ctx.storage.delete(issue.screenshotFileId);
+    fileIds.add(issue.screenshotFileId);
   }
+  for (const fileId of issue.imageFileIds ?? []) {
+    fileIds.add(fileId);
+  }
+
+  await Promise.all(Array.from(fileIds).map((fileId) => ctx.storage.delete(fileId)));
   await ctx.db.delete(issueId);
 }
 
@@ -203,7 +244,7 @@ export const get = query({
   },
 });
 
-export const generateScreenshotUploadUrl = mutation({
+export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     await getCurrentUser(ctx);
@@ -214,6 +255,7 @@ export const generateScreenshotUploadUrl = mutation({
 export const create = mutation({
   args: {
     description: v.string(),
+    imageFileIds: issueImageFileIdsValidator,
     screenPath: v.optional(v.string()),
     screenshotFileId: v.optional(v.id("_storage")),
     title: v.string(),
@@ -222,11 +264,13 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const now = Date.now();
+    const imageFileIds = normalizeImageFileIds(args.imageFileIds);
 
     return await ctx.db.insert("issues", {
       ...getReporterSnapshot(user),
       createdAt: now,
       description: normalizeDescription(args.description),
+      ...(imageFileIds ? { imageFileIds } : {}),
       screenPath: normalizeScreenPath(args.screenPath),
       screenshotFileId: args.screenshotFileId,
       status: "triage",

@@ -60,6 +60,16 @@ function getEventMessageIcon(type: string): EventMessageIcon {
         color: APP_COLORS.textMuted,
         icon: 'exit-outline',
       };
+    case 'sat_activated':
+      return {
+        color: APP_COLORS.primary,
+        icon: 'map-outline',
+      };
+    case 'sat_cleared':
+      return {
+        color: APP_COLORS.textMuted,
+        icon: 'map-outline',
+      };
     default:
       return {
         color: APP_COLORS.textMuted,

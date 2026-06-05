@@ -167,7 +167,7 @@ export default function AppLayout() {
             sheetCornerRadius: 28,
           }}
         />
-        <Stack.Screen name="area/[id]" />
+        <Stack.Screen name="area/[id]" options={{ gestureEnabled: false }} />
         <Stack.Screen name="event/[eventId]" options={{ headerShown: false }} />
       </Stack>
     </IssueReportGesture>

@@ -46,6 +46,21 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
+        name="sat"
+        options={{
+          presentation: 'modal',
+          headerShown: true,
+          title: 'Såt',
+          headerBackVisible: false,
+          headerLargeTitle: false,
+          headerTitleAlign: 'center',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#FCF8F2' },
+          headerTintColor: '#313444',
+          contentStyle: { backgroundColor: '#FCF8F2' },
+        }}
+      />
+      <Stack.Screen
         name="station"
         options={{
           presentation: 'formSheet',

@@ -6,7 +6,7 @@ export default function AreaLayout() {
     <Stack>
       <Stack.Screen
         name="index"
-        options={{ headerShown: false }}
+        options={{ gestureEnabled: false, headerShown: false }}
       />
       <Stack.Screen
         name="events"
@@ -21,14 +21,6 @@ export default function AreaLayout() {
           presentation: 'modal',
           headerShown: false,
           contentStyle: { backgroundColor: APP_COLORS.background },
-        }}
-      />
-      <Stack.Screen
-        name="redraw"
-        options={{
-          presentation: 'fullScreenModal',
-          headerShown: false,
-          gestureEnabled: false,
         }}
       />
       <Stack.Screen
@@ -54,10 +46,14 @@ export default function AreaLayout() {
         }}
       />
       <Stack.Screen
-        name="marker-geometry"
+        name="sat"
         options={{
           presentation: 'modal',
-          headerShown: false,
+          headerShown: true,
+          headerBackVisible: false,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: APP_COLORS.background },
+          contentStyle: { backgroundColor: APP_COLORS.background },
         }}
       />
       <Stack.Screen

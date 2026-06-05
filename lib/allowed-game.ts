@@ -124,7 +124,7 @@ const SPECIES_BY_ID = new Map(
   )
 );
 
-export function getAllowedGameSpecies(rule: Pick<AllowedGameRule, 'speciesId'>) {
+function getAllowedGameSpecies(rule: Pick<AllowedGameRule, 'speciesId'>) {
   return SPECIES_BY_ID.get(rule.speciesId);
 }
 
@@ -136,7 +136,7 @@ export function getAllowedGameSpeciesLabel(rule: AllowedGameRule) {
   return getAllowedGameSpecies(rule)?.label ?? rule.speciesId;
 }
 
-export function getAllowedGameOptionLabels(rule: AllowedGameRule) {
+function getAllowedGameOptionLabels(rule: AllowedGameRule) {
   if (rule.mode === 'all') {
     return ['Alla'];
   }

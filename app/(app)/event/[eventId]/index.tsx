@@ -1,16 +1,17 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
+import { AreaSatLayers } from '@/components/AreaSatLayers';
 import { showAnimalSightingActionMenu } from '@/components/event/animal-sighting-action-menu';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
-import { AssignedStationMarker, type AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
+import { AssignedStationMarker } from '@/components/event/assigned-station-marker';
 import { AssignmentRouteLayer } from '@/components/event/assignment-route-layer';
 import { HuntActionsMenu } from '@/components/event/hunt-actions-menu';
+import { HuntMapMeasurementControls } from '@/components/event/hunt-map-measurement-controls';
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
-import {
-  LiveMemberPositionMarker,
-  type LiveMemberPositionMarkerItem,
-} from '@/components/event/live-member-position-marker';
+import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
+import { LiveMemberPositionMarker } from '@/components/event/live-member-position-marker';
+import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { Text } from '@/components/ui';
@@ -20,20 +21,15 @@ import { formatAllowedGameSummary } from '@/lib/allowed-game';
 import type { AnimalSightingMapItem } from '@/lib/animal-sightings';
 import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
-import { isEventActive } from '@/lib/event-lifecycle';
-import { getMemberInitials } from '@/lib/event-formatting';
-import { distanceMeters, type LatLngPoint } from '@/lib/geo';
+import { getEventLifecycle, isEventActive } from '@/lib/event-lifecycle';
+import { isPointInPolygon, type LatLngPoint } from '@/lib/geo';
 import type { AssignmentTrail } from '@/lib/hunt-navigation';
 import { subscribeToHuntMapLongPressActions } from '@/lib/hunt-map-long-press-actions';
 import {
   IN_POSITION_RADIUS_METERS,
   NEAR_ASSIGNED_POSITION_RADIUS_METERS,
-  isMemberEffectivelyInPosition,
 } from '@/lib/hunt-in-position';
-import {
-  clearInPositionPromptIgnored,
-  getInPositionPromptIgnoreKey,
-} from '@/lib/in-position-prompt-ignore';
+import { clearInPositionPromptIgnored } from '@/lib/in-position-prompt-ignore';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
   getCachedMapStyle,
@@ -41,18 +37,18 @@ import {
   subscribeToMapStyleChanges,
 } from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
-import {
-  formatWindDirectionIndicator,
-  oppositeDirectionDegrees,
-} from '@/lib/wind-direction';
+import { oppositeDirectionDegrees } from '@/lib/wind-direction';
 import { subscribeToWindDirectionSelection } from '@/lib/wind-direction-selection';
+import { useActiveSatMapState } from '@/hooks/use-active-sat-map-state';
 import { useAnimalSightingMapVisibility } from '@/hooks/use-animal-sighting-map-visibility';
+import { useAssignedStationMapState } from '@/hooks/use-assigned-station-map-state';
 import { useAssignmentRoute } from '@/hooks/use-assignment-route';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { useHuntMapMeasurement } from '@/hooks/use-hunt-map-measurement';
 import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
-import { useMapHeading } from '@/hooks/use-map-heading';
+import { useLiveMemberPositionMarkers } from '@/hooks/use-live-member-position-markers';
+import { useMapCameraState } from '@/hooks/use-map-camera-state';
 import {
   Camera,
   CircleLayer,
@@ -84,6 +80,15 @@ function pointFromMapLongPress(event: GeoJSON.Feature): LatLngPoint {
   };
 }
 
+function getWindEditorCameraPadding(insets: { bottom: number; top: number }) {
+  return {
+    paddingBottom: Math.max(insets.bottom + 360, 380),
+    paddingLeft: 36,
+    paddingRight: 36,
+    paddingTop: Math.max(insets.top + 96, 124),
+  };
+}
+
 export default function EventMapScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { back, push } = useRouter();
@@ -95,9 +100,12 @@ export default function EventMapScreen() {
     handleCameraChanged,
     heading: mapHeading,
     resetHeading: handleResetMapNorth,
-  } = useMapHeading(cameraRef);
+    scale: mapScale,
+  } = useMapCameraState(cameraRef);
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
   const [windSourceDirectionDegrees, setWindSourceDirectionDegrees] = useState<number | null>(null);
+  const [showOtherPassMarkers, setShowOtherPassMarkers] = useState(false);
+  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
   const {
     longPressActionPoint,
     setLongPressActionPoint,
@@ -118,6 +126,7 @@ export default function EventMapScreen() {
     routeGeoJSON: measurementRouteGeoJSON,
     routeStatus: measurementRouteStatus,
     toggleMode: toggleMeasurementMode,
+    undoLastPoint: undoMeasurementPoint,
     updatePointCoordinate: updateMeasurementPointCoordinate,
   } = useHuntMapMeasurement();
 
@@ -135,6 +144,14 @@ export default function EventMapScreen() {
   const currentUser = useQuery(api.users.getCurrentUserProfile);
   const areaFeatures = useQuery(
     api.areaFeatures.listForEvent,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
+  const areaSats = useQuery(
+    api.areaSats.listForEvent,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
+  const satSetup = useQuery(
+    api.eventSats.getSetup,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
   const assignments = useQuery(
@@ -157,15 +174,12 @@ export default function EventMapScreen() {
     api.eventMembers.setPositionSharingDisabled
   );
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
+  const isEndedHunt = Boolean(event && getEventLifecycle(event, currentTime) === 'ended');
   const activeWindSourceDirectionDegrees = isActiveHunt ? windSourceDirectionDegrees : null;
   const activeScentPlumeDirectionDegrees =
     activeWindSourceDirectionDegrees == null
       ? null
       : oppositeDirectionDegrees(activeWindSourceDirectionDegrees);
-  const windDirectionLabel =
-    activeWindSourceDirectionDegrees == null
-      ? null
-      : formatWindDirectionIndicator(activeWindSourceDirectionDegrees);
   const activeAssignmentTrailTargetKey = isActiveHunt ? visibleAssignmentTrailTargetKey : null;
   const ownPositionSharingEnabledRef = useRef(true);
   const {
@@ -278,141 +292,47 @@ export default function EventMapScreen() {
     });
   }, [area, insets.bottom, insets.top]);
 
-  const liveMemberMarkers = useMemo(() => {
-    if (!members || !currentUser || !showOtherUserPositions) return null;
-    const markers: LiveMemberPositionMarkerItem[] = [];
-
-    for (const member of members) {
-      if (
-        member.userId === currentUser._id ||
-        member.lastLatitude == null ||
-        member.lastLongitude == null
-      ) {
-        continue;
-      }
-
-      const name = member.user?.name?.trim() || 'Okänd';
-      markers.push({
-        coordinates: [member.lastLongitude, member.lastLatitude],
-        id: member._id,
-        imageUrl: member.user?.imageUrl ?? null,
-        initials: getMemberInitials(name),
-        name,
-        offline: Boolean(member.positionSharingDisabled),
-      });
-    }
-
-    return markers;
-  }, [currentUser, members, showOtherUserPositions]);
-
-  const assignmentPointByTargetKey = useMemo(() => {
-    const points = new Map<string, { latitude: number; longitude: number }>();
-
-    for (const feature of areaFeatures ?? []) {
-      if (feature.geometryType !== 'point' || !feature.point) {
-        continue;
-      }
-
-      points.set(getAreaFeatureTargetKey(feature), feature.point);
-    }
-
-    return points;
-  }, [areaFeatures]);
-
-  const memberByUserId = useMemo(
-    () => new Map((members ?? []).map((member) => [member.userId, member])),
-    [members]
-  );
-
-  const readinessSummary = useMemo(() => {
-    if (!assignments) return null;
-
-    let confirmed = 0;
-    let total = 0;
-
-    for (const assignment of assignments) {
-      const point = assignmentPointByTargetKey.get(assignment.targetKey);
-      const member = memberByUserId.get(assignment.assignedUserId);
-      if (!point || !member) {
-        continue;
-      }
-
-      total += 1;
-      if (isMemberEffectivelyInPosition(member, assignment, point, currentTime)) {
-        confirmed += 1;
-      }
-    }
-
-    return { confirmed, total };
-  }, [assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
+  const {
+    activeSat,
+    featurePointStates,
+    selectedPassTargetKeys,
+    visibleAreaFeatures,
+    visibleAreaSats,
+  } = useActiveSatMapState({
+    areaFeatures,
+    areaSats,
+    isEndedHunt,
+    satSetup,
+    showOtherPassMarkers,
+  });
+  const liveMemberMarkers = useLiveMemberPositionMarkers({
+    currentUserId: currentUser?._id,
+    members,
+    showOtherUserPositions,
+  });
   const allowedGameSummary = formatAllowedGameSummary(event?.allowedGame);
 
-  const assignedStationMarkers = useMemo(() => {
-    if (!areaFeatures || !assignments) return null;
-
-    const assignmentsByTargetKey = new Map(
-      assignments.map((assignment) => [assignment.targetKey, assignment])
-    );
-    const features = areaFeatures.flatMap((feature) => {
-      if (feature.geometryType !== 'point' || !feature.point) {
-        return [];
-      }
-
-      const assignment = assignmentsByTargetKey.get(getAreaFeatureTargetKey(feature));
-      if (!assignment) {
-        return [];
-      }
-
-      const point = assignmentPointByTargetKey.get(assignment.targetKey);
-      const member = memberByUserId.get(assignment.assignedUserId);
-      const name = assignment.assignedUser?.name?.trim() || 'Okänd';
-      return [
-        {
-          confirmed: point
-            ? isMemberEffectivelyInPosition(member, assignment, point, currentTime)
-            : false,
-          coordinates: [feature.point.longitude, feature.point.latitude] as [number, number],
-          initials: getMemberInitials(name),
-          targetKey: getAreaFeatureTargetKey(feature),
-        } satisfies AssignedStationMarkerItem,
-      ];
-    });
-
-    return features;
-  }, [areaFeatures, assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
-
-  const currentUserAssignedStation = useMemo(() => {
-    if (!currentUser || !assignments) return null;
-
-    const assignment = assignments.find(
-      (candidate) => candidate.assignedUserId === currentUser._id
-    );
-    if (!assignment) return null;
-
-    const point = assignmentPointByTargetKey.get(assignment.targetKey);
-    if (!point) return null;
-
-    return {
-      assignedUserId: assignment.assignedUserId,
-      coordinate: [point.longitude, point.latitude] as [number, number],
-      point,
-      targetKey: assignment.targetKey,
-    };
-  }, [assignmentPointByTargetKey, assignments, currentUser]);
-
-  const currentUserMember = useMemo(() => {
-    if (!currentUser) return null;
-    return memberByUserId.get(currentUser._id) ?? null;
-  }, [currentUser, memberByUserId]);
-
-  const currentUserMemberCoordinate = useMemo(() => {
-    if (currentUserMember?.lastLatitude == null || currentUserMember.lastLongitude == null) {
-      return null;
-    }
-
-    return [currentUserMember.lastLongitude, currentUserMember.lastLatitude] as [number, number];
-  }, [currentUserMember]);
-  const currentMeasurementStartCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
+  const {
+    assignedStationMarkers,
+    currentMeasurementStartCoordinate,
+    currentUserAssignedStation,
+    currentUserAssignmentDistance,
+    currentUserAssignmentPromptIgnoreKey,
+    currentUserInPositionEffective,
+    currentUserMarkedInPosition,
+    currentUserMemberCoordinate,
+    isOwnPositionSharingEnabled,
+    readinessSummary,
+  } = useAssignedStationMapState({
+    activeSat,
+    areaFeatures,
+    assignments,
+    currentCoordinate,
+    currentTime,
+    currentUser,
+    eventId,
+    members,
+  });
 
   const longPressPointGeoJSON = useMemo<GeoJSON.Feature<GeoJSON.Point> | null>(() => {
     if (!longPressActionPoint) {
@@ -428,35 +348,6 @@ export default function EventMapScreen() {
       },
     };
   }, [longPressActionPoint]);
-
-  const currentUserMarkedInPosition = Boolean(
-    currentUserAssignedStation &&
-      currentUserMember?.inPositionTargetKey === currentUserAssignedStation.targetKey
-  );
-  const currentUserAssignmentPromptIgnoreKey = currentUserAssignedStation
-    ? getInPositionPromptIgnoreKey(eventId, currentUserAssignedStation.targetKey)
-    : null;
-  const currentUserInPositionEffective = Boolean(
-    currentUserAssignedStation &&
-      currentUserMember &&
-      isMemberEffectivelyInPosition(
-        currentUserMember,
-        currentUserAssignedStation,
-        currentUserAssignedStation.point,
-        currentTime
-      )
-  );
-  const currentUserAssignmentDistance = useMemo(() => {
-    if (!currentCoordinate || !currentUserAssignedStation) {
-      return null;
-    }
-
-    return distanceMeters(
-      { latitude: currentCoordinate[1], longitude: currentCoordinate[0] },
-      currentUserAssignedStation.point
-    );
-  }, [currentCoordinate, currentUserAssignedStation]);
-  const isOwnPositionSharingEnabled = !currentUserMember?.positionSharingDisabled;
 
   useEffect(() => {
     ownPositionSharingEnabledRef.current = isOwnPositionSharingEnabled;
@@ -524,17 +415,21 @@ export default function EventMapScreen() {
       : null;
 
   const handlePressStationTarget = useCallback(
-    (targetKey: string) => {
-      push(`/event/${eventId}/station?targetKey=${encodeURIComponent(targetKey)}`);
+    () => {
+      push(`/event/${eventId}/sat`);
     },
     [eventId, push]
   );
 
   const handlePressPointFeature = useCallback(
     (feature: AreaFeatureListItem) => {
-      handlePressStationTarget(getAreaFeatureTargetKey(feature));
+      const targetKey = getAreaFeatureTargetKey(feature);
+      if (feature.category !== 'pass' || !selectedPassTargetKeys.has(targetKey)) {
+        return;
+      }
+      handlePressStationTarget();
     },
-    [handlePressStationTarget]
+    [handlePressStationTarget, selectedPassTargetKeys]
   );
 
   const handleMapLongPress = useCallback(
@@ -545,14 +440,42 @@ export default function EventMapScreen() {
 
       const point = pointFromMapLongPress(mapEvent);
       Vibration.vibrate(8);
+
+      if (measurementActive) {
+        addMeasurementPoint(point);
+        setLongPressActionPoint(null);
+        return;
+      }
+
       setLongPressActionPoint(point);
+      const satOptions =
+        event && currentUser && event.creatorId === currentUser._id && areaSats
+          ? areaSats
+              .filter((sat) => isPointInPolygon(point, sat.polygon))
+              .map((sat) => ({ id: String(sat.id), name: sat.name }))
+          : [];
+      const satOptionsParam =
+        satOptions.length > 0
+          ? `&satOptions=${encodeURIComponent(JSON.stringify(satOptions))}`
+          : '';
       push(
         `/event/${eventId}/map-point-actions?latitude=${point.latitude}&longitude=${point.longitude}&canMeasureFromUser=${
           currentMeasurementStartCoordinate ? '1' : '0'
-        }`
+        }${satOptionsParam}`
       );
     },
-    [currentMeasurementStartCoordinate, eventId, isActiveHunt, push, setLongPressActionPoint]
+    [
+      addMeasurementPoint,
+      areaSats,
+      currentMeasurementStartCoordinate,
+      currentUser,
+      event,
+      eventId,
+      isActiveHunt,
+      measurementActive,
+      push,
+      setLongPressActionPoint,
+    ]
   );
 
   const handleMeasureToLongPressPoint = useCallback(
@@ -632,13 +555,50 @@ export default function EventMapScreen() {
     }
   }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
 
+  const focusMapForWindEditor = useCallback(
+    (coordinate: [number, number]) => {
+      setCurrentCoordinate(coordinate);
+      cameraRef.current?.setCamera({
+        animationDuration: 650,
+        animationMode: 'easeTo',
+        centerCoordinate: coordinate,
+        padding: getWindEditorCameraPadding(insets),
+        pitch: 0,
+        zoomLevel: 16.5,
+      });
+    },
+    [insets]
+  );
+
   const handleStartSettingScentDirection = useCallback(() => {
+    const existingCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
+    if (existingCoordinate) {
+      focusMapForWindEditor(existingCoordinate);
+    } else {
+      void getCurrentUserCoordinate()
+        .then((coordinate) => {
+          if (coordinate) {
+            focusMapForWindEditor(coordinate);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to focus map for wind direction editing:', error);
+        });
+    }
+
     const initialDegrees =
       windSourceDirectionDegrees == null
         ? ''
         : `?initialDegrees=${encodeURIComponent(String(Math.round(windSourceDirectionDegrees)))}`;
     push(`/event/${eventId}/wind-direction${initialDegrees}`);
-  }, [eventId, push, windSourceDirectionDegrees]);
+  }, [
+    currentCoordinate,
+    currentUserMemberCoordinate,
+    eventId,
+    focusMapForWindEditor,
+    push,
+    windSourceDirectionDegrees,
+  ]);
 
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
@@ -659,6 +619,10 @@ export default function EventMapScreen() {
     promptIgnoreKey: currentUserAssignmentPromptIgnoreKey,
   });
 
+  const handleToggleTopoOverlay = useCallback(() => {
+    setShowTopoOverlay((visible) => !visible);
+  }, []);
+
   const renderHuntActionsMenu = useCallback(() => {
     if (!event || !currentUser) {
       return undefined;
@@ -669,9 +633,11 @@ export default function EventMapScreen() {
         currentUserId={currentUser._id}
         event={event}
         eventId={eventId as Id<'events'>}
+        onToggleTopoOverlay={handleToggleTopoOverlay}
+        showTopoOverlay={showTopoOverlay}
       />
     );
-  }, [currentUser, event, eventId]);
+  }, [currentUser, event, eventId, handleToggleTopoOverlay, showTopoOverlay]);
 
   const handleGoToMyPosition = useCallback(async () => {
     try {
@@ -747,6 +713,9 @@ export default function EventMapScreen() {
   if (
     area === undefined ||
     members === undefined ||
+    areaFeatures === undefined ||
+    areaSats === undefined ||
+    satSetup === undefined ||
     currentUser === undefined ||
     assignments === undefined ||
     animalSightings === undefined ||
@@ -778,21 +747,39 @@ export default function EventMapScreen() {
         pitchEnabled={false}
         attributionEnabled={false}
         onCameraChanged={handleCameraChanged}
-        onLongPress={isActiveHunt ? handleMapLongPress : undefined}>
+        onLongPress={isActiveHunt ? handleMapLongPress : undefined}
+        scaleBarEnabled={false}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         {!currentUserInPositionEffective ? (
           <LocationPuck puckBearingEnabled puckBearing="heading" />
         ) : null}
 
+        <LantmaterietTopoLayer
+          idPrefix="event-lantmateriet-topo"
+          visible={showTopoOverlay}
+        />
+
         {polygonGeoJSON && (
           <ShapeSource id="event-area-polygon" shape={polygonGeoJSON}>
             <FillLayer id="event-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
             <LineLayer
+              id="event-area-line-halo"
+              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6.5 }}
+            />
+            <LineLayer
               id="event-area-line"
-              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 2.5 }}
+              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3.25 }}
             />
           </ShapeSource>
         )}
+
+        {visibleAreaSats.length > 0 ? (
+          <AreaSatLayers
+            sats={visibleAreaSats}
+            idPrefix="event-area-sats"
+            activeSatId={activeSat ? String(activeSat.id) : null}
+          />
+        ) : null}
 
         {currentCoordinate && activeScentPlumeDirectionDegrees != null ? (
           <ScentPlumeLayer
@@ -801,12 +788,13 @@ export default function EventMapScreen() {
           />
         ) : null}
 
-        {areaFeatures && (
+        {visibleAreaFeatures && (
           <AreaFeatureLayers
-            features={areaFeatures}
+            features={visibleAreaFeatures}
             idPrefix="event-area-features"
             interactive
             onPressPointFeature={handlePressPointFeature}
+            pointStates={featurePointStates}
           />
         )}
 
@@ -869,9 +857,10 @@ export default function EventMapScreen() {
             allowedGameLabel={allowedGameSummary}
             compassHeading={mapHeading}
             forceDetailsVisible={visibleMeasurementActive}
-            renderActionsMenu={renderHuntActionsMenu}
+            measurementOnly={visibleMeasurementActive}
+            renderActionsMenu={visibleMeasurementActive ? undefined : renderHuntActionsMenu}
             title={event.title}
-            windDirectionLabel={windDirectionLabel}
+            windDirectionDegrees={activeWindSourceDirectionDegrees}
             onBack={() => back()}
             onCompassPress={handleResetMapNorth}
             positionSharingEnabled={isActiveHunt ? isOwnPositionSharingEnabled : undefined}
@@ -881,24 +870,25 @@ export default function EventMapScreen() {
                 : null
             }
             routeSummary={topNavRouteSummary}
+            satLabel={activeSat ? `Såt: ${activeSat.name}` : null}
           />
         </View>
+
+        {mapScale ? (
+          <MapScaleBar
+            latitude={mapScale.latitude}
+            zoom={mapScale.zoom}
+            style={{ left: 16, top: Math.max(insets.top, 8) + 128 }}
+          />
+        ) : null}
 
         <View
           className="absolute left-6"
           style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
           {visibleMeasurementActive ? (
-            <GlassIconButton
-              accessibilityLabel="Rensa mätning"
-              className="size-14"
-              color={APP_COLORS.surface}
-              icon="close"
-              iconSize={24}
-              onPress={clearMeasurement}
-              overlayColor="rgba(49, 52, 68, 0.18)"
-              surfaceClassName="size-14"
-              tintColor="rgba(49, 52, 68, 0.82)"
-              tone="dark"
+            <HuntMapMeasurementControls
+              onClear={clearMeasurement}
+              onUndo={undoMeasurementPoint}
             />
           ) : isActiveHunt ? (
             <HuntMapToolsMenu
@@ -921,6 +911,11 @@ export default function EventMapScreen() {
               onLocate={() => {
                 void handleGoToMyPosition();
               }}
+              otherMarkers={{
+                available: Boolean(activeSat),
+                onToggle: () => setShowOtherPassMarkers((showing) => !showing),
+                showing: showOtherPassMarkers,
+              }}
               positions={{
                 onToggleOthers: toggleOtherUserPositions,
                 onToggleOwnSharing: () => {
@@ -940,45 +935,46 @@ export default function EventMapScreen() {
               }}
               scent={{
                 hasDirection: activeWindSourceDirectionDegrees != null,
-                isSetting: false,
                 onSet: handleStartSettingScentDirection,
               }}
             />
           ) : null}
         </View>
 
-        <View
-          className="absolute right-6"
-          style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
-          <GlassIconButton
-            onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
-            accessibilityLabel={
-              unreadMessageCount
-                ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`
-                : 'Öppna chat'
-            }
-            className="relative size-16"
-            color={APP_COLORS.surface}
-            icon="chatbubbles"
-            iconSize={29}
-            overlayColor="rgba(29, 95, 43, 0.22)"
-            surfaceClassName="size-16"
-            tintColor={APP_COLORS.primary}
-            tone="dark"
-            style={{
-              borderColor: 'rgba(254, 253, 251, 0.7)',
-              borderWidth: 1,
-              boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
-            }}
-          />
-          {unreadMessageCount ? (
-            <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
-              <Text className="text-[11px] font-bold leading-4 text-white">
-                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+        {!visibleMeasurementActive ? (
+          <View
+            className="absolute right-6"
+            style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
+            <GlassIconButton
+              onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
+              accessibilityLabel={
+                unreadMessageCount
+                  ? `Öppna chat, ${unreadMessageCount} olästa meddelanden`
+                  : 'Öppna chat'
+              }
+              className="relative size-16"
+              color={APP_COLORS.surface}
+              icon="chatbubbles"
+              iconSize={29}
+              overlayColor="rgba(29, 95, 43, 0.22)"
+              surfaceClassName="size-16"
+              tintColor={APP_COLORS.primary}
+              tone="dark"
+              style={{
+                borderColor: 'rgba(254, 253, 251, 0.7)',
+                borderWidth: 1,
+                boxShadow: '0 8px 22px rgba(49, 52, 68, 0.2)',
+              }}
+            />
+            {unreadMessageCount ? (
+              <View className="absolute -right-1 -top-1 min-h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5">
+                <Text className="text-[11px] font-bold leading-4 text-white">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </View>
   );

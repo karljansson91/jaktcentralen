@@ -55,70 +55,42 @@ export default defineSchema({
     ),
   }).index("by_creatorId", ["creatorId"]),
 
-  areaPoints: defineTable({
+  areaFeatures: defineTable({
     areaId: v.id("areas"),
+    creatorId: v.id("users"),
     name: v.string(),
     description: v.optional(v.string()),
-    latitude: v.number(),
-    longitude: v.number(),
-    type: v.union(
+    category: v.union(
       v.literal("pass"),
-      v.literal("tower"),
-      v.literal("meeting"),
       v.literal("parking"),
-      v.literal("other")
+      v.literal("meeting")
+    ),
+    color: v.string(),
+    imageFileIds: v.optional(v.array(v.id("_storage"))),
+    point: v.object({
+      latitude: v.number(),
+      longitude: v.number(),
+    }),
+  })
+    .index("by_areaId", ["areaId"])
+    .index("by_areaId_and_category", ["areaId", "category"]),
+
+  areaSats: defineTable({
+    areaId: v.id("areas"),
+    creatorId: v.id("users"),
+    name: v.string(),
+    color: v.string(),
+    polygon: v.array(
+      v.object({
+        latitude: v.number(),
+        longitude: v.number(),
+      })
     ),
   }).index("by_areaId", ["areaId"]),
 
-  areaFeatures: defineTable(
-    v.union(
-      v.object({
-        areaId: v.id("areas"),
-        creatorId: v.id("users"),
-        name: v.string(),
-        description: v.optional(v.string()),
-        category: v.union(
-          v.literal("tower"),
-          v.literal("parking"),
-          v.literal("meeting"),
-          v.literal("custom")
-        ),
-        color: v.string(),
-        imageFileIds: v.optional(v.array(v.id("_storage"))),
-        geometryType: v.literal("point"),
-        point: v.object({
-          latitude: v.number(),
-          longitude: v.number(),
-        }),
-      }),
-      v.object({
-        areaId: v.id("areas"),
-        creatorId: v.id("users"),
-        name: v.string(),
-        description: v.optional(v.string()),
-        category: v.union(
-          v.literal("tower"),
-          v.literal("parking"),
-          v.literal("meeting"),
-          v.literal("custom")
-        ),
-        color: v.string(),
-        imageFileIds: v.optional(v.array(v.id("_storage"))),
-        geometryType: v.literal("polygon"),
-        polygon: v.array(
-          v.object({
-            latitude: v.number(),
-            longitude: v.number(),
-          })
-        ),
-      })
-    )
-  )
-    .index("by_areaId", ["areaId"])
-    .index("by_areaId_and_geometryType", ["areaId", "geometryType"]),
-
   events: defineTable({
     areaId: v.id("areas"),
+    activeSatId: v.optional(v.id("areaSats")),
     title: v.string(),
     description: v.optional(v.string()),
     creatorId: v.id("users"),
@@ -164,6 +136,24 @@ export default defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_eventId_and_targetKey", ["eventId", "targetKey"])
     .index("by_eventId_and_assignedUserId", ["eventId", "assignedUserId"]),
+
+  eventSelectedPasses: defineTable({
+    eventId: v.id("events"),
+    targetKey: v.string(),
+    createdByUserId: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_eventId_and_targetKey", ["eventId", "targetKey"]),
+
+  eventAssignmentExcludedMembers: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    createdByUserId: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_eventId_and_userId", ["eventId", "userId"]),
 
   positionTrails: defineTable({
     eventId: v.id("events"),
@@ -230,6 +220,15 @@ export default defineSchema({
         ...messageBaseFields,
         type: v.literal("member_left_position"),
         targetKey: v.string(),
+      }),
+      v.object({
+        ...messageBaseFields,
+        type: v.literal("sat_activated"),
+        satId: v.id("areaSats"),
+      }),
+      v.object({
+        ...messageBaseFields,
+        type: v.literal("sat_cleared"),
       })
     )
   ).index("by_eventId", ["eventId"]),
@@ -247,6 +246,7 @@ export default defineSchema({
     reporterUserId: v.optional(v.id("users")),
     reporterName: v.string(),
     reporterEmail: v.optional(v.string()),
+    imageFileIds: v.optional(v.array(v.id("_storage"))),
     screenshotFileId: v.optional(v.id("_storage")),
     screenPath: v.optional(v.string()),
     createdAt: v.number(),

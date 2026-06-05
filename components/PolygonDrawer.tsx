@@ -1,6 +1,7 @@
 import { Button, Text } from '@/components/ui';
 import { FastighetsindelningLayer } from '@/components/FastighetsindelningLayer';
 import { GlassSurface } from '@/components/glass';
+import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { useInitialPolygonCamera } from '@/hooks/use-initial-polygon-camera';
 import { usePolygonEditing } from '@/hooks/use-polygon-editing';
 import type { LngLat } from '@/lib/geo';
@@ -208,6 +209,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
   const mapRef = useRef<MapView | null>(null);
   const insets = useSafeAreaInsets();
   const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
+  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
   const [fastighetState, dispatchFastighet] = useReducer(
     fastighetEditorReducer,
     initialFastighetEditorState,
@@ -405,6 +407,11 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
           )}
           <LocationPuck puckBearingEnabled puckBearing="heading" />
 
+          <LantmaterietTopoLayer
+            idPrefix="polygon-drawer-lantmateriet-topo"
+            visible={showTopoOverlay}
+          />
+
           <FastighetsindelningLayer visible={showFastighetsgrans} />
 
           {selectedFastighetGeoJSON && (
@@ -513,6 +520,23 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             </View>
 
             <View className="flex-row items-center justify-between gap-3">
+              <Button
+                size="sm"
+                variant={showTopoOverlay ? 'default' : 'outline'}
+                className={
+                  showTopoOverlay
+                    ? 'shrink-0 rounded-full'
+                    : 'shrink-0 rounded-full bg-background'
+                }
+                onPress={() => setShowTopoOverlay((visible) => !visible)}>
+                <Ionicons
+                  name={showTopoOverlay ? 'layers' : 'layers-outline'}
+                  size={15}
+                  color={showTopoOverlay ? activeIconColor : inactiveIconColor}
+                />
+                <Text>Topo</Text>
+              </Button>
+
               <View className="min-w-0 flex-1 flex-row items-center gap-2">
                 <Ionicons
                   name="map-outline"

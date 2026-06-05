@@ -47,7 +47,7 @@ export default function EventStationAssignmentScreen() {
     () =>
       areaFeatures?.find(
         (candidate) =>
-          candidate.geometryType === 'point' &&
+          candidate.category === 'pass' &&
           getAreaFeatureTargetKey(candidate) === decodedTargetKey
       ),
     [areaFeatures, decodedTargetKey]
@@ -66,7 +66,7 @@ export default function EventStationAssignmentScreen() {
     const names = new Map<string, string>();
 
     for (const areaFeature of areaFeatures ?? []) {
-      if (areaFeature.geometryType === 'point') {
+      if (areaFeature.category === 'pass') {
         names.set(getAreaFeatureTargetKey(areaFeature), areaFeature.name);
       }
     }

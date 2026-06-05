@@ -3,9 +3,9 @@ import {
   AreaFeatureDraft,
   AreaFeatureGeometryType,
   AreaFeatureImage,
-  LatLngPoint,
   getDefaultColorForCategory,
 } from "@/lib/area-features";
+import type { LatLngPoint } from "@/lib/geo";
 
 export type MarkerFormValues = {
   name: string;
@@ -14,42 +14,31 @@ export type MarkerFormValues = {
   geometryType: AreaFeatureGeometryType;
   color: string;
   point?: LatLngPoint;
-  polygon?: LatLngPoint[];
   images: AreaFeatureImage[];
 };
 
 export function getPlacementSummary(
   geometryType: AreaFeatureGeometryType,
-  point?: LatLngPoint,
-  polygon?: LatLngPoint[]
+  point?: LatLngPoint
 ) {
-  if (geometryType === "point") {
-    if (!point) {
-      return "Ingen punkt vald";
-    }
-    return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+  if (!point) {
+    return "Ingen punkt vald";
   }
-
-  return polygon ? `${polygon.length} polygonpunkter` : "Ingen polygon vald";
+  return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
 }
 
-export function getPointFallback(point?: LatLngPoint, polygon?: LatLngPoint[]) {
-  return point ?? polygon?.[0];
-}
-
-export function getPolygonFallback(polygon?: LatLngPoint[], point?: LatLngPoint) {
-  return polygon ?? (point ? [point] : undefined);
+export function getPointFallback(point?: LatLngPoint) {
+  return point;
 }
 
 export function buildMarkerFormValues(draft?: AreaFeatureDraft): MarkerFormValues {
   return {
     name: draft?.name ?? "",
     description: draft?.description ?? "",
-    category: draft?.category ?? "tower",
+    category: draft?.category ?? "pass",
     geometryType: draft?.geometryType ?? "point",
-    color: draft?.color ?? getDefaultColorForCategory(draft?.category ?? "tower"),
+    color: draft?.color ?? getDefaultColorForCategory(draft?.category ?? "pass"),
     point: draft?.point,
-    polygon: draft?.polygon,
     images: draft?.images ?? [],
   };
 }
@@ -58,7 +47,6 @@ function normalizeMarkerFormValues(values: MarkerFormValues) {
   return {
     ...values,
     point: values.point ?? null,
-    polygon: values.polygon ?? null,
     images: values.images.map((image) => ({
       fileId: String(image.fileId),
       url: image.url,

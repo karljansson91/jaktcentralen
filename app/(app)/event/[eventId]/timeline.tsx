@@ -1,6 +1,7 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
 import { GlassSurface, GlassTopNav } from '@/components/glass';
+import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -299,12 +300,21 @@ export default function EventTimelineScreen() {
         attributionEnabled={false}>
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
 
+        <LantmaterietTopoLayer
+          idPrefix="timeline-lantmateriet-topo"
+          visible
+        />
+
         {polygonGeoJSON && (
           <ShapeSource id="timeline-area-polygon" shape={polygonGeoJSON}>
             <FillLayer id="timeline-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
             <LineLayer
+              id="timeline-area-line-halo"
+              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6.5 }}
+            />
+            <LineLayer
               id="timeline-area-line"
-              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 2.5 }}
+              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3.25 }}
             />
           </ShapeSource>
         )}

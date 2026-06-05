@@ -24,10 +24,27 @@ type PositionStatusMessageInput = {
   userId: Id<"users">;
 };
 
+type SatActivatedMessageInput = {
+  body: string;
+  eventId: Id<"events">;
+  satId: Id<"areaSats">;
+  type: "sat_activated";
+  userId: Id<"users">;
+};
+
+type SatClearedMessageInput = {
+  body: string;
+  eventId: Id<"events">;
+  type: "sat_cleared";
+  userId: Id<"users">;
+};
+
 type HuntMessageInput =
   | TextMessageInput
   | AnimalSightingMessageInput
-  | PositionStatusMessageInput;
+  | PositionStatusMessageInput
+  | SatActivatedMessageInput
+  | SatClearedMessageInput;
 
 export async function insertHuntMessage(ctx: MutationCtx, input: HuntMessageInput) {
   return await ctx.db.insert("messages", input);

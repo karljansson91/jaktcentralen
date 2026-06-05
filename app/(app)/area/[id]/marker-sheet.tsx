@@ -1,6 +1,5 @@
 import { Button, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
 import {
   AreaFeatureCategory,
   AreaFeatureDraft,
@@ -60,19 +59,7 @@ function buildPointDraft(draft: AreaFeatureDraft, category: AreaFeatureCategory)
     category,
     geometryType: 'point',
     color: getDefaultColorForCategory(category),
-    point: draft.point ?? draft.polygon?.[0],
-    polygon: undefined,
-  };
-}
-
-function buildPolygonDraft(draft: AreaFeatureDraft): AreaFeatureDraft {
-  return {
-    ...draft,
-    category: 'custom',
-    geometryType: 'polygon',
-    color: getDefaultColorForCategory('custom'),
-    point: undefined,
-    polygon: draft.polygon ?? (draft.point ? [draft.point] : undefined),
+    point: draft.point,
   };
 }
 
@@ -106,7 +93,7 @@ export default function MarkerSheetScreen() {
     back();
   }
 
-  function goToDraft(route: 'marker' | 'marker-geometry', nextDraft: AreaFeatureDraft) {
+  function goToDraft(route: 'marker', nextDraft: AreaFeatureDraft) {
     if (!draftId) {
       return;
     }
@@ -123,13 +110,6 @@ export default function MarkerSheetScreen() {
     goToDraft('marker', buildPointDraft(draft, category));
   }
 
-  function openPolygonMarker() {
-    if (!draft) {
-      return;
-    }
-    goToDraft('marker-geometry', buildPolygonDraft(draft));
-  }
-
   async function handleDelete() {
     if (!draft || draft.mode === 'create') {
       closeSheet();
@@ -137,11 +117,7 @@ export default function MarkerSheetScreen() {
     }
 
     try {
-      await removeFeature(
-        draft.mode === 'edit' && draft.featureId
-          ? { featureId: draft.featureId }
-          : { legacyPointId: draft.legacyPointId as Id<'areaPoints'> }
-      );
+      await removeFeature({ featureId: draft.featureId! });
       closeSheet();
     } catch (error: any) {
       Alert.alert('Fel', error.message ?? 'Kunde inte ta bort markören');
@@ -192,9 +168,9 @@ export default function MarkerSheetScreen() {
         {sheetMode === 'create' ? (
           <View className="flex-row flex-wrap justify-between gap-y-3">
             <MarkerOptionCard
-              label="Jaktorn"
-              icon="trail-sign-outline"
-              onPress={() => openPointMarker('tower')}
+              label="Pass"
+              icon="flag-outline"
+              onPress={() => openPointMarker('pass')}
             />
             <MarkerOptionCard
               label="Parkering"
@@ -204,18 +180,8 @@ export default function MarkerSheetScreen() {
             <MarkerOptionCard
               label="Samlingsplats"
               icon="people-outline"
-              onPress={() => openPointMarker('meeting')}
-            />
-            <MarkerOptionCard
-              label="Anpassad"
-              icon="sparkles-outline"
-              onPress={() => openPointMarker('custom')}
-            />
-            <MarkerOptionCard
-              label="Anpassat område"
-              icon="map-outline"
               fullWidth
-              onPress={openPolygonMarker}
+              onPress={() => openPointMarker('meeting')}
             />
           </View>
         ) : (

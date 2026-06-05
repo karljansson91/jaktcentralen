@@ -10,15 +10,17 @@
 
 import type * as animalSightings from "../animalSightings.js";
 import type * as areaFeatures from "../areaFeatures.js";
-import type * as areaPoints from "../areaPoints.js";
+import type * as areaSats from "../areaSats.js";
 import type * as areas from "../areas.js";
 import type * as eventAccess from "../eventAccess.js";
 import type * as eventCleanup from "../eventCleanup.js";
 import type * as eventLifecycle from "../eventLifecycle.js";
 import type * as eventMembers from "../eventMembers.js";
 import type * as eventPointAssignments from "../eventPointAssignments.js";
+import type * as eventSats from "../eventSats.js";
 import type * as events from "../events.js";
 import type * as friends from "../friends.js";
+import type * as geometry from "../geometry.js";
 import type * as helpers from "../helpers.js";
 import type * as issues from "../issues.js";
 import type * as messageHelpers from "../messageHelpers.js";
@@ -37,15 +39,17 @@ import type {
 declare const fullApi: ApiFromModules<{
   animalSightings: typeof animalSightings;
   areaFeatures: typeof areaFeatures;
-  areaPoints: typeof areaPoints;
+  areaSats: typeof areaSats;
   areas: typeof areas;
   eventAccess: typeof eventAccess;
   eventCleanup: typeof eventCleanup;
   eventLifecycle: typeof eventLifecycle;
   eventMembers: typeof eventMembers;
   eventPointAssignments: typeof eventPointAssignments;
+  eventSats: typeof eventSats;
   events: typeof events;
   friends: typeof friends;
+  geometry: typeof geometry;
   helpers: typeof helpers;
   issues: typeof issues;
   messageHelpers: typeof messageHelpers;

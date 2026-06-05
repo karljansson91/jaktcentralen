@@ -9,6 +9,7 @@ const ACTION_TOGGLE_OTHER_POSITIONS = 'toggle-other-positions';
 const ACTION_SET_SCENT_DIRECTION = 'set-scent-direction';
 const ACTION_TOGGLE_ROUTE = 'toggle-route';
 const ACTION_TOGGLE_ANIMAL_SIGHTINGS = 'toggle-animal-sightings';
+const ACTION_TOGGLE_OTHER_MARKERS = 'toggle-other-markers';
 const ACTION_LOCATE = 'locate';
 
 type HuntMapToolsMenuProps = {
@@ -24,6 +25,11 @@ type HuntMapToolsMenuProps = {
     onMark: () => void;
   };
   onLocate: () => void;
+  otherMarkers: {
+    available: boolean;
+    onToggle: () => void;
+    showing: boolean;
+  };
   positions: {
     onToggleOthers: () => void;
     onToggleOwnSharing: () => void;
@@ -37,7 +43,6 @@ type HuntMapToolsMenuProps = {
   };
   scent: {
     hasDirection: boolean;
-    isSetting: boolean;
     onSet: () => void;
   };
 };
@@ -46,10 +51,13 @@ export function HuntMapToolsMenu({
   animalSightings,
   inPosition,
   onLocate,
+  otherMarkers,
   positions,
   route,
   scent,
 }: HuntMapToolsMenuProps) {
+  const { hasDirection: hasScentDirection, onSet: handleSetScentDirection } = scent;
+
   const actions = useMemo<MenuAction[]>(
     () => [
       {
@@ -73,8 +81,7 @@ export function HuntMapToolsMenu({
       {
         id: ACTION_SET_SCENT_DIRECTION,
         image: 'wind',
-        state: scent.isSetting || scent.hasDirection ? 'on' : 'off',
-        title: scent.hasDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+        title: hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
       },
       {
         attributes: { hidden: !route.available },
@@ -82,6 +89,13 @@ export function HuntMapToolsMenu({
         image: 'figure.walk',
         state: route.visible ? 'on' : 'off',
         title: 'Visa väg till pass',
+      },
+      {
+        attributes: { hidden: !otherMarkers.available },
+        id: ACTION_TOGGLE_OTHER_MARKERS,
+        image: otherMarkers.showing ? 'eye' : 'eye.slash',
+        state: otherMarkers.showing ? 'on' : 'off',
+        title: otherMarkers.showing ? 'Dölj övriga pass' : 'Visa övriga pass',
       },
       {
         attributes: { hidden: !animalSightings.available },
@@ -101,12 +115,13 @@ export function HuntMapToolsMenu({
       animalSightings.showing,
       inPosition.available,
       inPosition.marked,
+      otherMarkers.available,
+      otherMarkers.showing,
       positions.ownSharingEnabled,
       positions.showOthers,
       route.available,
       route.visible,
-      scent.hasDirection,
-      scent.isSetting,
+      hasScentDirection,
     ],
   );
 
@@ -126,13 +141,16 @@ export function HuntMapToolsMenu({
           requestAnimationFrame(positions.onToggleOthers);
           break;
         case ACTION_SET_SCENT_DIRECTION:
-          requestAnimationFrame(scent.onSet);
+          handleSetScentDirection();
           break;
         case ACTION_TOGGLE_ROUTE:
           requestAnimationFrame(route.onToggle);
           break;
         case ACTION_TOGGLE_ANIMAL_SIGHTINGS:
           requestAnimationFrame(animalSightings.onToggle);
+          break;
+        case ACTION_TOGGLE_OTHER_MARKERS:
+          requestAnimationFrame(otherMarkers.onToggle);
           break;
         case ACTION_LOCATE:
           requestAnimationFrame(onLocate);
@@ -144,10 +162,11 @@ export function HuntMapToolsMenu({
       inPosition.onClear,
       inPosition.onMark,
       onLocate,
+      otherMarkers.onToggle,
       positions.onToggleOthers,
       positions.onToggleOwnSharing,
       route.onToggle,
-      scent.onSet,
+      handleSetScentDirection,
     ],
   );
 
