@@ -337,6 +337,17 @@ export default function MarkerFormScreen() {
               contentInset={{ bottom: Math.max(insets.bottom, 24) }}
               scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
               keyboardShouldPersistTaps="handled">
+              <ImageGrid
+                images={values.images}
+                isUploading={isUploadingImages}
+                onAdd={() => void handleAddImages()}
+                onRemove={(fileId) =>
+                  form.setFieldValue('images', (current) =>
+                    current.filter((image) => image.fileId !== fileId)
+                  )
+                }
+              />
+
               <Text className="mb-2 font-medium">Typ</Text>
               <View className="mb-5 flex-row flex-wrap justify-between gap-y-3">
                 {(Object.keys(AREA_FEATURE_CATEGORY_LABELS) as AreaFeatureCategory[]).map(
@@ -413,17 +424,6 @@ export default function MarkerFormScreen() {
                   />
                 ))}
               </View>
-
-              <ImageGrid
-                images={values.images}
-                isUploading={isUploadingImages}
-                onAdd={() => void handleAddImages()}
-                onRemove={(fileId) =>
-                  form.setFieldValue('images', (current) =>
-                    current.filter((image) => image.fileId !== fileId)
-                  )
-                }
-              />
 
               <Button
                 size="xl"

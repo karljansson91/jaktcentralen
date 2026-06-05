@@ -16,6 +16,7 @@ type ImageGridProps = {
 
 export function ImageGrid({ images, isUploading, onAdd, onRemove }: ImageGridProps) {
   const canAdd = images.length < MAX_MARKER_IMAGES;
+  const [primaryImage, ...secondaryImages] = images;
 
   return (
     <>
@@ -26,27 +27,48 @@ export function ImageGrid({ images, isUploading, onAdd, onRemove }: ImageGridPro
         </Text>
       </View>
 
-      <View className="mb-4 flex-row flex-wrap gap-3">
-        {images.map((image) => (
-          <View key={image.fileId} className="relative size-24">
-            <Image
-              source={{ uri: image.url }}
-              contentFit="cover"
-              style={{
-                backgroundColor: APP_COLORS.border,
-                borderRadius: 12,
-                height: 96,
-                width: 96,
-              }}
-            />
-            <Pressable
-              onPress={() => onRemove(image.fileId)}
-              className="absolute right-1 top-1 rounded-full bg-black/65 p-1">
-              <Ionicons name="close" size={14} color="white" />
-            </Pressable>
-          </View>
-        ))}
-      </View>
+      {primaryImage ? (
+        <View className="relative mb-3 overflow-hidden rounded-2xl bg-muted">
+          <Image
+            source={{ uri: primaryImage.url }}
+            contentFit="cover"
+            style={{
+              aspectRatio: 4 / 3,
+              backgroundColor: APP_COLORS.border,
+              width: '100%',
+            }}
+          />
+          <Pressable
+            onPress={() => onRemove(primaryImage.fileId)}
+            className="absolute right-2 top-2 rounded-full bg-black/65 p-1.5">
+            <Ionicons name="close" size={16} color="white" />
+          </Pressable>
+        </View>
+      ) : null}
+
+      {secondaryImages.length > 0 ? (
+        <View className="mb-4 flex-row flex-wrap gap-3">
+          {secondaryImages.map((image) => (
+            <View key={image.fileId} className="relative size-24">
+              <Image
+                source={{ uri: image.url }}
+                contentFit="cover"
+                style={{
+                  backgroundColor: APP_COLORS.border,
+                  borderRadius: 12,
+                  height: 96,
+                  width: 96,
+                }}
+              />
+              <Pressable
+                onPress={() => onRemove(image.fileId)}
+                className="absolute right-1 top-1 rounded-full bg-black/65 p-1">
+                <Ionicons name="close" size={14} color="white" />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {canAdd ? (
         <Button
