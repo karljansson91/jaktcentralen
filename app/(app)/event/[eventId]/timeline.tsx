@@ -374,7 +374,11 @@ export default function EventTimelineScreen() {
           ) : null
         )}
 
-        <AnimalSightingLayers idPrefix="timeline" sightings={visibleSightings} />
+        <AnimalSightingLayers
+          currentTime={selectedReplayTimestamp ?? undefined}
+          idPrefix="timeline"
+          sightings={visibleSightings}
+        />
       </MapView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">

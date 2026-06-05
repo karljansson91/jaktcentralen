@@ -1,5 +1,8 @@
 import { api } from '@/convex/_generated/api';
-import type { AnimalSightingMapItem } from '@/lib/animal-sightings';
+import {
+  isAnimalSightingLive,
+  type AnimalSightingMapItem,
+} from '@/lib/animal-sightings';
 import { useMutation } from 'convex/react';
 import { useCallback, useMemo, useReducer } from 'react';
 import { Alert } from 'react-native';
@@ -31,26 +34,34 @@ function animalSightingVisibilityReducer(
   }
 }
 
-export function useAnimalSightingMapVisibility(sightings: AnimalSightingMapItem[] | undefined) {
+export function useAnimalSightingMapVisibility(
+  sightings: AnimalSightingMapItem[] | undefined,
+  currentTime: number
+) {
   const [state, dispatch] = useReducer(
     animalSightingVisibilityReducer,
     INITIAL_ANIMAL_SIGHTING_VISIBILITY_STATE
   );
   const acknowledgeAnimalSighting = useMutation(api.animalSightings.acknowledge);
 
+  const currentSightings = useMemo(
+    () => (sightings ?? []).filter((sighting) => isAnimalSightingLive(sighting, currentTime)),
+    [currentTime, sightings]
+  );
+
   const visibleSightings = useMemo(
     () =>
-      (sightings ?? []).filter(
+      currentSightings.filter(
         (sighting) => !state.hiddenSightingIds.has(String(sighting._id))
       ),
-    [sightings, state.hiddenSightingIds]
+    [currentSightings, state.hiddenSightingIds]
   );
   const hasLocallyHiddenCurrentSightings = useMemo(
     () =>
-      (sightings ?? []).some((sighting) =>
+      currentSightings.some((sighting) =>
         state.hiddenSightingIds.has(String(sighting._id))
       ),
-    [sightings, state.hiddenSightingIds]
+    [currentSightings, state.hiddenSightingIds]
   );
 
   const handleHideSighting = useCallback(

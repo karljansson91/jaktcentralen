@@ -187,7 +187,7 @@ export default function EventMapScreen() {
     handleHideSighting,
     handleToggleVisibility: handleToggleAnimalSightingVisibility,
     visibleSightings: visibleAnimalSightings,
-  } = useAnimalSightingMapVisibility(animalSightings);
+  } = useAnimalSightingMapVisibility(animalSightings, currentTime);
 
   const handlePressSighting = useCallback(
     (sighting: AnimalSightingMapItem) => {
