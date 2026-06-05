@@ -356,7 +356,7 @@ export default function MarkerFormScreen() {
               <View className="mb-5 rounded-2xl border border-border bg-card px-4 py-3">
                 <View className="min-w-0 flex-1">
                   <Text className="text-sm text-muted-foreground">
-                    {getPlacementSummary(values.geometryType, values.point)}
+                    {getPlacementSummary(values.point)}
                   </Text>
                 </View>
               </View>

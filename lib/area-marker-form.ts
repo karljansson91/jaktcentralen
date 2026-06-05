@@ -17,14 +17,11 @@ export type MarkerFormValues = {
   images: AreaFeatureImage[];
 };
 
-export function getPlacementSummary(
-  geometryType: AreaFeatureGeometryType,
-  point?: LatLngPoint
-) {
+export function getPlacementSummary(point?: LatLngPoint) {
   if (!point) {
     return "Ingen punkt vald";
   }
-  return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+  return "Plats vald";
 }
 
 export function getPointFallback(point?: LatLngPoint) {
