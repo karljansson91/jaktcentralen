@@ -1,0 +1,4 @@
+interface:
+  display_name: "Triage Issues"
+  short_description: "Grill and promote rough Jaktcentralen issues."
+  default_prompt: "Use $triage-issues to triage Jaktcentralen issues."
