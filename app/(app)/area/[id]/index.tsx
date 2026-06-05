@@ -15,7 +15,6 @@ import { Id } from '@/convex/_generated/dataModel';
 import {
   areaFeaturePointToLngLat,
   getAreaFeatureTargetKey,
-  type LatLngPoint,
 } from '@/lib/area-features';
 import {
   buildAreaPolygonFeature,
@@ -27,7 +26,7 @@ import { useMapCameraState } from '@/hooks/use-map-camera-state';
 import { usePolygonEditing } from '@/hooks/use-polygon-editing';
 import { getDefaultAreaSatColor } from '@/lib/area-sats';
 import { saveAreaSatDraft } from '@/lib/area-sat-draft-store';
-import { distanceMeters, type LngLat } from '@/lib/geo';
+import { distanceMeters, type LatLngPoint, type LngLat } from '@/lib/geo';
 import { getCurrentUserCoordinate } from '@/lib/location';
 import {
   getCachedMapStyle,

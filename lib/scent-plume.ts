@@ -1,5 +1,4 @@
 import type { LngLat } from '@/lib/geo';
-import { normalizeDegrees } from '@/lib/wind-direction';
 
 const EARTH_RADIUS_METERS = 6_371_000;
 const DEFAULT_SEGMENTS = 10;
@@ -31,10 +30,6 @@ function coordinateAtBearing(origin: LngLat, bearingDegrees: number, distanceMet
     );
 
   return [toDegrees(nextLongitude), toDegrees(nextLatitude)];
-}
-
-export function bearingFromScreenSwipe(deltaX: number, deltaY: number) {
-  return normalizeDegrees(toDegrees(Math.atan2(deltaX, -deltaY)));
 }
 
 export function createScentPlumeFeature({

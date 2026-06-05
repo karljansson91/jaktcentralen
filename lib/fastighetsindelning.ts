@@ -22,7 +22,7 @@ export type SelectedFastighet = {
   trakt?: string;
 };
 
-export function readStringProperty(feature: GeoJSON.Feature, key: string) {
+function readStringProperty(feature: GeoJSON.Feature, key: string) {
   const value = feature.properties?.[key];
   if (typeof value === 'string' && value.trim().length > 0) {
     return value.trim();

@@ -3,11 +3,11 @@ import { Id } from "@/convex/_generated/dataModel";
 import {
   AreaFeatureDraft,
   AreaFeatureListItem,
-  LatLngPoint,
   getAreaFeatureTargetKey,
   getDefaultColorForCategory,
 } from "@/lib/area-features";
 import { saveAreaFeatureDraft } from "@/lib/area-feature-draft-store";
+import type { LatLngPoint } from "@/lib/geo";
 import { useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";

@@ -1,4 +1,5 @@
-import { areaFeaturePointToLngLat, type LatLngPoint } from '@/lib/area-features';
+import { areaFeaturePointToLngLat } from '@/lib/area-features';
+import type { LatLngPoint } from '@/lib/geo';
 import { CircleLayer, FillLayer, LineLayer, ShapeSource } from '@rnmapbox/maps';
 import { useMemo } from 'react';
 

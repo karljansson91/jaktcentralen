@@ -1,4 +1,5 @@
 import { Id } from "@/convex/_generated/dataModel";
+import type { LatLngPoint } from "@/lib/geo";
 
 export const AREA_FEATURE_CATEGORY_LABELS = {
   pass: "Pass",
@@ -25,11 +26,6 @@ export const AREA_FEATURE_COLOR_PALETTE = [
 
 export type AreaFeatureCategory = keyof typeof AREA_FEATURE_CATEGORY_LABELS;
 export type AreaFeatureGeometryType = "point";
-
-export type LatLngPoint = {
-  latitude: number;
-  longitude: number;
-};
 
 export type AreaFeatureImage = {
   fileId: Id<"_storage">;

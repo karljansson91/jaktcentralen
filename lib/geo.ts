@@ -78,7 +78,3 @@ export function isPointInPolygon(point: LatLngPoint, polygon: LatLngPoint[]) {
 
   return inside;
 }
-
-export function isPolygonInsidePolygon(inner: LatLngPoint[], outer: LatLngPoint[]) {
-  return inner.length >= 3 && inner.every((point) => isPointInPolygon(point, outer));
-}

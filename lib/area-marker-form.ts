@@ -3,9 +3,9 @@ import {
   AreaFeatureDraft,
   AreaFeatureGeometryType,
   AreaFeatureImage,
-  LatLngPoint,
   getDefaultColorForCategory,
 } from "@/lib/area-features";
+import type { LatLngPoint } from "@/lib/geo";
 
 export type MarkerFormValues = {
   name: string;

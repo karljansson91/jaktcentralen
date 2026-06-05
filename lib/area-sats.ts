@@ -1,5 +1,6 @@
 import { Id } from "@/convex/_generated/dataModel";
-import type { AreaFeatureListItem, LatLngPoint } from "@/lib/area-features";
+import type { AreaFeatureListItem } from "@/lib/area-features";
+import type { LatLngPoint } from "@/lib/geo";
 import { isPointInPolygon } from "@/lib/geo";
 
 export const AREA_SAT_COLOR_PALETTE = [

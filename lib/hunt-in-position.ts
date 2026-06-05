@@ -3,7 +3,7 @@ import { distanceMeters, type LatLngPoint } from '@/lib/geo';
 export const IN_POSITION_RADIUS_METERS = 75;
 export const NEAR_ASSIGNED_POSITION_RADIUS_METERS = 20;
 export const IN_POSITION_PROMPT_DELAY_MS = 60_000;
-export const FRESH_POSITION_WINDOW_MS = 75_000;
+const FRESH_POSITION_WINDOW_MS = 75_000;
 
 type AssignmentStatusInput = {
   assignedUserId: string;
@@ -18,7 +18,7 @@ type MemberPositionStatusInput = {
   userId: string;
 };
 
-export function getMemberAssignmentDistanceMeters(
+function getMemberAssignmentDistanceMeters(
   member: Pick<MemberPositionStatusInput, 'lastLatitude' | 'lastLongitude'>,
   assignedPoint: LatLngPoint
 ) {

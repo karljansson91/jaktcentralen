@@ -1,4 +1,4 @@
-import type { LatLngPoint } from '@/lib/area-features';
+import type { LatLngPoint } from '@/lib/geo';
 import { union, type MultiPolygon, type Ring } from 'polygon-clipping';
 
 const CLOSE_EPSILON = 1e-12;

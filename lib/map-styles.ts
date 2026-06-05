@@ -28,7 +28,7 @@ export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
   },
 ];
 
-export const DEFAULT_MAP_STYLE = MAP_STYLE_OPTIONS.find(
+const DEFAULT_MAP_STYLE = MAP_STYLE_OPTIONS.find(
   (option) => option.id === 'outdoors'
 ) ?? MAP_STYLE_OPTIONS[0];
 

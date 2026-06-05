@@ -14,7 +14,7 @@ import {
 } from '@/lib/hunt-measurement';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-export type HuntMapMeasurementStatus = 'idle' | 'loading' | 'error';
+type HuntMapMeasurementStatus = 'idle' | 'loading' | 'error';
 
 type WalkingRouteResult = {
   error: string | null;

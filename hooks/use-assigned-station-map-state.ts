@@ -1,9 +1,10 @@
 import type { AssignedStationMarkerItem } from "@/components/event/assigned-station-marker";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { AreaFeatureListItem, LatLngPoint } from "@/lib/area-features";
+import type { AreaFeatureListItem } from "@/lib/area-features";
 import { getAreaFeatureTargetKey } from "@/lib/area-features";
 import type { AreaSatListItem } from "@/lib/area-sats";
 import { getMemberInitials } from "@/lib/event-formatting";
+import type { LatLngPoint } from "@/lib/geo";
 import { distanceMeters } from "@/lib/geo";
 import type { AssignmentTrail } from "@/lib/hunt-navigation";
 import { isMemberEffectivelyInPosition } from "@/lib/hunt-in-position";

@@ -11,6 +11,7 @@
     "postinstall": "patch-package",
     "doctor": "react-doctor .",
     "doctor:staged": "react-doctor --staged --fail-on error --no-score",
+    "fallow:dead-code": "fallow dead-code --format compact",
     "issues": "node scripts/issues.mjs"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "expo-blur": "~56.0.3",
     "expo-constants": "~56.0.14",
     "expo-dev-client": "~56.0.15",
+    "expo-file-system": "~56.0.7",
     "expo-font": "~56.0.5",
     "expo-glass-effect": "~56.0.4",
     "expo-image": "~56.0.9",
@@ -63,6 +65,7 @@
     "babel-preset-expo": "~56.0.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~56.0.4",
+    "fallow": "^2.89.0",
     "patch-package": "^8.0.1",
     "react-doctor": "^0.2.4",
     "tailwindcss": "^3.4.19",

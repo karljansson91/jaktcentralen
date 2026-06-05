@@ -32,7 +32,7 @@ export function getAnimalSightingColor(animal: AnimalSightingType) {
   return animalSightingOptionByValue.get(animal)?.color ?? '#398048';
 }
 
-export function formatAnimalSightingAge(timestamp: number, currentTime: number) {
+function formatAnimalSightingAge(timestamp: number, currentTime: number) {
   const ageMinutes = Math.floor(Math.max(0, currentTime - timestamp) / 60_000);
   return ageMinutes < 1 ? 'Nu' : `${ageMinutes} min`;
 }
