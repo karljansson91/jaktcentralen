@@ -238,6 +238,31 @@ export default defineSchema({
     )
   ).index("by_eventId", ["eventId"]),
 
+  notificationPreferences: defineTable({
+    userId: v.id("users"),
+    allEnabled: v.boolean(),
+    chatEnabled: v.boolean(),
+    invitesEnabled: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  notificationDevices: defineTable({
+    userId: v.id("users"),
+    installationId: v.string(),
+    platform: v.union(v.literal("ios"), v.literal("android")),
+    expoPushToken: v.optional(v.string()),
+    enabled: v.boolean(),
+    permissionStatus: v.union(
+      v.literal("granted"),
+      v.literal("denied"),
+      v.literal("undetermined")
+    ),
+    lastRegisteredAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_installationId", ["installationId"])
+    .index("by_userId_and_installationId", ["userId", "installationId"]),
+
   issues: defineTable({
     title: v.string(),
     description: v.string(),

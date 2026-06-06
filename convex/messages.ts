@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCurrentUser } from "./helpers";
@@ -55,6 +56,9 @@ export const send = mutation({
       type: "text",
     });
     await markMembershipReadThroughMessage(ctx, membership._id, messageId);
+    await ctx.scheduler.runAfter(0, internal.notificationDispatch.sendChatMessage, {
+      messageId,
+    });
 
     return messageId;
   },
@@ -93,6 +97,9 @@ export const sendImage = mutation({
       userId: user._id,
     });
     await markMembershipReadThroughMessage(ctx, membership._id, messageId);
+    await ctx.scheduler.runAfter(0, internal.notificationDispatch.sendChatMessage, {
+      messageId,
+    });
 
     return messageId;
   },

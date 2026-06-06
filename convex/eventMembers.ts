@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
@@ -47,6 +48,10 @@ export const invite = mutation({
         role: "member",
         status: "invited",
       });
+      await ctx.scheduler.runAfter(0, internal.notificationDispatch.sendEventInvite, {
+        inviterUserId: user._id,
+        memberId: existing._id,
+      });
       return existing._id;
     }
 
@@ -54,12 +59,18 @@ export const invite = mutation({
       throw new Error("User is already a member or has been invited");
     }
 
-    return await ctx.db.insert("eventMembers", {
+    const memberId = await ctx.db.insert("eventMembers", {
       eventId: args.eventId,
       userId: args.userId,
       role: "member",
       status: "invited",
     });
+    await ctx.scheduler.runAfter(0, internal.notificationDispatch.sendEventInvite, {
+      inviterUserId: user._id,
+      memberId,
+    });
+
+    return memberId;
   },
 });
 

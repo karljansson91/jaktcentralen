@@ -8,7 +8,8 @@ import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function formatDate(ts?: number) {
@@ -53,12 +54,52 @@ function SectionHeader({ title, subtitle, actionLabel, onActionPress }: SectionH
   );
 }
 
+type NotificationPreferenceKey = 'allEnabled' | 'chatEnabled' | 'invitesEnabled';
+
+type NotificationSwitchRowProps = {
+  disabled?: boolean;
+  label: string;
+  muted?: boolean;
+  onValueChange: (value: boolean) => void;
+  value: boolean;
+};
+
+function NotificationSwitchRow({
+  disabled = false,
+  label,
+  muted = false,
+  onValueChange,
+  value,
+}: NotificationSwitchRowProps) {
+  return (
+    <View
+      className={`min-h-14 flex-row items-center justify-between gap-4 px-5 py-3 ${
+        muted ? 'opacity-50' : ''
+      }`}>
+      <Text className="min-w-0 flex-1 text-base font-medium text-foreground">{label}</Text>
+      <Switch
+        disabled={disabled}
+        onValueChange={onValueChange}
+        thumbColor="#ffffff"
+        trackColor={{ false: '#D8DED3', true: APP_COLORS.primary }}
+        value={value}
+      />
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { push, replace } = useRouter();
   const { user: clerkUser } = useUser();
+  const [updatingNotificationKey, setUpdatingNotificationKey] =
+    useState<NotificationPreferenceKey | null>(null);
 
   const user = useQuery(api.users.getCurrentUserProfile);
+  const notificationPreferences = useQuery(
+    api.notifications.getPreferences,
+    user ? {} : 'skip'
+  );
   const invitations = useQuery(api.eventMembers.listMyInvitations);
   const friendRequests = useQuery(api.friends.listPendingReceived);
   const sentFriendRequests = useQuery(api.friends.listPendingSent);
@@ -69,6 +110,7 @@ export default function ProfileScreen() {
   const acceptFriendRequest = useMutation(api.friends.acceptRequest);
   const declineFriendRequest = useMutation(api.friends.declineRequest);
   const removeFriend = useMutation(api.friends.removeFriend);
+  const updateNotificationPreferences = useMutation(api.notifications.updatePreferences);
 
   const displayName =
     user?.name || clerkUser?.fullName || clerkUser?.primaryEmailAddress?.emailAddress;
@@ -76,6 +118,29 @@ export default function ProfileScreen() {
     getUserContactLine(user) || clerkUser?.primaryEmailAddress?.emailAddress || '';
   const hasInvitations =
     (invitations && invitations.length > 0) || (friendRequests && friendRequests.length > 0);
+  const resolvedNotificationPreferences = notificationPreferences ?? {
+    allEnabled: true,
+    chatEnabled: true,
+    invitesEnabled: true,
+  };
+  const notificationPreferencesLoading = notificationPreferences === undefined;
+
+  async function handleNotificationPreferenceChange(
+    key: NotificationPreferenceKey,
+    value: boolean
+  ) {
+    setUpdatingNotificationKey(key);
+    try {
+      await updateNotificationPreferences({ [key]: value });
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte uppdatera notiser',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    } finally {
+      setUpdatingNotificationKey(null);
+    }
+  }
 
   async function handleAcceptInvite(memberId: Id<'eventMembers'>, eventId?: Id<'events'>) {
     try {
@@ -183,6 +248,50 @@ export default function ProfileScreen() {
           </Button>
         </CardContent>
       </Card>
+
+      <View className="gap-3">
+        <SectionHeader title="Notiser" />
+        <Card className="overflow-hidden border-border/70 bg-card py-0">
+          <CardContent className="p-0">
+            <NotificationSwitchRow
+              disabled={notificationPreferencesLoading || updatingNotificationKey !== null}
+              label="Alla notiser"
+              onValueChange={(value) =>
+                void handleNotificationPreferenceChange('allEnabled', value)
+              }
+              value={resolvedNotificationPreferences.allEnabled}
+            />
+            <View className="h-px bg-border/70" />
+            <NotificationSwitchRow
+              disabled={
+                notificationPreferencesLoading ||
+                updatingNotificationKey !== null ||
+                !resolvedNotificationPreferences.allEnabled
+              }
+              label="Meddelanden"
+              muted={!resolvedNotificationPreferences.allEnabled}
+              onValueChange={(value) =>
+                void handleNotificationPreferenceChange('chatEnabled', value)
+              }
+              value={resolvedNotificationPreferences.chatEnabled}
+            />
+            <View className="h-px bg-border/70" />
+            <NotificationSwitchRow
+              disabled={
+                notificationPreferencesLoading ||
+                updatingNotificationKey !== null ||
+                !resolvedNotificationPreferences.allEnabled
+              }
+              label="Inbjudningar"
+              muted={!resolvedNotificationPreferences.allEnabled}
+              onValueChange={(value) =>
+                void handleNotificationPreferenceChange('invitesEnabled', value)
+              }
+              value={resolvedNotificationPreferences.invitesEnabled}
+            />
+          </CardContent>
+        </Card>
+      </View>
 
       {hasInvitations ? (
         <View className="gap-3">

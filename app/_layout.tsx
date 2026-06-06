@@ -1,5 +1,6 @@
 import '@/global.css';
 
+import { useNotificationResponseRouting } from '@/hooks/use-push-notifications';
 import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
@@ -43,12 +44,18 @@ function LightModeLock() {
   return null;
 }
 
+function NotificationResponseRouting() {
+  useNotificationResponseRouting();
+  return null;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <ConvexProviderWithClerk client={convex} useAuth={useClerkAuthBridge}>
           <KeyboardProvider>
+            <NotificationResponseRouting />
             <LightModeLock />
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }} />

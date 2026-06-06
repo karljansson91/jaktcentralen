@@ -10,6 +10,7 @@
     },
     "development-simulator": {
       "developmentClient": true,
+      "environment": "development",
       "ios": {
         "simulator": true
       }

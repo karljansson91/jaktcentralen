@@ -3,6 +3,7 @@ import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { GlassIconButton } from '@/components/glass';
 import { IssueReportGesture } from '@/components/issues/issue-report-gesture';
+import { usePushNotificationsRegistration } from '@/hooks/use-push-notifications';
 import { APP_COLORS } from '@/lib/theme';
 import * as Location from 'expo-location';
 import { Redirect, Stack, useRouter } from 'expo-router';
@@ -14,9 +15,14 @@ export default function AppLayout() {
   const { back } = useRouter();
   const getOrCreateUser = useMutation(api.users.getOrCreateCurrentUser);
   const hasSynced = useRef(false);
+  const { registerCurrentDevice, unregisterCurrentDevice } =
+    usePushNotificationsRegistration(false);
 
   async function handleSignOut() {
     try {
+      await unregisterCurrentDevice().catch((error) => {
+        console.error('Failed to unregister push device:', error);
+      });
       await signOut();
     } catch (error) {
       Alert.alert(
@@ -71,15 +77,21 @@ export default function AppLayout() {
   useEffect(() => {
     if (isSignedIn && !hasSynced.current) {
       hasSynced.current = true;
-      getOrCreateUser().catch((err) => {
-        console.error('Failed to sync user:', err);
-        hasSynced.current = false;
-      });
+      getOrCreateUser()
+        .then(() => {
+          return registerCurrentDevice().catch((error) => {
+            console.error('Failed to register push notifications:', error);
+          });
+        })
+        .catch((err) => {
+          console.error('Failed to sync user:', err);
+          hasSynced.current = false;
+        });
     }
     if (!isSignedIn) {
       hasSynced.current = false;
     }
-  }, [getOrCreateUser, isSignedIn]);
+  }, [getOrCreateUser, isSignedIn, registerCurrentDevice]);
 
   useEffect(() => {
     if (isSignedIn) {

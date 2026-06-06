@@ -66,6 +66,7 @@
           "cameraPermission": "Låt appen ta bilder till chatten, feedback och markörer."
         }
       ],
+      "expo-notifications",
       "expo-status-bar",
       "expo-web-browser",
       "expo-font",
