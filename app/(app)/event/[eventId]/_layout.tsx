@@ -13,6 +13,14 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
+        name="chat-image-viewer"
+        options={{
+          presentation: 'fullScreenModal',
+          headerShown: false,
+          contentStyle: { backgroundColor: '#000000' },
+        }}
+      />
+      <Stack.Screen
         name="animal-sighting"
         options={{
           presentation: 'formSheet',

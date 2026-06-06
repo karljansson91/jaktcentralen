@@ -8,6 +8,14 @@ type TextMessageInput = {
   userId: Id<"users">;
 };
 
+type ImageMessageInput = {
+  body: string;
+  eventId: Id<"events">;
+  imageFileIds: Id<"_storage">[];
+  type: "image";
+  userId: Id<"users">;
+};
+
 type AnimalSightingMessageInput = {
   body: string;
   eventId: Id<"events">;
@@ -41,6 +49,7 @@ type SatClearedMessageInput = {
 
 type HuntMessageInput =
   | TextMessageInput
+  | ImageMessageInput
   | AnimalSightingMessageInput
   | PositionStatusMessageInput
   | SatActivatedMessageInput

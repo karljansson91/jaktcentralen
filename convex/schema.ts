@@ -208,6 +208,11 @@ export default defineSchema({
       }),
       v.object({
         ...messageBaseFields,
+        type: v.literal("image"),
+        imageFileIds: v.array(v.id("_storage")),
+      }),
+      v.object({
+        ...messageBaseFields,
         type: v.literal("animal_sighting"),
         sightingId: v.id("animalSightings"),
       }),
