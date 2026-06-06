@@ -24,7 +24,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPOSER_KEYBOARD_OFFSET = 76;
+const COMPOSER_KEYBOARD_BOTTOM_PADDING = 8;
+const MIN_COMPOSER_BOTTOM_PADDING = 20;
 const COMPOSER_SCROLL_GAP = 12;
+const CHAT_SCROLL_BOTTOM_PADDING = 16;
+const LAST_MESSAGE_COMPOSER_CLEARANCE = 28;
 const CHAT_IMAGE_GRID_WIDTH = 244;
 const CHAT_IMAGE_TILE_SIZE = 118;
 const MAX_CHAT_IMAGES = 4;
@@ -291,6 +295,11 @@ export default function EventChatScreen() {
   }>();
   const { back, canGoBack, push, replace } = useRouter();
   const insets = useSafeAreaInsets();
+  const composerBottomPadding = Math.max(insets.bottom, MIN_COMPOSER_BOTTOM_PADDING);
+  const keyboardComposerOverlap = Math.max(
+    0,
+    composerBottomPadding - COMPOSER_KEYBOARD_BOTTOM_PADDING
+  );
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scrollViewRef = useRef<ElementRef<typeof KeyboardChatScrollView>>(null);
   const composerRef = useRef<ElementRef<typeof TextInput>>(null);
@@ -542,7 +551,7 @@ export default function EventChatScreen() {
           flexGrow: 1,
           gap: 12,
           paddingHorizontal: 20,
-          paddingBottom: 16,
+          paddingBottom: CHAT_SCROLL_BOTTOM_PADDING,
           paddingTop: 12,
         }}
         keyboardDismissMode="interactive"
@@ -600,19 +609,19 @@ export default function EventChatScreen() {
             <View
               style={{
                 height:
-                  composerHeight +
                   COMPOSER_SCROLL_GAP +
-                  (keyboardVisible ? composerHeight : 0),
+                  CHAT_SCROLL_BOTTOM_PADDING +
+                  LAST_MESSAGE_COMPOSER_CLEARANCE,
               }}
             />
           </>
         )}
       </KeyboardChatScrollView>
 
-      <KeyboardStickyView>
+      <KeyboardStickyView offset={{ opened: keyboardComposerOverlap }}>
         <View
           className="shrink-0 border-t border-border bg-background px-5 pt-3"
-          style={{ paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 20) }}
+          style={{ paddingBottom: composerBottomPadding }}
           onLayout={(event) => {
             const nextHeight = event.nativeEvent.layout.height;
             setComposerHeight((currentHeight) =>
