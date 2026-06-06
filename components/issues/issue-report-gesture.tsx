@@ -32,7 +32,11 @@ async function captureIssueScreenshot(width: number, height: number) {
   }
 }
 
-export function IssueReportGesture({ children }: PropsWithChildren) {
+type IssueReportGestureProps = PropsWithChildren<{
+  enabled?: boolean;
+}>;
+
+export function IssueReportGesture({ children, enabled = true }: IssueReportGestureProps) {
   const pathname = usePathname();
   const { push } = useRouter();
   const dimensions = useWindowDimensions();
@@ -53,7 +57,7 @@ export function IssueReportGesture({ children }: PropsWithChildren) {
   }, [isOpening]);
 
   const openIssueReport = useCallback(async () => {
-    if (isOpening || isReportScreen(pathname)) {
+    if (!enabled || isOpening || isReportScreen(pathname)) {
       return;
     }
 
@@ -75,12 +79,12 @@ export function IssueReportGesture({ children }: PropsWithChildren) {
       setIsOpening(false);
       return;
     }
-  }, [dimensions.height, dimensions.width, isOpening, pathname, push]);
+  }, [dimensions.height, dimensions.width, enabled, isOpening, pathname, push]);
 
   const reportGesture = useMemo(
     () =>
       Gesture.LongPress()
-        .enabled(!isReportScreen(pathname))
+        .enabled(enabled && !isReportScreen(pathname))
         .minDuration(REPORT_GESTURE_DURATION_MS)
         .maxDistance(REPORT_GESTURE_MAX_DISTANCE)
         .numberOfPointers(2)
@@ -90,12 +94,14 @@ export function IssueReportGesture({ children }: PropsWithChildren) {
         .onStart(() => {
           void openIssueReport();
         }),
-    [openIssueReport, pathname]
+    [enabled, openIssueReport, pathname]
   );
 
   return (
     <GestureDetector gesture={reportGesture}>
-      <View className="flex-1">{children}</View>
+      <View collapsable={false} className="flex-1">
+        {children}
+      </View>
     </GestureDetector>
   );
 }

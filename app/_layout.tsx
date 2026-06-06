@@ -1,5 +1,6 @@
 import '@/global.css';
 
+import { IssueReportGesture } from '@/components/issues/issue-report-gesture';
 import { useNotificationResponseRouting } from '@/hooks/use-push-notifications';
 import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
@@ -9,7 +10,7 @@ import Mapbox from '@rnmapbox/maps';
 import { useColorScheme } from 'nativewind';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -49,6 +50,12 @@ function NotificationResponseRouting() {
   return null;
 }
 
+function IssueReportGestureBoundary({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+
+  return <IssueReportGesture enabled={isLoaded && Boolean(isSignedIn)}>{children}</IssueReportGesture>;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -58,7 +65,9 @@ export default function RootLayout() {
             <NotificationResponseRouting />
             <LightModeLock />
             <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }} />
+            <IssueReportGestureBoundary>
+              <Stack screenOptions={{ headerShown: false }} />
+            </IssueReportGestureBoundary>
           </KeyboardProvider>
         </ConvexProviderWithClerk>
       </ClerkProvider>

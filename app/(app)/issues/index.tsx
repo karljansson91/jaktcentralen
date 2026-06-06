@@ -9,6 +9,7 @@ import {
   type IssueStatus,
   type IssueType,
 } from '@/lib/issues';
+import { clearPendingIssueReportDraft } from '@/lib/issue-report-draft';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
@@ -53,6 +54,11 @@ export default function IssuesScreen() {
     push(`/issues/${issueId}` as Href);
   }
 
+  function openNewIssueReport() {
+    clearPendingIssueReportDraft();
+    push('/issue-report' as Href);
+  }
+
   if (issues === undefined || currentUser === undefined) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
@@ -72,7 +78,7 @@ export default function IssuesScreen() {
       <View className="gap-3">
         <Button
           className="h-12 rounded-xl"
-          onPress={() => push('/issue-report' as Href)}
+          onPress={openNewIssueReport}
           accessibilityLabel="Skapa feedback">
           <Ionicons name="add" size={19} color={APP_COLORS.surface} />
           <Text>Ny feedback</Text>

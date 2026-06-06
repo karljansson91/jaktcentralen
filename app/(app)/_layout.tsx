@@ -2,7 +2,6 @@ import { useAuth } from '@clerk/expo';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { GlassIconButton } from '@/components/glass';
-import { IssueReportGesture } from '@/components/issues/issue-report-gesture';
 import { usePushNotificationsRegistration } from '@/hooks/use-push-notifications';
 import { APP_COLORS } from '@/lib/theme';
 import * as Location from 'expo-location';
@@ -114,75 +113,73 @@ export default function AppLayout() {
   }
 
   return (
-    <IssueReportGesture>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="profile" options={appHeaderOptions('', true)} />
-        <Stack.Screen name="issues" options={appHeaderOptions('Feedback')} />
-        <Stack.Screen name="issues/[issueId]" options={issueSheetOptions} />
-        <Stack.Screen name="issue-report" options={issueSheetOptions} />
-        <Stack.Screen
-          name="profile/edit"
-          options={{
-            presentation: 'formSheet',
-            headerShown: false,
-            contentStyle: { backgroundColor: APP_COLORS.background },
-            sheetAllowedDetents: [0.58, 0.86],
-            sheetInitialDetentIndex: 0,
-            sheetGrabberVisible: true,
-            sheetExpandsWhenScrolledToEdge: true,
-            sheetCornerRadius: 28,
-          }}
-        />
-        <Stack.Screen
-          name="profile/add-friend"
-          options={{
-            presentation: 'formSheet',
-            headerShown: false,
-            contentStyle: { backgroundColor: APP_COLORS.background },
-            sheetAllowedDetents: [0.58, 0.86],
-            sheetInitialDetentIndex: 0,
-            sheetGrabberVisible: true,
-            sheetExpandsWhenScrolledToEdge: true,
-            sheetCornerRadius: 28,
-          }}
-        />
-        <Stack.Screen
-          name="area/create"
-          options={{
-            presentation: 'fullScreenModal',
-            headerShown: false,
-            contentStyle: { backgroundColor: APP_COLORS.background },
-          }}
-        />
-        <Stack.Screen
-          name="join"
-          options={{
-            presentation: 'formSheet',
-            headerShown: false,
-            contentStyle: { backgroundColor: APP_COLORS.background },
-            sheetAllowedDetents: [0.42, 0.72],
-            sheetInitialDetentIndex: 0,
-            sheetGrabberVisible: true,
-            sheetExpandsWhenScrolledToEdge: true,
-            sheetCornerRadius: 28,
-          }}
-        />
-        <Stack.Screen
-          name="map-style"
-          options={{
-            presentation: 'formSheet',
-            headerShown: false,
-            contentStyle: { backgroundColor: APP_COLORS.background },
-            sheetAllowedDetents: 'fitToContents',
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 28,
-          }}
-        />
-        <Stack.Screen name="area/[id]" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="event/[eventId]" options={{ headerShown: false }} />
-      </Stack>
-    </IssueReportGesture>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="profile" options={appHeaderOptions('', true)} />
+      <Stack.Screen name="issues" options={appHeaderOptions('Feedback')} />
+      <Stack.Screen name="issues/[issueId]" options={issueSheetOptions} />
+      <Stack.Screen name="issue-report" options={issueSheetOptions} />
+      <Stack.Screen
+        name="profile/edit"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: [0.58, 0.86],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
+        name="profile/add-friend"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: [0.58, 0.86],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
+        name="area/create"
+        options={{
+          presentation: 'fullScreenModal',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+        }}
+      />
+      <Stack.Screen
+        name="join"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: [0.42, 0.72],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
+        name="map-style"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen name="area/[id]" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="event/[eventId]" options={{ headerShown: false }} />
+    </Stack>
   );
 }
 

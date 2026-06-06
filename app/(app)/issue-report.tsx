@@ -13,7 +13,7 @@ import { useMutation } from 'convex/react';
 import { File, UploadType } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Href, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 const MAX_ISSUE_IMAGES = 4;
@@ -68,6 +68,12 @@ export default function IssueReportScreen() {
     [attachments]
   );
 
+  useEffect(() => {
+    return () => {
+      clearPendingIssueReportDraft();
+    };
+  }, []);
+
   async function handleAddAttachments() {
     const remainingSlots = MAX_ISSUE_IMAGES - attachments.length;
 
@@ -119,6 +125,12 @@ export default function IssueReportScreen() {
     setAttachments((current) => current.filter((image) => image.id !== imageId));
   }
 
+  function handleCancel() {
+    clearPendingIssueReportDraft();
+    setAttachments([]);
+    back();
+  }
+
   async function handleSubmit(values: IssueFormValues) {
     setIsSaving(true);
     try {
@@ -162,7 +174,7 @@ export default function IssueReportScreen() {
       busyState={isSaving ? 'saving' : isAddingAttachments ? 'addingAttachment' : 'idle'}
       maxAttachmentImages={MAX_ISSUE_IMAGES}
       onAddAttachment={() => void handleAddAttachments()}
-      onCancel={() => back()}
+      onCancel={handleCancel}
       onRemoveAttachment={handleRemoveAttachment}
       onSubmit={(values) => void handleSubmit(values)}
       screenshotUrl={draft?.screenshotUri}
