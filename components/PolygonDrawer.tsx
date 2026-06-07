@@ -3,6 +3,7 @@ import { FastighetsindelningLayer } from '@/components/FastighetsindelningLayer'
 import { GlassSurface } from '@/components/glass';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { useInitialPolygonCamera } from '@/hooks/use-initial-polygon-camera';
+import { useMapStyleState } from '@/hooks/use-map-style-url';
 import { usePolygonEditing } from '@/hooks/use-polygon-editing';
 import type { LngLat } from '@/lib/geo';
 import { APP_COLORS } from '@/lib/theme';
@@ -17,11 +18,6 @@ import {
   type FastighetGeometry,
   type SelectedFastighet,
 } from '@/lib/fastighetsindelning';
-import {
-  getCachedMapStyle,
-  getSavedMapStyle,
-  subscribeToMapStyleChanges,
-} from '@/lib/map-styles';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
@@ -32,7 +28,7 @@ import {
   MapView,
   ShapeSource,
 } from '@rnmapbox/maps';
-import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useReducer, useRef } from 'react';
 import { ActivityIndicator, Pressable, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -208,8 +204,7 @@ interface PolygonDrawerProps {
 export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDrawerProps) {
   const mapRef = useRef<MapView | null>(null);
   const insets = useSafeAreaInsets();
-  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
-  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
+  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const [fastighetState, dispatchFastighet] = useReducer(
     fastighetEditorReducer,
     initialFastighetEditorState,
@@ -251,24 +246,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
   const handleSetFastighetsgrans = useCallback((nextValue: boolean) => {
     dispatchFastighet({ type: 'set-boundaries-visible', visible: nextValue });
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const unsubscribe = subscribeToMapStyleChanges((style) => {
-      setMapStyleURL(style.styleURL);
-    });
-
-    void getSavedMapStyle().then((style) => {
-      if (!cancelled) {
-        setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
   }, []);
 
   // --- Derived data ---
@@ -388,6 +365,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         onTouchCancel={isDrawMode ? handleTouchEnd : undefined}
       >
         <MapView
+          key={mapStyleKey}
           ref={mapRef}
           style={{ flex: 1 }}
           styleURL={mapStyleURL}
@@ -409,7 +387,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
           <LantmaterietTopoLayer
             idPrefix="polygon-drawer-lantmateriet-topo"
-            visible={showTopoOverlay}
+            surfaceMode={topoSurfaceMode}
           />
 
           <FastighetsindelningLayer visible={showFastighetsgrans} />
@@ -418,12 +396,12 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             <ShapeSource id="selected-fastighet-shape" shape={selectedFastighetGeoJSON}>
               <FillLayer
                 id="selected-fastighet-fill"
-                style={{ fillColor: 'rgba(245, 158, 11, 0.24)' }}
+                style={{ fillColor: 'rgba(245, 158, 11, 0.18)' }}
                 filter={['==', '$type', 'Polygon']}
               />
               <LineLayer
                 id="selected-fastighet-line"
-                style={{ lineColor: 'rgb(217, 119, 6)', lineWidth: 3 }}
+                style={{ lineColor: 'rgba(217, 119, 6, 0.72)', lineWidth: 1.6 }}
               />
             </ShapeSource>
           )}
@@ -432,12 +410,12 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             <ShapeSource id="polygon-shape" shape={shapeGeoJSON}>
               <FillLayer
                 id="polygon-fill"
-                style={{ fillColor: 'rgba(34, 197, 94, 0.2)' }}
+                style={{ fillColor: 'rgba(34, 197, 94, 0.14)' }}
                 filter={['==', '$type', 'Polygon']}
               />
               <LineLayer
                 id="polygon-line"
-                style={{ lineColor: 'rgb(34, 197, 94)', lineWidth: 2 }}
+                style={{ lineColor: 'rgba(34, 197, 94, 0.76)', lineWidth: 1.25 }}
               />
             </ShapeSource>
           )}
@@ -520,23 +498,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             </View>
 
             <View className="flex-row items-center justify-between gap-3">
-              <Button
-                size="sm"
-                variant={showTopoOverlay ? 'default' : 'outline'}
-                className={
-                  showTopoOverlay
-                    ? 'shrink-0 rounded-full'
-                    : 'shrink-0 rounded-full bg-background'
-                }
-                onPress={() => setShowTopoOverlay((visible) => !visible)}>
-                <Ionicons
-                  name={showTopoOverlay ? 'layers' : 'layers-outline'}
-                  size={15}
-                  color={showTopoOverlay ? activeIconColor : inactiveIconColor}
-                />
-                <Text>Topo</Text>
-              </Button>
-
               <View className="min-w-0 flex-1 flex-row items-center gap-2">
                 <Ionicons
                   name="map-outline"

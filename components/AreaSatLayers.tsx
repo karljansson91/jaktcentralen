@@ -123,6 +123,7 @@ export function AreaSatLayers({
           textColor: "#1f2937",
           textHaloColor: "#ffffff",
           textHaloWidth: 1.2,
+          textMaxWidth: 24,
         }}
         filter={["==", ["get", "kind"], "label"]}
       />

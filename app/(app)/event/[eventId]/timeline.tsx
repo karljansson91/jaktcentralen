@@ -6,14 +6,10 @@ import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useCurrentTime } from '@/hooks/use-current-time';
+import { useMapStyleState } from '@/hooks/use-map-style-url';
 import { AnimalSightingMapItem } from '@/lib/animal-sightings';
 import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
-import {
-  getCachedMapStyle,
-  getSavedMapStyle,
-  subscribeToMapStyleChanges,
-} from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
 import { Slider } from '@expo/ui/community/slider';
 import {
@@ -26,8 +22,8 @@ import {
   SymbolLayer,
 } from '@rnmapbox/maps';
 import { useQuery } from 'convex/react';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type ElementRef, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -96,7 +92,7 @@ export default function EventTimelineScreen() {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const currentTime = useCurrentTime();
-  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
+  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
 
   const event = useQuery(api.events.get, {
@@ -117,28 +113,6 @@ export default function EventTimelineScreen() {
   const animalSightings = useQuery(
     api.animalSightings.listForReplay,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
-  );
-
-  useEffect(() => {
-    return subscribeToMapStyleChanges((style) => {
-      setMapStyleURL(style.styleURL);
-    });
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-
-      void getSavedMapStyle().then((style) => {
-        if (!cancelled) {
-          setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
-        }
-      });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [])
   );
 
   const polygonGeoJSON = useMemo(() => {
@@ -291,6 +265,7 @@ export default function EventTimelineScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: APP_COLORS.background }}>
       <MapView
+        key={mapStyleKey}
         style={{ flex: 1 }}
         styleURL={mapStyleURL}
         scrollEnabled
@@ -302,7 +277,7 @@ export default function EventTimelineScreen() {
 
         <LantmaterietTopoLayer
           idPrefix="timeline-lantmateriet-topo"
-          visible
+          surfaceMode={topoSurfaceMode}
         />
 
         {polygonGeoJSON && (
@@ -310,11 +285,11 @@ export default function EventTimelineScreen() {
             <FillLayer id="timeline-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
             <LineLayer
               id="timeline-area-line-halo"
-              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6.5 }}
+              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 2 }}
             />
             <LineLayer
               id="timeline-area-line"
-              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3.25 }}
+              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 1.05 }}
             />
           </ShapeSource>
         )}

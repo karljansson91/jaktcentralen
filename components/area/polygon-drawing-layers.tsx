@@ -23,7 +23,7 @@ export function PolygonDrawingLayers({
   draggingIndex = null,
   idPrefix = 'polygon-drawing',
   lineDasharray = [1.5, 1.1],
-  lineWidth = 3,
+  lineWidth = 2,
   points,
   showFill = true,
   showLineHalo = false,
@@ -131,8 +131,8 @@ export function PolygonDrawingLayers({
             id={`${idPrefix}-line-halo`}
             style={{
               lineColor: '#ffffff',
-              lineOpacity: 0.88,
-              lineWidth: lineWidth + 3,
+              lineOpacity: 0.64,
+              lineWidth: lineWidth + 1.8,
             }}
           />
           <LineLayer

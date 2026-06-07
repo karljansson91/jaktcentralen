@@ -31,11 +31,6 @@ import {
 } from '@/lib/hunt-in-position';
 import { clearInPositionPromptIgnored } from '@/lib/in-position-prompt-ignore';
 import { getCurrentUserCoordinate } from '@/lib/location';
-import {
-  getCachedMapStyle,
-  getSavedMapStyle,
-  subscribeToMapStyleChanges,
-} from '@/lib/map-styles';
 import { APP_COLORS } from '@/lib/theme';
 import { oppositeDirectionDegrees } from '@/lib/wind-direction';
 import { subscribeToWindDirectionSelection } from '@/lib/wind-direction-selection';
@@ -49,6 +44,7 @@ import { useHuntMapUiState } from '@/hooks/use-hunt-map-ui-state';
 import { useInPositionPrompts } from '@/hooks/use-in-position-prompts';
 import { useLiveMemberPositionMarkers } from '@/hooks/use-live-member-position-markers';
 import { useMapCameraState } from '@/hooks/use-map-camera-state';
+import { useMapStyleState } from '@/hooks/use-map-style-url';
 import {
   Camera,
   CircleLayer,
@@ -60,7 +56,7 @@ import {
 } from '@rnmapbox/maps';
 import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   type ElementRef,
   useCallback,
@@ -95,7 +91,7 @@ export default function EventMapScreen() {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const currentTime = useCurrentTime();
-  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
+  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const {
     handleCameraChanged,
     heading: mapHeading,
@@ -105,7 +101,6 @@ export default function EventMapScreen() {
   const [currentCoordinate, setCurrentCoordinate] = useState<[number, number] | null>(null);
   const [windSourceDirectionDegrees, setWindSourceDirectionDegrees] = useState<number | null>(null);
   const [showOtherPassMarkers, setShowOtherPassMarkers] = useState(false);
-  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
   const {
     longPressActionPoint,
     setLongPressActionPoint,
@@ -202,29 +197,7 @@ export default function EventMapScreen() {
     [currentTime, handleHideSighting]
   );
 
-  useEffect(() => {
-    return subscribeToMapStyleChanges((style) => {
-      setMapStyleURL(style.styleURL);
-    });
-  }, []);
-
   useEffect(() => subscribeToWindDirectionSelection(setWindSourceDirectionDegrees), []);
-
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-
-      void getSavedMapStyle().then((style) => {
-        if (!cancelled) {
-          setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
-        }
-      });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
 
   useEffect(() => {
     if (!event || !isActiveHunt) return;
@@ -619,10 +592,6 @@ export default function EventMapScreen() {
     promptIgnoreKey: currentUserAssignmentPromptIgnoreKey,
   });
 
-  const handleToggleTopoOverlay = useCallback(() => {
-    setShowTopoOverlay((visible) => !visible);
-  }, []);
-
   const renderHuntActionsMenu = useCallback(() => {
     if (!event || !currentUser) {
       return undefined;
@@ -633,11 +602,9 @@ export default function EventMapScreen() {
         currentUserId={currentUser._id}
         event={event}
         eventId={eventId as Id<'events'>}
-        onToggleTopoOverlay={handleToggleTopoOverlay}
-        showTopoOverlay={showTopoOverlay}
       />
     );
-  }, [currentUser, event, eventId, handleToggleTopoOverlay, showTopoOverlay]);
+  }, [currentUser, event, eventId]);
 
   const handleGoToMyPosition = useCallback(async () => {
     try {
@@ -739,6 +706,7 @@ export default function EventMapScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: APP_COLORS.background }}>
       <MapView
+        key={mapStyleKey}
         style={{ flex: 1 }}
         styleURL={mapStyleURL}
         scrollEnabled
@@ -756,7 +724,7 @@ export default function EventMapScreen() {
 
         <LantmaterietTopoLayer
           idPrefix="event-lantmateriet-topo"
-          visible={showTopoOverlay}
+          surfaceMode={topoSurfaceMode}
         />
 
         {polygonGeoJSON && (
@@ -764,11 +732,11 @@ export default function EventMapScreen() {
             <FillLayer id="event-area-fill" style={{ fillColor: APP_COLORS.mapAreaFill }} />
             <LineLayer
               id="event-area-line-halo"
-              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6.5 }}
+              style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 2 }}
             />
             <LineLayer
               id="event-area-line"
-              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3.25 }}
+              style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 1.05 }}
             />
           </ShapeSource>
         )}

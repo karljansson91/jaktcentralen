@@ -1,5 +1,6 @@
+import type { TopoSurfaceMode } from '@/lib/map-styles';
 import { FillLayer, LineLayer, SymbolLayer, VectorSource } from '@rnmapbox/maps';
-import type { ComponentProps } from 'react';
+import { useMemo, type ComponentProps } from 'react';
 
 const DEFAULT_TILESET_URL = 'mapbox://karljansson91.jc-topo-varmland';
 const TILESET_URL = process.env.EXPO_PUBLIC_LM_TOPO_TILESET_URL ?? DEFAULT_TILESET_URL;
@@ -17,10 +18,14 @@ const LAYERS = {
 
 type LantmaterietTopoLayerProps = {
   idPrefix: string;
-  visible: boolean;
+  surfaceMode?: TopoSurfaceMode;
 };
 
-const landcoverFillStyle = {
+type FillLayerStyle = NonNullable<ComponentProps<typeof FillLayer>['style']>;
+type SymbolLayerStyle = NonNullable<ComponentProps<typeof SymbolLayer>['style']>;
+type LineLayerStyle = NonNullable<ComponentProps<typeof LineLayer>['style']>;
+
+const landcoverFillBaseStyle = {
   fillColor: [
     'match',
     ['get', 'class'],
@@ -44,24 +49,80 @@ const landcoverFillStyle = {
     '#E3DCCB',
     '#CBEAB4',
   ] as const,
-  fillOpacity: [
+};
+
+const landcoverDefaultFillOpacity = [
+  'match',
+  ['get', 'class'],
+  'Sjö',
+  1,
+  'Vattendragsyta',
+  1,
+  'Anlagt vatten',
+  1,
+  'Industri- och handelsbebyggelse',
+  0.58,
+  'Låg bebyggelse',
+  0.54,
+  0.82,
+] as const;
+
+const landcoverHybridFillOpacity = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  10,
+  [
     'match',
     ['get', 'class'],
     'Sjö',
-    1,
+    0.68,
     'Vattendragsyta',
-    1,
+    0.68,
     'Anlagt vatten',
-    1,
+    0.68,
     'Industri- och handelsbebyggelse',
-    0.58,
+    0.42,
     'Låg bebyggelse',
-    0.54,
-    0.82,
-  ] as const,
-} satisfies NonNullable<ComponentProps<typeof FillLayer>['style']>;
+    0.38,
+    0.58,
+  ],
+  13,
+  [
+    'match',
+    ['get', 'class'],
+    'Sjö',
+    0.36,
+    'Vattendragsyta',
+    0.36,
+    'Anlagt vatten',
+    0.36,
+    'Industri- och handelsbebyggelse',
+    0.2,
+    'Låg bebyggelse',
+    0.18,
+    0.28,
+  ],
+  15,
+  0.08,
+  17,
+  0,
+] as const;
 
-const wetlandFillStyle = {
+function getLandcoverFillStyle(surfaceMode: TopoSurfaceMode) {
+  return {
+    ...landcoverFillBaseStyle,
+    fillOpacity: (
+      surfaceMode === 'imagery'
+        ? 0
+        : surfaceMode === 'hybrid'
+          ? landcoverHybridFillOpacity
+          : landcoverDefaultFillOpacity
+    ) as FillLayerStyle['fillOpacity'],
+  } satisfies FillLayerStyle;
+}
+
+const wetlandFillBaseStyle = {
   fillColor: [
     'match',
     ['get', 'class'],
@@ -71,8 +132,34 @@ const wetlandFillStyle = {
     '#EADAB6',
     '#EADAB6',
   ] as const,
-  fillOpacity: 0.32,
-} satisfies NonNullable<ComponentProps<typeof FillLayer>['style']>;
+};
+
+const wetlandHybridFillOpacity = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  10,
+  0.22,
+  13,
+  0.12,
+  15,
+  0.04,
+  17,
+  0,
+] as const;
+
+function getWetlandFillStyle(surfaceMode: TopoSurfaceMode) {
+  return {
+    ...wetlandFillBaseStyle,
+    fillOpacity: (
+      surfaceMode === 'imagery'
+        ? 0
+        : surfaceMode === 'hybrid'
+          ? wetlandHybridFillOpacity
+          : 0.32
+    ) as FillLayerStyle['fillOpacity'],
+  } satisfies FillLayerStyle;
+}
 
 const wetlandOutlineStyle = {
   lineColor: '#C9A06F',
@@ -143,20 +230,68 @@ const streamLineStyle = {
 } satisfies NonNullable<ComponentProps<typeof LineLayer>['style']>;
 
 const contourLineStyle = {
-  lineColor: '#BDAE78',
+  lineColor: '#9B6046',
+  lineOpacity: 0.9,
+  lineWidth: [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    10,
+    0.48,
+    14,
+    0.82,
+    17,
+    1.25,
+  ] as const,
+} satisfies LineLayerStyle;
+
+const contourHaloStyle = {
+  lineColor: '#F6E7C6',
   lineOpacity: 0.54,
   lineWidth: [
     'interpolate',
     ['linear'],
     ['zoom'],
     10,
-    0.32,
+    1,
     14,
-    0.58,
+    1.55,
     17,
-    0.95,
+    2.25,
   ] as const,
-} satisfies NonNullable<ComponentProps<typeof LineLayer>['style']>;
+} satisfies LineLayerStyle;
+
+const contourLabelFilter = [
+  'all',
+  ['has', 'elevation'],
+  ['==', ['%', ['to-number', ['get', 'elevation']], 10], 0],
+] as const;
+
+const contourLabelStyle = {
+  symbolPlacement: 'line',
+  symbolSpacing: 280,
+  textAllowOverlap: false,
+  textColor: '#5F5537',
+  textField: ['to-string', ['get', 'elevation']] as const,
+  textFont: ['DIN Pro Medium', 'Arial Unicode MS Regular'] as const,
+  textHaloColor: 'rgba(255, 250, 224, 0.9)',
+  textHaloWidth: 1.2,
+  textIgnorePlacement: false,
+  textKeepUpright: true,
+  textPitchAlignment: 'map',
+  textRotationAlignment: 'map',
+  textSize: [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    11,
+    8.5,
+    14,
+    10,
+    17,
+    12,
+  ] as const,
+} satisfies SymbolLayerStyle;
 
 const roadCasingStyle = {
   lineCap: 'round' as const,
@@ -263,6 +398,7 @@ const labelStyle = {
   textHaloColor: 'rgba(222, 241, 202, 0.86)',
   textHaloWidth: 1.6,
   textIgnorePlacement: false,
+  textMaxWidth: 24,
   textSize: [
     'interpolate',
     ['linear'],
@@ -274,7 +410,7 @@ const labelStyle = {
     17,
     15,
   ] as const,
-} satisfies NonNullable<ComponentProps<typeof SymbolLayer>['style']>;
+} satisfies SymbolLayerStyle;
 
 const waterClassFilter = [
   'match',
@@ -288,13 +424,29 @@ const waterClassFilter = [
   false,
 ] as const;
 
-export function LantmaterietTopoLayer({ idPrefix, visible }: LantmaterietTopoLayerProps) {
-  if (!visible || !TILESET_URL) {
+export function LantmaterietTopoLayer({
+  idPrefix,
+  surfaceMode = 'default',
+}: LantmaterietTopoLayerProps) {
+  const landcoverFillStyle = useMemo(
+    () => getLandcoverFillStyle(surfaceMode),
+    [surfaceMode]
+  );
+  const wetlandFillStyle = useMemo(
+    () => getWetlandFillStyle(surfaceMode),
+    [surfaceMode]
+  );
+
+  if (!TILESET_URL) {
     return null;
   }
 
   return (
-    <VectorSource id={`${idPrefix}-source`} url={TILESET_URL}>
+    <VectorSource
+      key={`${idPrefix}-${surfaceMode}`}
+      id={`${idPrefix}-source`}
+      maxZoomLevel={13}
+      url={TILESET_URL}>
       <FillLayer
         id={`${idPrefix}-landcover-fill`}
         sourceLayerID={LAYERS.landcover}
@@ -328,9 +480,21 @@ export function LantmaterietTopoLayer({ idPrefix, visible }: LantmaterietTopoLay
         style={streamLineStyle}
       />
       <LineLayer
+        id={`${idPrefix}-contours-halo`}
+        sourceLayerID={LAYERS.contours}
+        style={contourHaloStyle}
+      />
+      <LineLayer
         id={`${idPrefix}-contours-line`}
         sourceLayerID={LAYERS.contours}
         style={contourLineStyle}
+      />
+      <SymbolLayer
+        id={`${idPrefix}-contours-label`}
+        sourceLayerID={LAYERS.contours}
+        filter={contourLabelFilter}
+        minZoomLevel={11}
+        style={contourLabelStyle}
       />
       <LineLayer
         id={`${idPrefix}-roads-casing`}

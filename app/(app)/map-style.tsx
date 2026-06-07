@@ -68,10 +68,15 @@ export default function MapStyleScreen() {
             accessibilityState={{ selected, disabled: savingStyleId !== null }}
             disabled={savingStyleId !== null}
             onPress={() => void handleSelect(option.id)}
-            className={`min-h-14 flex-row items-center justify-between rounded-2xl border px-4 ${
+            className={`min-h-14 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
               selected ? 'border-primary bg-primary/10' : 'border-border bg-card'
             }`}>
-            <Text className="text-base font-semibold text-foreground">{option.label}</Text>
+            <View className="min-w-0 flex-1 gap-1">
+              <Text className="text-base font-semibold text-foreground">{option.label}</Text>
+              {option.description ? (
+                <Text className="text-sm text-muted-foreground">{option.description}</Text>
+              ) : null}
+            </View>
             <View className="size-7 items-center justify-center">
               {selected ? (
                 <Ionicons name="checkmark" size={18} color={APP_COLORS.primary} />

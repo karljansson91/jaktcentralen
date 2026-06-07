@@ -23,16 +23,12 @@ import {
 } from '@/lib/area-map';
 import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
 import { useMapCameraState } from '@/hooks/use-map-camera-state';
+import { useMapStyleState } from '@/hooks/use-map-style-url';
 import { usePolygonEditing } from '@/hooks/use-polygon-editing';
 import { getDefaultAreaSatColor } from '@/lib/area-sats';
 import { saveAreaSatDraft } from '@/lib/area-sat-draft-store';
 import { distanceMeters, type LatLngPoint, type LngLat } from '@/lib/geo';
 import { getCurrentUserCoordinate } from '@/lib/location';
-import {
-  getCachedMapStyle,
-  getSavedMapStyle,
-  subscribeToMapStyleChanges,
-} from '@/lib/map-styles';
 import { unionLatLngPolygons } from '@/lib/polygon-union';
 import { APP_COLORS } from '@/lib/theme';
 import {
@@ -45,7 +41,7 @@ import {
 } from '@rnmapbox/maps';
 import { useMutation, useQuery } from 'convex/react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ElementRef, useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, View, type GestureResponderEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -71,14 +67,13 @@ export default function ViewAreaScreen() {
   const satFreehandBasePolygonRef = useRef<LatLngPoint[] | null>(null);
   const satFreehandStrokeRef = useRef<LatLngPoint[]>([]);
   const satFreehandHistoryRef = useRef<LatLngPoint[][]>([]);
-  const [mapStyleURL, setMapStyleURL] = useState(() => getCachedMapStyle().styleURL);
+  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const [satDrawingPoints, setSatDrawingPoints] = useState<LatLngPoint[] | null>(null);
   const [satDrawingMode, setSatDrawingMode] = useState<SatDrawingMode>('freehand');
   const [satFreehandPreviewPoints, setSatFreehandPreviewPoints] = useState<LatLngPoint[]>([]);
   const [isEditingAreaPolygon, setIsEditingAreaPolygon] = useState(false);
   const [areaEditingError, setAreaEditingError] = useState<string | null>(null);
   const [isUpdatingAreaPolygon, setIsUpdatingAreaPolygon] = useState(false);
-  const [showTopoOverlay, setShowTopoOverlay] = useState(true);
   const updateArea = useMutation(api.areas.update);
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
   const areaFeatures = useQuery(
@@ -98,26 +93,9 @@ export default function ViewAreaScreen() {
     resetMarkerGestureLocks,
   } = useAreaMarkerGestures(id as Id<'areas'>);
 
-  useEffect(() => {
-    return subscribeToMapStyleChanges((style) => {
-      setMapStyleURL(style.styleURL);
-    });
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
       resetMarkerGestureLocks();
-
-      void getSavedMapStyle().then((style) => {
-        if (!cancelled) {
-          setMapStyleURL((current) => (current === style.styleURL ? current : style.styleURL));
-        }
-      });
-
-      return () => {
-        cancelled = true;
-      };
     }, [resetMarkerGestureLocks])
   );
 
@@ -391,27 +369,19 @@ export default function ViewAreaScreen() {
     areaPolygonEditing.handleDone();
   }, [areaPolygonEditing]);
 
-  const handleToggleTopoOverlay = useCallback(() => {
-    setShowTopoOverlay((visible) => !visible);
-  }, []);
-
   const renderAreaActionsMenu = useCallback(
     () => (
       <AreaActionsMenu
         areaId={id as Id<'areas'>}
         onCreateSat={isEditingPolygon ? undefined : handleStartSatDrawing}
         onRedrawArea={isEditingPolygon ? undefined : handleStartAreaDrawing}
-        onToggleTopoOverlay={handleToggleTopoOverlay}
-        showTopoOverlay={showTopoOverlay}
       />
     ),
     [
       handleStartAreaDrawing,
       handleStartSatDrawing,
-      handleToggleTopoOverlay,
       id,
       isEditingPolygon,
-      showTopoOverlay,
     ]
   );
 
@@ -467,6 +437,7 @@ export default function ViewAreaScreen() {
         onTouchCancel={isEditingAreaPolygon ? areaPolygonEditing.handleTouchEnd : undefined}
       >
         <MapView
+          key={mapStyleKey}
           ref={mapRef}
           style={{ flex: 1 }}
           styleURL={mapStyleURL}
@@ -487,7 +458,7 @@ export default function ViewAreaScreen() {
 
           <LantmaterietTopoLayer
             idPrefix="area-view-lantmateriet-topo"
-            visible={showTopoOverlay}
+            surfaceMode={topoSurfaceMode}
           />
 
           {polygonGeoJSON && (
@@ -498,11 +469,11 @@ export default function ViewAreaScreen() {
               />
               <LineLayer
                 id="area-line-halo"
-                style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 6 }}
+                style={{ lineColor: APP_COLORS.mapAreaHalo, lineWidth: 1.8 }}
               />
               <LineLayer
                 id="area-line"
-                style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 3 }}
+                style={{ lineColor: APP_COLORS.mapAreaLine, lineWidth: 0.95 }}
               />
             </ShapeSource>
           )}
@@ -523,7 +494,7 @@ export default function ViewAreaScreen() {
               color={satDrawingColor}
               idPrefix="area-view-sat-drawing"
               lineDasharray={null}
-              lineWidth={4}
+              lineWidth={2.6}
               points={satDrawingPoints}
               showFill={false}
               showLineHalo
@@ -537,7 +508,7 @@ export default function ViewAreaScreen() {
               color={satDrawingColor}
               idPrefix="area-view-sat-freehand-preview"
               lineDasharray={[1.4, 1.1]}
-              lineWidth={3}
+              lineWidth={1.8}
               points={satFreehandPreviewPoints}
               showFill={false}
               showVertices={false}

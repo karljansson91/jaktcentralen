@@ -129,6 +129,7 @@ export function AreaFeatureLayers({
               textColor: "#374151",
               textHaloColor: "#ffffff",
               textHaloWidth: 1,
+              textMaxWidth: 24,
             }}
           />
         </ShapeSource>
