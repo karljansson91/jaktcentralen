@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 
 const ACTION_CREATE_HUNT = 'create-hunt';
+const ACTION_CREATE_MARKER = 'create-marker';
 const ACTION_CREATE_SAT = 'create-sat';
 const ACTION_REDRAW_AREA = 'redraw-area';
 const ACTION_EDIT_AREA = 'edit-area';
@@ -18,11 +19,17 @@ const ACTION_DELETE_AREA = 'delete-area';
 
 type AreaActionsMenuProps = {
   areaId: Id<'areas'>;
+  onCreateMarker?: () => void;
   onCreateSat?: () => void;
   onRedrawArea?: () => void;
 };
 
-export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActionsMenuProps) {
+export function AreaActionsMenu({
+  areaId,
+  onCreateMarker,
+  onCreateSat,
+  onRedrawArea,
+}: AreaActionsMenuProps) {
   const { back, canGoBack, push, replace } = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const removeArea = useMutation(api.areas.remove);
@@ -67,6 +74,12 @@ export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActio
       title: 'Skapa jakt',
     },
     {
+      attributes: { disabled: isSubmitting || !onCreateMarker },
+      id: ACTION_CREATE_MARKER,
+      image: 'mappin.and.ellipse',
+      title: 'Lägg till intressepunkt',
+    },
+    {
       attributes: { disabled: isSubmitting || !onCreateSat },
       id: ACTION_CREATE_SAT,
       image: 'map',
@@ -102,6 +115,9 @@ export function AreaActionsMenu({ areaId, onCreateSat, onRedrawArea }: AreaActio
     switch (event.nativeEvent.event) {
       case ACTION_CREATE_HUNT:
         push(`/area/${areaId}/event/create`);
+        break;
+      case ACTION_CREATE_MARKER:
+        onCreateMarker?.();
         break;
       case ACTION_CREATE_SAT:
         onCreateSat?.();

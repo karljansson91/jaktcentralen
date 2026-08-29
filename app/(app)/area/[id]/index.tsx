@@ -2,6 +2,7 @@ import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AreaSatLayers } from '@/components/AreaSatLayers';
 import { AreaActionsMenu } from '@/components/area/area-actions-menu';
 import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
+import { MarkerPlacementOverlay } from '@/components/area/marker-placement-overlay';
 import { PolygonDrawingControls } from '@/components/area/polygon-drawing-controls';
 import { PolygonDrawingLayers } from '@/components/area/polygon-drawing-layers';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
@@ -73,13 +74,18 @@ export default function ViewAreaScreen() {
   );
   const areaSats = useQuery(api.areaSats.listByArea, area ? { areaId: id as Id<'areas'> } : 'skip');
   const {
+    cancelMarkerPlacement,
+    confirmMarkerPlacement,
     draggedPointOverrides,
     handleDropFeature,
     handleMapLongPress,
     handlePressFeature,
     handleStartDraggingFeature,
+    isConfirmingMarkerPlacement,
+    isPlacingMarker,
     resetMarkerGestureLocks,
-  } = useAreaMarkerGestures(id as Id<'areas'>);
+    startMarkerPlacement,
+  } = useAreaMarkerGestures(id as Id<'areas'>, { cameraRef, mapRef });
 
   useFocusEffect(() => {
     resetMarkerGestureLocks();
@@ -340,13 +346,20 @@ export default function ViewAreaScreen() {
     areaPolygonEditing.handleDone();
   };
 
-  const renderAreaActionsMenu = () => (
-    <AreaActionsMenu
-      areaId={id as Id<'areas'>}
-      onCreateSat={isEditingPolygon ? undefined : handleStartSatDrawing}
-      onRedrawArea={isEditingPolygon ? undefined : handleStartAreaDrawing}
-    />
-  );
+  const renderAreaActionsMenu = () => {
+    if (isPlacingMarker) {
+      return null;
+    }
+
+    return (
+      <AreaActionsMenu
+        areaId={id as Id<'areas'>}
+        onCreateMarker={isEditingPolygon ? undefined : startMarkerPlacement}
+        onCreateSat={isEditingPolygon ? undefined : handleStartSatDrawing}
+        onRedrawArea={isEditingPolygon ? undefined : handleStartAreaDrawing}
+      />
+    );
+  };
 
   const handleGoToMyPosition = async () => {
     try {
@@ -413,7 +426,7 @@ export default function ViewAreaScreen() {
           onPress={
             isEditingPolygon && !isSatFreehandDrawing ? handlePressMapWhileDrawing : undefined
           }
-          onLongPress={isEditingPolygon ? undefined : handleMapLongPress}
+          onLongPress={isEditingPolygon || isPlacingMarker ? undefined : handleMapLongPress}
           scaleBarEnabled={false}
         >
           {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
@@ -446,7 +459,7 @@ export default function ViewAreaScreen() {
             <AreaSatLayers
               sats={areaSats}
               idPrefix="area-view-sats"
-              interactive={!isEditingPolygon}
+              interactive={!isEditingPolygon && !isPlacingMarker}
               onPressSat={(sat) => {
                 push(`/area/${id}/sat?satId=${sat.id}`);
               }}
@@ -490,12 +503,12 @@ export default function ViewAreaScreen() {
             <AreaFeatureLayers
               features={visibleAreaFeatures}
               idPrefix="area-view-features"
-              interactive={!isEditingPolygon}
-              hidePointCircles={!isEditingPolygon}
+              interactive={!isEditingPolygon && !isPlacingMarker}
+              hidePointCircles={!isEditingPolygon && !isPlacingMarker}
             />
           )}
 
-          {visibleAreaFeatures && !isEditingPolygon && (
+          {visibleAreaFeatures && !isEditingPolygon && !isPlacingMarker && (
             <DraggableAreaPointMarkers
               features={visibleAreaFeatures}
               idPrefix="area-view-point-markers"
@@ -514,7 +527,7 @@ export default function ViewAreaScreen() {
           <GlassTopNav
             appearance="floating"
             title={area.name}
-            onBack={() => back()}
+            onBack={isPlacingMarker ? cancelMarkerPlacement : () => back()}
             renderRightAccessory={renderAreaActionsMenu}
           />
         </View>
@@ -586,6 +599,15 @@ export default function ViewAreaScreen() {
             pointCount={areaPolygonEditing.polygonPoints.length}
             statusText={`${areaPolygonEditing.polygonPoints.length} punkter`}
             title="Rita om area"
+          />
+        ) : isPlacingMarker ? (
+          <MarkerPlacementOverlay
+            bottomInset={Math.max(insets.bottom, 16) + 8}
+            isConfirming={isConfirmingMarkerPlacement}
+            onCancel={cancelMarkerPlacement}
+            onConfirm={() => {
+              void confirmMarkerPlacement();
+            }}
           />
         ) : (
           <View className="absolute left-4" style={{ bottom: Math.max(insets.bottom, 16) + 8 }}>

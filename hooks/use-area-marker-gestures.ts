@@ -10,13 +10,30 @@ import { saveAreaFeatureDraft } from '@/lib/area-feature-draft-store';
 import type { LatLngPoint } from '@/lib/geo';
 import { useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Alert, Vibration } from 'react-native';
 
 const FEATURE_PRESS_LOCK_MS = 1000;
 const DRAG_GESTURE_LOCK_MS = 1200;
 const DROP_GESTURE_LOCK_MS = 900;
 const DROP_OVERRIDE_SETTLE_MS = 800;
+
+type MarkerPlacementCamera = {
+  setCamera: (config: {
+    animationDuration: number;
+    animationMode: 'easeTo';
+    centerCoordinate: [number, number];
+  }) => void;
+};
+
+type MarkerPlacementMap = {
+  getCenter: () => Promise<GeoJSON.Position>;
+};
+
+type AreaMarkerGestureOptions = {
+  cameraRef: RefObject<MarkerPlacementCamera | null>;
+  mapRef: RefObject<MarkerPlacementMap | null>;
+};
 
 function createPointDraft(areaId: Id<'areas'>, point: LatLngPoint): AreaFeatureDraft {
   return {
@@ -55,21 +72,28 @@ function pointFromLongPress(event: GeoJSON.Feature): LatLngPoint {
   };
 }
 
-export function useAreaMarkerGestures(areaId: Id<'areas'>) {
+export function useAreaMarkerGestures(
+  areaId: Id<'areas'>,
+  { cameraRef, mapRef }: AreaMarkerGestureOptions
+) {
   const router = useRouter();
   const saveFeature = useMutation(api.areaFeatures.save);
   const blockLongPressUntilRef = useRef(0);
   const blockFeaturePressUntilRef = useRef(0);
   const markerEditNavigationLockedRef = useRef(false);
+  const markerPlacementConfirmationLockedRef = useRef(false);
   const overrideTimeoutsRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const [isConfirmingMarkerPlacement, setIsConfirmingMarkerPlacement] = useState(false);
+  const [isPlacingMarker, setIsPlacingMarker] = useState(false);
   const [draggedPointOverrides, setDraggedPointOverrides] = useState<Record<string, LatLngPoint>>(
     {}
   );
 
   useEffect(() => {
+    const overrideTimeouts = overrideTimeoutsRef.current;
     return () => {
-      overrideTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
-      overrideTimeoutsRef.current.clear();
+      overrideTimeouts.forEach((timeout) => clearTimeout(timeout));
+      overrideTimeouts.clear();
     };
   }, []);
 
@@ -83,12 +107,55 @@ export function useAreaMarkerGestures(areaId: Id<'areas'>) {
     router.push(`/area/${areaId}/marker-sheet?mode=create&draftId=${draftId}`);
   };
 
-  const handleMapLongPress = (event: GeoJSON.Feature) => {
-    if (Date.now() < blockLongPressUntilRef.current) {
+  const startMarkerPlacement = () => {
+    setIsPlacingMarker(true);
+  };
+
+  const cancelMarkerPlacement = () => {
+    if (markerPlacementConfirmationLockedRef.current) {
+      return;
+    }
+    setIsPlacingMarker(false);
+  };
+
+  const confirmMarkerPlacement = async () => {
+    const map = mapRef.current;
+    if (!map || markerPlacementConfirmationLockedRef.current) {
       return;
     }
 
-    openMarkerSheet(createPointDraft(areaId, pointFromLongPress(event)));
+    markerPlacementConfirmationLockedRef.current = true;
+    setIsConfirmingMarkerPlacement(true);
+    try {
+      const [longitude, latitude] = await map.getCenter();
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error('Map center is unavailable');
+      }
+
+      setIsPlacingMarker(false);
+      openMarkerSheet(createPointDraft(areaId, { latitude, longitude }));
+    } catch (error) {
+      console.error('Failed to confirm marker position:', error);
+      Alert.alert('Kunde inte välja plats', 'Försök igen om en stund.');
+    } finally {
+      markerPlacementConfirmationLockedRef.current = false;
+      setIsConfirmingMarkerPlacement(false);
+    }
+  };
+
+  const handleMapLongPress = (event: GeoJSON.Feature) => {
+    if (isPlacingMarker || Date.now() < blockLongPressUntilRef.current) {
+      return;
+    }
+
+    const point = pointFromLongPress(event);
+    cameraRef.current?.setCamera({
+      animationDuration: 250,
+      animationMode: 'easeTo',
+      centerCoordinate: [point.longitude, point.latitude],
+    });
+    setIsPlacingMarker(true);
+    Vibration.vibrate(8);
   };
 
   const handlePressFeature = (feature: AreaFeatureListItem) => {
@@ -159,11 +226,16 @@ export function useAreaMarkerGestures(areaId: Id<'areas'>) {
   };
 
   return {
+    cancelMarkerPlacement,
+    confirmMarkerPlacement,
     draggedPointOverrides,
     handleDropFeature,
     handleMapLongPress,
     handlePressFeature,
     handleStartDraggingFeature,
+    isConfirmingMarkerPlacement,
+    isPlacingMarker,
     resetMarkerGestureLocks,
+    startMarkerPlacement,
   };
 }
