@@ -18,7 +18,6 @@ import { clearAreaFeatureDraft, getAreaFeatureDraft } from '@/lib/area-feature-d
 import {
   MarkerFormValues,
   buildMarkerFormValues,
-  getPlacementSummary,
   getPointFallback,
   hasMarkerFormChanges,
 } from '@/lib/area-marker-form';
@@ -369,15 +368,6 @@ export default function MarkerFormScreen() {
                     />
                   )
                 )}
-              </View>
-
-              <Text className="mb-2 font-medium">Placering</Text>
-              <View className="mb-5 rounded-2xl border border-border bg-card px-4 py-3">
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm text-muted-foreground">
-                    {getPlacementSummary(values.point)}
-                  </Text>
-                </View>
               </View>
 
               <form.Field
