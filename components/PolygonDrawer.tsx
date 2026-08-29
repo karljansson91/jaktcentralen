@@ -1,11 +1,17 @@
 import { Button, Text } from '@/components/ui';
 import { FastighetsindelningLayer } from '@/components/FastighetsindelningLayer';
+import {
+  PolygonDrawingControls,
+  PolygonModeControls,
+} from '@/components/area/polygon-drawing-controls';
+import { PolygonDrawingLayers } from '@/components/area/polygon-drawing-layers';
+import { PolygonEditorSurface } from '@/components/area/polygon-editor-surface';
 import { GlassSurface } from '@/components/glass';
 import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { useInitialPolygonCamera } from '@/hooks/use-initial-polygon-camera';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
-import { usePolygonEditing } from '@/hooks/use-polygon-editing';
+import { usePolygonEditor, type PolygonEditorMode } from '@/hooks/use-polygon-editor';
 import type { LngLat } from '@/lib/geo';
 import { APP_COLORS } from '@/lib/theme';
 import {
@@ -22,7 +28,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   Camera,
-  CircleLayer,
   FillLayer,
   LineLayer,
   LocationPuck,
@@ -36,62 +41,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export type { LngLat } from '@/lib/geo';
 
 type AreaEditMode = 'draw' | 'select-fastighet';
-
-function buildShapeGeoJSON(points: LngLat[]): GeoJSON.Feature {
-  if (points.length >= 3) {
-    return {
-      type: 'Feature',
-      properties: {},
-      geometry: { type: 'Polygon', coordinates: [[...points, points[0]]] },
-    };
-  }
-  return {
-    type: 'Feature',
-    properties: {},
-    geometry: { type: 'LineString', coordinates: points },
-  };
-}
-
-function buildVerticesGeoJSON(
-  points: LngLat[],
-  draggingIndex: number | null
-): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: points.map((p, i) => ({
-      type: 'Feature',
-      properties: { index: i, dragging: i === draggingIndex },
-      geometry: { type: 'Point', coordinates: p },
-    })),
-  };
-}
-
-function buildMidpointsGeoJSON(points: LngLat[]): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    features.push({
-      type: 'Feature',
-      properties: { insertAfter: i },
-      geometry: {
-        type: 'Point',
-        coordinates: [(points[i][0] + points[i + 1][0]) / 2, (points[i][1] + points[i + 1][1]) / 2],
-      },
-    });
-  }
-  if (points.length >= 3) {
-    const last = points[points.length - 1];
-    const first = points[0];
-    features.push({
-      type: 'Feature',
-      properties: { insertAfter: points.length - 1 },
-      geometry: {
-        type: 'Point',
-        coordinates: [(last[0] + first[0]) / 2, (last[1] + first[1]) / 2],
-      },
-    });
-  }
-  return { type: 'FeatureCollection', features };
-}
 
 function SelectedInfoRow({ label, value }: { label: string; value?: string }) {
   if (!value) {
@@ -216,19 +165,12 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
     showFastighetsgrans,
   } = fastighetState;
   const initialCamera = useInitialPolygonCamera(initialPoints);
-  const {
-    draggingVertex,
-    handleDone,
-    handleMapPress,
-    handleTouchEnd,
-    handleTouchMove,
-    handleTouchStart,
-    handleUndo,
-    hasChanges,
-    isDragging,
-    polygonPoints,
-    replacePolygonPoints,
-  } = usePolygonEditing({ initialPoints, mapRef, onComplete });
+  const polygonEditor = usePolygonEditor({
+    initialMode: 'freehand',
+    initialPoints,
+    mapRef,
+    onComplete,
+  });
 
   const clearFastighetSelection = () => {
     dispatchFastighet({ type: 'clear-selection' });
@@ -236,6 +178,11 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
   const handleEnterDrawMode = () => {
     dispatchFastighet({ type: 'enter-draw' });
+  };
+
+  const handlePolygonModeChange = (nextMode: PolygonEditorMode) => {
+    polygonEditor.setMode(nextMode);
+    handleEnterDrawMode();
   };
 
   const handleEnterSelectMode = () => {
@@ -248,9 +195,6 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
   // --- Derived data ---
 
-  const shapeGeoJSON = polygonPoints.length >= 2 ? buildShapeGeoJSON(polygonPoints) : null;
-  const verticesGeoJSON = buildVerticesGeoJSON(polygonPoints, draggingVertex);
-  const midpointsGeoJSON = buildMidpointsGeoJSON(polygonPoints);
   const selectedFastighetGeoJSON = selectedFastighetGeometry
     ? buildFastighetGeoJSON(selectedFastighetGeometry)
     : null;
@@ -314,7 +258,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       void handleSelectFastighet(feature);
       return;
     }
-    handleMapPress(feature);
+    polygonEditor.handleMapPress(feature);
   };
 
   const handleApplySelectedFastighet = () => {
@@ -326,14 +270,12 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       return;
     }
 
-    replacePolygonPoints(selectedApplyState.points);
+    polygonEditor.replacePolygonPoints(selectedApplyState.points);
     dispatchFastighet({ type: 'enter-draw' });
   };
 
   const isDrawMode = mode === 'draw';
   const isSelectMode = mode === 'select-fastighet';
-  const activeIconColor = '#FFFFFF';
-  const inactiveIconColor = APP_COLORS.text;
 
   if (!initialCamera) {
     return (
@@ -356,23 +298,17 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
   return (
     <View style={{ flex: 1 }}>
-      <View
-        style={{ flex: 1 }}
-        onTouchStart={isDrawMode ? handleTouchStart : undefined}
-        onTouchMove={isDrawMode ? handleTouchMove : undefined}
-        onTouchEnd={isDrawMode ? handleTouchEnd : undefined}
-        onTouchCancel={isDrawMode ? handleTouchEnd : undefined}
-      >
+      <PolygonEditorSurface editor={isDrawMode ? polygonEditor : null}>
         <MapView
           key={mapStyleKey}
           ref={mapRef}
           style={{ flex: 1 }}
           styleURL={mapStyleURL}
           onPress={handleMapPressForMode}
-          scrollEnabled={!isDragging}
-          zoomEnabled={!isDragging}
-          rotateEnabled={!isDragging}
-          pitchEnabled={!isDragging}
+          scrollEnabled={isSelectMode || polygonEditor.mapGestures.scrollEnabled}
+          zoomEnabled={isSelectMode || polygonEditor.mapGestures.zoomEnabled}
+          rotateEnabled={isSelectMode || polygonEditor.mapGestures.rotateEnabled}
+          pitchEnabled={isSelectMode || polygonEditor.mapGestures.pitchEnabled}
         >
           {'bounds' in initialCamera ? (
             <Camera
@@ -419,61 +355,16 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             </ShapeSource>
           )}
 
-          {shapeGeoJSON && (
-            <ShapeSource id="polygon-shape" shape={shapeGeoJSON}>
-              <FillLayer
-                id="polygon-fill"
-                style={{ fillColor: 'rgba(34, 197, 94, 0.14)' }}
-                filter={['==', '$type', 'Polygon']}
-              />
-              <LineLayer
-                id="polygon-line"
-                style={{ lineColor: 'rgba(34, 197, 94, 0.76)', lineWidth: 1.25 }}
-              />
-            </ShapeSource>
-          )}
-
-          {/* Midpoints */}
-          {!isDragging && polygonPoints.length >= 2 && (
-            <ShapeSource id="midpoints" shape={midpointsGeoJSON} hitbox={{ width: 30, height: 30 }}>
-              <CircleLayer
-                id="midpoint-circles"
-                style={{
-                  circleRadius: 6,
-                  circleColor: 'rgb(34, 197, 94)',
-                  circleOpacity: 0.4,
-                }}
-              />
-            </ShapeSource>
-          )}
-
-          {/* Vertices */}
-          {polygonPoints.length > 0 && (
-            <ShapeSource id="vertices" shape={verticesGeoJSON}>
-              <CircleLayer
-                id="vertex-dragging"
-                filter={['==', ['get', 'dragging'], true]}
-                style={{
-                  circleRadius: 14,
-                  circleColor: 'rgb(220, 252, 231)',
-                  circleStrokeColor: 'rgb(22, 163, 74)',
-                  circleStrokeWidth: 3,
-                }}
-              />
-              <CircleLayer
-                id="vertex-normal"
-                filter={['==', ['get', 'dragging'], false]}
-                style={{
-                  circleRadius: 10,
-                  circleColor: 'white',
-                  circleStrokeColor: 'rgb(34, 197, 94)',
-                  circleStrokeWidth: 2,
-                }}
-              />
-            </ShapeSource>
-          )}
+          <PolygonDrawingLayers
+            color={APP_COLORS.primary}
+            draggingIndex={polygonEditor.draggingVertex}
+            idPrefix="area-create-polygon"
+            points={polygonEditor.polygonPoints}
+            previewPoints={polygonEditor.freehandPreviewPoints}
+            showEditingHandles={isDrawMode && polygonEditor.mode === 'points'}
+          />
         </MapView>
-      </View>
+      </PolygonEditorSurface>
 
       <View
         className="absolute left-4 right-4 z-10 gap-2"
@@ -528,51 +419,35 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
             </View>
           </View>
 
-          <View className="flex-row gap-2">
+          {showFastighetsgrans ? (
             <Button
               size="sm"
-              variant={isDrawMode ? 'default' : 'outline'}
-              className={isDrawMode ? 'flex-1' : 'flex-1 bg-background'}
-              onPress={handleEnterDrawMode}
+              variant={isSelectMode ? 'default' : 'outline'}
+              className={isSelectMode ? '' : 'bg-background'}
+              onPress={isSelectMode ? handleEnterDrawMode : handleEnterSelectMode}
             >
               <Ionicons
-                name="pencil"
+                name={isSelectMode ? 'pencil-outline' : 'scan-outline'}
                 size={15}
-                color={isDrawMode ? activeIconColor : inactiveIconColor}
+                color={isSelectMode ? APP_COLORS.surface : APP_COLORS.text}
               />
-              <Text>Rita</Text>
+              <Text>{isSelectMode ? 'Till ritning' : 'Välj gräns'}</Text>
             </Button>
-
-            {showFastighetsgrans ? (
-              <Button
-                size="sm"
-                variant={isSelectMode ? 'default' : 'outline'}
-                className={isSelectMode ? 'flex-1' : 'flex-1 bg-background'}
-                onPress={handleEnterSelectMode}
-              >
-                <Ionicons
-                  name="scan-outline"
-                  size={15}
-                  color={isSelectMode ? activeIconColor : inactiveIconColor}
-                />
-                <Text>Välj gräns</Text>
-              </Button>
-            ) : null}
-          </View>
+          ) : null}
         </GlassSurface>
       </View>
 
-      <View
-        className="absolute left-4 right-4 gap-2"
-        pointerEvents="box-none"
-        style={[{ bottom: Math.max(insets.bottom, 8) + 8 }, OVERLAY_STACK_STYLE]}
-      >
-        <GlassSurface
-          className="rounded-xl"
-          contentClassName="gap-3 p-3"
-          overlayColor="rgba(252, 248, 242, 0.26)"
+      {isSelectMode ? (
+        <View
+          className="absolute left-4 right-4 gap-2"
+          pointerEvents="box-none"
+          style={[{ bottom: Math.max(insets.bottom, 8) + 8 }, OVERLAY_STACK_STYLE]}
         >
-          {isSelectMode ? (
+          <GlassSurface
+            className="rounded-xl"
+            contentClassName="gap-3 p-3"
+            overlayColor="rgba(252, 248, 242, 0.26)"
+          >
             <>
               <View className="gap-2">
                 <View className="flex-row items-center gap-2">
@@ -626,30 +501,29 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
                 </View>
               ) : null}
             </>
-          ) : (
-            <View className="flex-row justify-center gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 bg-background"
-                onPress={handleUndo}
-                disabled={polygonPoints.length === 0}
-              >
-                <Text>Ångra</Text>
-              </Button>
-              <Button
-                className="flex-1"
-                onPress={handleDone}
-                disabled={polygonPoints.length < 3 || !hasChanges}
-              >
-                <Text>spara</Text>
-              </Button>
-            </View>
-          )}
-        </GlassSurface>
-      </View>
+          </GlassSurface>
+        </View>
+      ) : (
+        <PolygonDrawingControls
+          bottomInset={Math.max(insets.bottom, 8) + 8}
+          canContinue={polygonEditor.isReady && polygonEditor.hasChanges}
+          canUndo={polygonEditor.canUndo}
+          onCancel={onCancel}
+          onContinue={polygonEditor.handleDone}
+          onUndo={polygonEditor.handleUndo}
+          pointCount={polygonEditor.pointCount}
+          statusText={polygonEditor.statusText}
+          title="Rita område"
+        >
+          <PolygonModeControls
+            mode={polygonEditor.mode}
+            onModeChange={handlePolygonModeChange}
+          />
+        </PolygonDrawingControls>
+      )}
 
       {/* Drag hint */}
-      {isDragging && (
+      {polygonEditor.isDragging && (
         <View className="absolute left-4 right-4 top-16 items-center pointer-events-none">
           <View className="rounded-full bg-black/70 px-4 py-2">
             <Text className="text-sm text-white">Dra för att flytta punkt</Text>

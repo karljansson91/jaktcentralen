@@ -3,41 +3,37 @@ import { AreaSatLayers } from '@/components/AreaSatLayers';
 import { AreaActionsMenu } from '@/components/area/area-actions-menu';
 import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
 import { MarkerPlacementOverlay } from '@/components/area/marker-placement-overlay';
-import { PolygonDrawingControls } from '@/components/area/polygon-drawing-controls';
+import {
+  PolygonDrawingControls,
+  PolygonModeControls,
+} from '@/components/area/polygon-drawing-controls';
 import { PolygonDrawingLayers } from '@/components/area/polygon-drawing-layers';
+import { PolygonEditorSurface } from '@/components/area/polygon-editor-surface';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
 import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
 import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { NorthCompassButton } from '@/components/map/north-compass-button';
-import { Button, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { areaFeaturePointToLngLat, getAreaFeatureTargetKey } from '@/lib/area-features';
-import {
-  buildAreaPolygonFeature,
-  getAreaCameraBounds,
-  latLngPointFromMapFeature,
-} from '@/lib/area-map';
+import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
 import { useMapCameraState } from '@/hooks/use-map-camera-state';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
-import { usePolygonEditing } from '@/hooks/use-polygon-editing';
+import { usePolygonEditor } from '@/hooks/use-polygon-editor';
 import { getDefaultAreaSatColor } from '@/lib/area-sats';
 import { saveAreaSatDraft } from '@/lib/area-sat-draft-store';
-import { distanceMeters, type LatLngPoint, type LngLat } from '@/lib/geo';
+import { isPointInPolygon, type LatLngPoint, type LngLat } from '@/lib/geo';
 import { getCurrentUserCoordinate } from '@/lib/location';
-import { unionLatLngPolygons } from '@/lib/polygon-union';
 import { APP_COLORS } from '@/lib/theme';
 import { Camera, FillLayer, LineLayer, LocationPuck, MapView, ShapeSource } from '@rnmapbox/maps';
 import { useMutation, useQuery } from 'convex/react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ElementRef, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, View, type GestureResponderEvent } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-type SatDrawingMode = 'freehand' | 'points';
 
 function lngLatToLatLngPoint([longitude, latitude]: LngLat): LatLngPoint {
   return { latitude, longitude };
@@ -55,14 +51,8 @@ export default function ViewAreaScreen() {
     resetHeading: handleResetMapNorth,
     scale: mapScale,
   } = useMapCameraState(cameraRef);
-  const satFreehandLastPointRef = useRef<LatLngPoint | null>(null);
-  const satFreehandBasePolygonRef = useRef<LatLngPoint[] | null>(null);
-  const satFreehandStrokeRef = useRef<LatLngPoint[]>([]);
-  const satFreehandHistoryRef = useRef<LatLngPoint[][]>([]);
   const { hillshadeVisible, mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
-  const [satDrawingPoints, setSatDrawingPoints] = useState<LatLngPoint[] | null>(null);
-  const [satDrawingMode, setSatDrawingMode] = useState<SatDrawingMode>('freehand');
-  const [satFreehandPreviewPoints, setSatFreehandPreviewPoints] = useState<LatLngPoint[]>([]);
+  const [isDrawingSat, setIsDrawingSat] = useState(false);
   const [isEditingAreaPolygon, setIsEditingAreaPolygon] = useState(false);
   const [areaEditingError, setAreaEditingError] = useState<string | null>(null);
   const [isUpdatingAreaPolygon, setIsUpdatingAreaPolygon] = useState(false);
@@ -144,106 +134,18 @@ export default function ViewAreaScreen() {
       });
   };
 
-  const areaPolygonEditing = usePolygonEditing({
+  const areaPolygonEditor = usePolygonEditor({
+    initialMode: 'points',
     initialPoints: areaEditInitialPoints,
     mapRef,
     onComplete: handleCompleteAreaEditing,
   });
 
-  const isDrawingSat = satDrawingPoints !== null;
-  const isSatFreehandDrawing = isDrawingSat && satDrawingMode === 'freehand';
-  const isEditingPolygon = isDrawingSat || isEditingAreaPolygon;
   const satDrawingColor = getDefaultAreaSatColor(areaSats?.length ?? 0);
   const areaDrawingColor = APP_COLORS.primary;
 
-  const resetSatFreehandGesture = () => {
-    satFreehandLastPointRef.current = null;
-    satFreehandBasePolygonRef.current = null;
-    satFreehandStrokeRef.current = [];
-    setSatFreehandPreviewPoints([]);
-  };
-
-  const handleStartSatDrawing = () => {
-    setIsEditingAreaPolygon(false);
-    setAreaEditingError(null);
-    setSatDrawingMode('freehand');
-    setSatDrawingPoints([]);
-    satFreehandHistoryRef.current = [];
-    resetSatFreehandGesture();
-  };
-
-  const handleCancelSatDrawing = () => {
-    resetSatFreehandGesture();
-    satFreehandHistoryRef.current = [];
-    setSatDrawingPoints(null);
-  };
-
-  const handleUndoSatPoint = () => {
-    if (satDrawingMode === 'freehand') {
-      const activeBasePolygon = satFreehandBasePolygonRef.current;
-      const hasActiveStroke = satFreehandStrokeRef.current.length > 0;
-      resetSatFreehandGesture();
-
-      if (hasActiveStroke) {
-        setSatDrawingPoints((current) =>
-          current === null ? current : (activeBasePolygon ?? current)
-        );
-        return;
-      }
-
-      const previousPolygon = satFreehandHistoryRef.current.pop();
-      setSatDrawingPoints((current) => (current === null ? current : (previousPolygon ?? [])));
-      return;
-    }
-
-    resetSatFreehandGesture();
-    setSatDrawingPoints((current) => (current === null ? current : current.slice(0, -1)));
-  };
-
-  const handleStartAreaDrawing = () => {
-    if (!area) {
-      return;
-    }
-    resetSatFreehandGesture();
-    satFreehandHistoryRef.current = [];
-    setSatDrawingPoints(null);
-    setAreaEditingError(null);
-    areaPolygonEditing.replacePolygonPoints(area.polygon.map(areaFeaturePointToLngLat));
-    setIsEditingAreaPolygon(true);
-  };
-
-  const handleCancelAreaDrawing = () => {
-    setIsEditingAreaPolygon(false);
-    setAreaEditingError(null);
-    if (area) {
-      areaPolygonEditing.replacePolygonPoints(area.polygon.map(areaFeaturePointToLngLat));
-    }
-  };
-
-  const handleUndoAreaPoint = () => {
-    setAreaEditingError(null);
-    areaPolygonEditing.handleUndo();
-  };
-
-  const handlePressMapWhileDrawing = (feature: GeoJSON.Feature) => {
-    if (isEditingAreaPolygon) {
-      setAreaEditingError(null);
-      areaPolygonEditing.handleMapPress(feature);
-      return;
-    }
-
-    if (isDrawingSat && satDrawingMode === 'points') {
-      const point = latLngPointFromMapFeature(feature);
-      if (!point) {
-        return;
-      }
-
-      setSatDrawingPoints((current) => (current === null ? current : [...current, point]));
-    }
-  };
-
-  const handleContinueSatDrawing = () => {
-    if (!satDrawingPoints || satDrawingPoints.length < 3) {
+  const handleCompleteSatDrawing = (points: LngLat[]) => {
+    if (!area || !points.every((point) => isPointInPolygon(lngLatToLatLngPoint(point), area.polygon))) {
       return;
     }
 
@@ -251,99 +153,88 @@ export default function ViewAreaScreen() {
       areaId: id as Id<'areas'>,
       color: satDrawingColor,
       name: '',
-      polygon: satDrawingPoints,
+      polygon: points.map(lngLatToLatLngPoint),
     });
-    resetSatFreehandGesture();
-    satFreehandHistoryRef.current = [];
-    setSatDrawingPoints(null);
+    setIsDrawingSat(false);
     push(`/area/${id}/sat?draftId=${draftId}`);
   };
 
-  const handleSatFreehandTouchStart = async (event: GestureResponderEvent) => {
-    if (!mapRef.current || !isSatFreehandDrawing) {
-      return;
-    }
-    if ((event.nativeEvent.touches?.length ?? 1) > 1) {
-      return;
-    }
+  const satPolygonEditor = usePolygonEditor({
+    initialMode: 'freehand',
+    mapRef,
+    onComplete: handleCompleteSatDrawing,
+  });
 
-    const { pageX, pageY } = event.nativeEvent;
-    try {
-      const [longitude, latitude] = (await mapRef.current.getCoordinateFromView([
-        pageX,
-        pageY,
-      ])) as LngLat;
-      const point = { latitude, longitude };
-      const basePolygon =
-        satDrawingPoints && satDrawingPoints.length >= 3 ? satDrawingPoints : null;
-      satFreehandLastPointRef.current = point;
-      satFreehandBasePolygonRef.current = basePolygon;
-      satFreehandStrokeRef.current = [point];
-      setSatFreehandPreviewPoints([point]);
-    } catch {
-      // The map can reject coordinate conversion while it is mounting.
+  const isEditingPolygon = isDrawingSat || isEditingAreaPolygon;
+  const activePolygonEditor = isDrawingSat
+    ? satPolygonEditor
+    : isEditingAreaPolygon
+      ? areaPolygonEditor
+      : null;
+  const isSatPolygonInsideArea = Boolean(
+    area &&
+      satPolygonEditor.isReady &&
+      satPolygonEditor.polygonPoints.every((point) =>
+        isPointInPolygon(lngLatToLatLngPoint(point), area.polygon)
+      )
+  );
+
+  const handleStartSatDrawing = () => {
+    setIsEditingAreaPolygon(false);
+    setAreaEditingError(null);
+    areaPolygonEditor.resetPolygonPoints(areaEditInitialPoints);
+    satPolygonEditor.setMode('freehand');
+    satPolygonEditor.resetPolygonPoints([]);
+    setIsDrawingSat(true);
+  };
+
+  const handleCancelSatDrawing = () => {
+    satPolygonEditor.resetPolygonPoints([]);
+    setIsDrawingSat(false);
+  };
+
+  const handleStartAreaDrawing = () => {
+    if (!area) {
+      return;
+    }
+    satPolygonEditor.resetPolygonPoints([]);
+    setIsDrawingSat(false);
+    setAreaEditingError(null);
+    areaPolygonEditor.setMode('points');
+    areaPolygonEditor.resetPolygonPoints(area.polygon.map(areaFeaturePointToLngLat));
+    setIsEditingAreaPolygon(true);
+  };
+
+  const handleCancelAreaDrawing = () => {
+    setIsEditingAreaPolygon(false);
+    setAreaEditingError(null);
+    if (area) {
+      areaPolygonEditor.resetPolygonPoints(area.polygon.map(areaFeaturePointToLngLat));
     }
   };
 
-  const handleSatFreehandTouchMove = async (event: GestureResponderEvent) => {
-    if (!mapRef.current || !isSatFreehandDrawing) {
-      return;
-    }
-    if ((event.nativeEvent.touches?.length ?? 1) > 1) {
-      resetSatFreehandGesture();
-      return;
-    }
-
-    const { pageX, pageY } = event.nativeEvent;
-    try {
-      const [longitude, latitude] = (await mapRef.current.getCoordinateFromView([
-        pageX,
-        pageY,
-      ])) as LngLat;
-      const point = { latitude, longitude };
-      const lastPoint = satFreehandLastPointRef.current;
-      if (lastPoint && distanceMeters(lastPoint, point) < 8) {
-        return;
-      }
-
-      satFreehandLastPointRef.current = point;
-      const nextStroke = [...satFreehandStrokeRef.current, point];
-      satFreehandStrokeRef.current = nextStroke;
-      setSatFreehandPreviewPoints(nextStroke);
-    } catch {
-      // The native map can disappear mid-gesture during navigation.
-    }
+  const handleUndoAreaPoint = () => {
+    setAreaEditingError(null);
+    areaPolygonEditor.handleUndo();
   };
 
-  const handleSatFreehandTouchEnd = () => {
-    const stroke = satFreehandStrokeRef.current;
-    const basePolygon = satFreehandBasePolygonRef.current;
-    satFreehandLastPointRef.current = null;
-    satFreehandBasePolygonRef.current = null;
-    satFreehandStrokeRef.current = [];
-    setSatFreehandPreviewPoints([]);
-
-    if (stroke.length === 0 && !basePolygon) {
+  const handlePressMapWhileDrawing = (feature: GeoJSON.Feature) => {
+    if (isEditingAreaPolygon) {
+      setAreaEditingError(null);
+      areaPolygonEditor.handleMapPress(feature);
       return;
     }
 
-    if (stroke.length < 3) {
-      setSatDrawingPoints(basePolygon ?? []);
-      return;
+    if (isDrawingSat) {
+      satPolygonEditor.handleMapPress(feature);
     }
-
-    satFreehandHistoryRef.current = [
-      ...satFreehandHistoryRef.current,
-      basePolygon ? [...basePolygon] : [],
-    ];
-    setSatDrawingPoints(basePolygon ? unionLatLngPolygons(basePolygon, stroke) : stroke);
   };
 
   const handleSaveAreaDrawing = () => {
-    if (areaPolygonEditing.polygonPoints.length < 3 || !areaPolygonEditing.hasChanges) {
+    if (!areaPolygonEditor.isReady || !areaPolygonEditor.hasChanges) {
       return;
     }
-    areaPolygonEditing.handleDone();
+    areaPolygonEditor.handleDone();
   };
 
   const renderAreaActionsMenu = () => {
@@ -395,37 +286,19 @@ export default function ViewAreaScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: APP_COLORS.background }}>
-      <View
-        style={{ flex: 1 }}
-        onStartShouldSetResponder={(event) =>
-          isSatFreehandDrawing && (event.nativeEvent.touches?.length ?? 1) === 1
-        }
-        onMoveShouldSetResponder={(event) =>
-          isSatFreehandDrawing && (event.nativeEvent.touches?.length ?? 1) === 1
-        }
-        onResponderGrant={isSatFreehandDrawing ? handleSatFreehandTouchStart : undefined}
-        onResponderMove={isSatFreehandDrawing ? handleSatFreehandTouchMove : undefined}
-        onResponderRelease={isSatFreehandDrawing ? handleSatFreehandTouchEnd : undefined}
-        onResponderTerminate={isSatFreehandDrawing ? handleSatFreehandTouchEnd : undefined}
-        onTouchStart={isEditingAreaPolygon ? areaPolygonEditing.handleTouchStart : undefined}
-        onTouchMove={isEditingAreaPolygon ? areaPolygonEditing.handleTouchMove : undefined}
-        onTouchEnd={isEditingAreaPolygon ? areaPolygonEditing.handleTouchEnd : undefined}
-        onTouchCancel={isEditingAreaPolygon ? areaPolygonEditing.handleTouchEnd : undefined}
-      >
+      <PolygonEditorSurface editor={activePolygonEditor}>
         <MapView
           key={mapStyleKey}
           ref={mapRef}
           style={{ flex: 1 }}
           styleURL={mapStyleURL}
-          scrollEnabled={!areaPolygonEditing.isDragging && !isSatFreehandDrawing}
-          zoomEnabled={!areaPolygonEditing.isDragging}
-          rotateEnabled={!areaPolygonEditing.isDragging}
+          scrollEnabled={activePolygonEditor?.mapGestures.scrollEnabled ?? true}
+          zoomEnabled={activePolygonEditor?.mapGestures.zoomEnabled ?? true}
+          rotateEnabled={activePolygonEditor?.mapGestures.rotateEnabled ?? true}
           pitchEnabled={false}
           attributionEnabled={false}
           onCameraChanged={handleCameraChanged}
-          onPress={
-            isEditingPolygon && !isSatFreehandDrawing ? handlePressMapWhileDrawing : undefined
-          }
+          onPress={isEditingPolygon ? handlePressMapWhileDrawing : undefined}
           onLongPress={isEditingPolygon || isPlacingMarker ? undefined : handleMapLongPress}
           scaleBarEnabled={false}
         >
@@ -466,36 +339,25 @@ export default function ViewAreaScreen() {
             />
           )}
 
-          {satDrawingPoints ? (
+          {isDrawingSat ? (
             <PolygonDrawingLayers
               color={satDrawingColor}
+              draggingIndex={satPolygonEditor.draggingVertex}
               idPrefix="area-view-sat-drawing"
-              lineDasharray={null}
-              lineWidth={2.6}
-              points={satDrawingPoints}
-              preset="outline"
-            />
-          ) : null}
-
-          {satFreehandPreviewPoints.length > 1 ? (
-            <PolygonDrawingLayers
-              closeLine={false}
-              color={satDrawingColor}
-              idPrefix="area-view-sat-freehand-preview"
-              lineDasharray={[1.4, 1.1]}
-              lineWidth={1.8}
-              points={satFreehandPreviewPoints}
-              preset="preview"
+              points={satPolygonEditor.polygonPoints}
+              previewPoints={satPolygonEditor.freehandPreviewPoints}
+              showEditingHandles={satPolygonEditor.mode === 'points'}
             />
           ) : null}
 
           {isEditingAreaPolygon ? (
             <PolygonDrawingLayers
               color={areaDrawingColor}
-              draggingIndex={areaPolygonEditing.draggingVertex}
+              draggingIndex={areaPolygonEditor.draggingVertex}
               idPrefix="area-view-area-drawing"
-              points={areaPolygonEditing.polygonPoints.map(lngLatToLatLngPoint)}
-              preset="area-edit"
+              points={areaPolygonEditor.polygonPoints}
+              previewPoints={areaPolygonEditor.freehandPreviewPoints}
+              showEditingHandles={areaPolygonEditor.mode === 'points'}
             />
           ) : null}
 
@@ -520,7 +382,7 @@ export default function ViewAreaScreen() {
             />
           )}
         </MapView>
-      </View>
+      </PolygonEditorSurface>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
         <View className="absolute left-4 right-4" style={{ top: Math.max(insets.top, 8) + 8 }}>
@@ -544,50 +406,34 @@ export default function ViewAreaScreen() {
           />
         ) : null}
 
-        {isDrawingSat && satDrawingPoints ? (
+        {isDrawingSat ? (
           <PolygonDrawingControls
             bottomInset={Math.max(insets.bottom, 16) + 8}
-            canContinue={satDrawingPoints.length >= 3}
-            canUndo={satDrawingPoints.length > 0 || satFreehandPreviewPoints.length > 0}
+            canContinue={satPolygonEditor.isReady && isSatPolygonInsideArea}
+            canUndo={satPolygonEditor.canUndo}
             continueLabel="Fortsätt"
-            onCancel={handleCancelSatDrawing}
-            onContinue={handleContinueSatDrawing}
-            onUndo={handleUndoSatPoint}
-            pointCount={satDrawingPoints.length}
-            statusText={
-              satDrawingPoints.length >= 3
-                ? `${satDrawingPoints.length} punkter`
-                : satDrawingMode === 'freehand'
-                  ? 'Rita med fingret.'
-                  : 'Markera minst tre punkter.'
+            errorText={
+              satPolygonEditor.isReady && !isSatPolygonInsideArea
+                ? 'Såten måste ligga inom jaktmarken.'
+                : null
             }
+            onCancel={handleCancelSatDrawing}
+            onContinue={satPolygonEditor.handleDone}
+            onUndo={satPolygonEditor.handleUndo}
+            pointCount={satPolygonEditor.pointCount}
+            statusText={satPolygonEditor.statusText}
             title="Ny såt"
           >
-            <View className="flex-row gap-2">
-              <Button
-                size="sm"
-                variant={satDrawingMode === 'freehand' ? 'default' : 'outline'}
-                onPress={() => setSatDrawingMode('freehand')}
-                className="flex-1 rounded-2xl"
-              >
-                <Text>Rita</Text>
-              </Button>
-              <Button
-                size="sm"
-                variant={satDrawingMode === 'points' ? 'default' : 'outline'}
-                onPress={() => setSatDrawingMode('points')}
-                className="flex-1 rounded-2xl"
-              >
-                <Text>Punkter</Text>
-              </Button>
-            </View>
+            <PolygonModeControls
+              mode={satPolygonEditor.mode}
+              onModeChange={satPolygonEditor.setMode}
+            />
           </PolygonDrawingControls>
         ) : isEditingAreaPolygon ? (
           <PolygonDrawingControls
             bottomInset={Math.max(insets.bottom, 16) + 8}
-            canContinue={
-              areaPolygonEditing.polygonPoints.length >= 3 && areaPolygonEditing.hasChanges
-            }
+            canContinue={areaPolygonEditor.isReady && areaPolygonEditor.hasChanges}
+            canUndo={areaPolygonEditor.canUndo}
             continueLabel="Spara"
             errorText={areaEditingError}
             isSubmitting={isUpdatingAreaPolygon}
@@ -596,8 +442,8 @@ export default function ViewAreaScreen() {
               handleSaveAreaDrawing();
             }}
             onUndo={handleUndoAreaPoint}
-            pointCount={areaPolygonEditing.polygonPoints.length}
-            statusText={`${areaPolygonEditing.polygonPoints.length} punkter`}
+            pointCount={areaPolygonEditor.pointCount}
+            statusText={areaPolygonEditor.statusText}
             title="Rita om area"
           />
         ) : isPlacingMarker ? (

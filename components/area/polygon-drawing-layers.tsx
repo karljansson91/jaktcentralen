@@ -1,36 +1,26 @@
-import { areaFeaturePointToLngLat } from '@/lib/area-features';
-import type { LatLngPoint } from '@/lib/geo';
+import type { LngLat } from '@/lib/geo';
 import { CircleLayer, FillLayer, LineLayer, ShapeSource } from '@rnmapbox/maps';
 
 type PolygonDrawingLayersProps = {
-  closeLine?: boolean;
   color: string;
   draggingIndex?: number | null;
   idPrefix?: string;
-  lineDasharray?: number[] | null;
-  lineWidth?: number;
-  points: LatLngPoint[];
-  preset?: 'area-edit' | 'default' | 'outline' | 'preview';
+  points: LngLat[];
+  previewPoints?: LngLat[];
+  showEditingHandles?: boolean;
 };
 
 export function PolygonDrawingLayers({
-  closeLine = true,
   color,
   draggingIndex = null,
   idPrefix = 'polygon-drawing',
-  lineDasharray = [1.5, 1.1],
-  lineWidth = 2,
   points,
-  preset = 'default',
+  previewPoints = [],
+  showEditingHandles = false,
 }: PolygonDrawingLayersProps) {
-  const showFill = preset === 'default' || preset === 'area-edit';
-  const showLineHalo = preset === 'outline';
-  const showMidpoints = preset === 'area-edit';
-  const showVertices = preset === 'default' || preset === 'area-edit';
   const geometry = (() => {
-    const outline = points.map(areaFeaturePointToLngLat);
+    const outline = points;
     const closedOutline = outline.length >= 3 ? [...outline, outline[0]] : outline;
-    const lineOutline = closeLine ? closedOutline : outline;
 
     const polygon: GeoJSON.Feature<GeoJSON.Polygon> | null =
       outline.length >= 3
@@ -45,13 +35,13 @@ export function PolygonDrawingLayers({
         : null;
 
     const line: GeoJSON.Feature<GeoJSON.LineString> | null =
-      lineOutline.length >= 2
+      closedOutline.length >= 2
         ? {
             type: 'Feature',
             properties: {},
             geometry: {
               type: 'LineString',
-              coordinates: lineOutline,
+              coordinates: closedOutline,
             },
           }
         : null;
@@ -104,13 +94,22 @@ export function PolygonDrawingLayers({
     return { line, midpoints, polygon, vertices };
   })();
 
-  if (points.length === 0) {
+  const previewLine: GeoJSON.Feature<GeoJSON.LineString> | null =
+    previewPoints.length >= 2
+      ? {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: previewPoints },
+        }
+      : null;
+
+  if (points.length === 0 && !previewLine) {
     return null;
   }
 
   return (
     <>
-      {showFill && geometry.polygon ? (
+      {geometry.polygon ? (
         <ShapeSource id={`${idPrefix}-polygon-source`} shape={geometry.polygon}>
           <FillLayer
             id={`${idPrefix}-fill`}
@@ -122,61 +121,49 @@ export function PolygonDrawingLayers({
         </ShapeSource>
       ) : null}
 
-      {geometry.line && showLineHalo ? (
+      {geometry.line ? (
         <ShapeSource id={`${idPrefix}-line-source`} shape={geometry.line}>
           <LineLayer
             id={`${idPrefix}-line-halo`}
             style={{
               lineColor: '#ffffff',
-              lineOpacity: 0.64,
-              lineWidth: lineWidth + 1.8,
+              lineOpacity: 0.7,
+              lineWidth: 4,
             }}
           />
           <LineLayer
             id={`${idPrefix}-line`}
             style={{
               lineColor: color,
-              ...(lineDasharray ? { lineDasharray } : {}),
-              lineWidth,
-            }}
-          />
-        </ShapeSource>
-      ) : geometry.line ? (
-        <ShapeSource id={`${idPrefix}-line-source`} shape={geometry.line}>
-          <LineLayer
-            id={`${idPrefix}-line`}
-            style={{
-              lineColor: color,
-              ...(lineDasharray ? { lineDasharray } : {}),
-              lineWidth,
+              lineWidth: 2.4,
             }}
           />
         </ShapeSource>
       ) : null}
 
-      {showMidpoints && draggingIndex === null && geometry.midpoints.features.length > 0 ? (
+      {showEditingHandles && draggingIndex === null && geometry.midpoints.features.length > 0 ? (
         <ShapeSource id={`${idPrefix}-midpoints-source`} shape={geometry.midpoints}>
           <CircleLayer
             id={`${idPrefix}-midpoints`}
             style={{
               circleColor: color,
               circleOpacity: 0.42,
-              circleRadius: 2,
+              circleRadius: 4.5,
             }}
           />
         </ShapeSource>
       ) : null}
 
-      {showVertices ? (
+      {showEditingHandles ? (
         <ShapeSource id={`${idPrefix}-vertices-source`} shape={geometry.vertices}>
           <CircleLayer
             id={`${idPrefix}-vertices-dragging`}
             filter={['==', ['get', 'dragging'], true]}
             style={{
               circleColor: '#dcfce7',
-              circleRadius: 6,
+              circleRadius: 11,
               circleStrokeColor: color,
-              circleStrokeWidth: 1.5,
+              circleStrokeWidth: 2.5,
             }}
           />
           <CircleLayer
@@ -184,9 +171,22 @@ export function PolygonDrawingLayers({
             filter={['==', ['get', 'dragging'], false]}
             style={{
               circleColor: '#ffffff',
-              circleRadius: 3,
+              circleRadius: 7,
               circleStrokeColor: color,
-              circleStrokeWidth: 1,
+              circleStrokeWidth: 2,
+            }}
+          />
+        </ShapeSource>
+      ) : null}
+
+      {previewLine ? (
+        <ShapeSource id={`${idPrefix}-preview-source`} shape={previewLine}>
+          <LineLayer
+            id={`${idPrefix}-preview`}
+            style={{
+              lineColor: color,
+              lineDasharray: [1.4, 1.1],
+              lineWidth: 2,
             }}
           />
         </ShapeSource>

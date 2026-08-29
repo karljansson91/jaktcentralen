@@ -1,4 +1,5 @@
 import { Button, Text } from '@/components/ui';
+import type { PolygonEditorMode } from '@/hooks/use-polygon-editor';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -17,6 +18,34 @@ type PolygonDrawingControlsProps = {
   statusText?: string;
   title: string;
 };
+
+type PolygonModeControlsProps = {
+  mode: PolygonEditorMode;
+  onModeChange: (mode: PolygonEditorMode) => void;
+};
+
+export function PolygonModeControls({ mode, onModeChange }: PolygonModeControlsProps) {
+  return (
+    <View className="flex-row gap-2">
+      <Button
+        size="sm"
+        variant={mode === 'freehand' ? 'default' : 'outline'}
+        onPress={() => onModeChange('freehand')}
+        className="flex-1 rounded-2xl"
+      >
+        <Text>Rita</Text>
+      </Button>
+      <Button
+        size="sm"
+        variant={mode === 'points' ? 'default' : 'outline'}
+        onPress={() => onModeChange('points')}
+        className="flex-1 rounded-2xl"
+      >
+        <Text>Punkter</Text>
+      </Button>
+    </View>
+  );
+}
 
 export function PolygonDrawingControls({
   bottomInset,

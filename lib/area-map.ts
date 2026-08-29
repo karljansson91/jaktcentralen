@@ -37,19 +37,6 @@ export function buildAreaPolygonFeature(area: AreaMapInput): GeoJSON.Feature<Geo
   };
 }
 
-export function latLngPointFromMapFeature(feature: GeoJSON.Feature): LatLngPoint | null {
-  if (feature.geometry?.type !== 'Point') {
-    return null;
-  }
-
-  const [longitude, latitude] = feature.geometry.coordinates;
-  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-    return null;
-  }
-
-  return { latitude, longitude };
-}
-
 export function getAreaCameraBounds(
   area: AreaMapInput,
   padding: AreaMapCameraPadding
