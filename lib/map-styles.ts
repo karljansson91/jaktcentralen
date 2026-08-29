@@ -7,6 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 
 export type MapStyleOption = {
   description?: string;
+  hillshade?: boolean;
   id: string;
   label: string;
   styleURL: string;
@@ -20,6 +21,7 @@ type MapStyleListener = (style: MapStyleOption) => void;
 type MapStyleSnapshotListener = () => void;
 
 type MapStyleSnapshot = {
+  hillshadeVisible: boolean;
   mapStyle: MapStyleOption;
   mapStyleKey: string;
   mapStyleURL: string;
@@ -45,6 +47,14 @@ export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
     variant: 'terrain',
   },
   {
+    description: 'Terrängkarta med skuggning i Brunskog/Arvika.',
+    hillshade: true,
+    id: 'terrain-hillshade',
+    label: 'Terräng med skugga',
+    styleURL: MAPBOX_OUTDOORS_STYLE_URL,
+    variant: 'terrain',
+  },
+  {
     description: 'Skog, hyggen, åkrar och kantzoner från ovan.',
     id: 'satellite',
     label: 'Flygbild',
@@ -52,9 +62,8 @@ export const MAP_STYLE_OPTIONS: MapStyleOption[] = [
   },
 ];
 
-const DEFAULT_MAP_STYLE = MAP_STYLE_OPTIONS.find(
-  (option) => option.id === 'hybrid'
-) ?? MAP_STYLE_OPTIONS[0];
+const DEFAULT_MAP_STYLE =
+  MAP_STYLE_OPTIONS.find((option) => option.id === 'hybrid') ?? MAP_STYLE_OPTIONS[0];
 
 let cachedMapStyle = DEFAULT_MAP_STYLE;
 let mapStyleResolutionRequestId = 0;
@@ -72,11 +81,9 @@ export function getCachedMapStyle() {
   return cachedMapStyle;
 }
 
-function createMapStyleSnapshot(
-  mapStyle: MapStyleOption,
-  mapStyleURL: string
-): MapStyleSnapshot {
+function createMapStyleSnapshot(mapStyle: MapStyleOption, mapStyleURL: string): MapStyleSnapshot {
   return {
+    hillshadeVisible: mapStyle.hillshade === true,
     mapStyle,
     mapStyleKey: mapStyle.id,
     mapStyleURL,

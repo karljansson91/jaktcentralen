@@ -54,12 +54,14 @@ function OptionPill({
       onPress={onPress}
       className={`min-h-9 flex-row items-center gap-1.5 rounded-full border px-3 py-2 ${
         active ? 'border-primary bg-primary' : 'border-border bg-surface'
-      } ${disabled ? 'opacity-60' : ''}`}>
+      } ${disabled ? 'opacity-60' : ''}`}
+    >
       {active ? <Ionicons name="checkmark" size={14} color={APP_COLORS.surface} /> : null}
       <Text
         className={`text-sm font-semibold ${
           active ? 'text-primary-foreground' : 'text-foreground'
-        }`}>
+        }`}
+      >
         {label}
       </Text>
     </Pressable>
@@ -85,12 +87,14 @@ function SpeciesRow({
       onPress={onPress}
       className={`rounded-2xl border px-3 py-3 ${
         selected ? 'border-primary bg-primary/10' : 'border-border bg-surface'
-      } ${disabled ? 'opacity-60' : ''}`}>
+      } ${disabled ? 'opacity-60' : ''}`}
+    >
       <View className="flex-row items-center gap-3">
         <View
           className={`size-7 items-center justify-center rounded-full ${
             selected ? 'bg-primary' : 'border border-border bg-card'
-          }`}>
+          }`}
+        >
           {selected ? <Ionicons name="checkmark" size={16} color={APP_COLORS.surface} /> : null}
         </View>
         <Text className="min-w-0 flex-1 text-base font-semibold text-foreground" numberOfLines={1}>
@@ -150,9 +154,7 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
               <Text className="text-sm font-semibold text-muted-foreground">{group.label}</Text>
               {selectedCount > 0 ? (
                 <View className="rounded-full bg-primary/10 px-2.5 py-1">
-                  <Text className="text-xs font-semibold text-primary">
-                    {selectedCount} valda
-                  </Text>
+                  <Text className="text-xs font-semibold text-primary">{selectedCount} valda</Text>
                 </View>
               ) : null}
             </View>
@@ -161,6 +163,7 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
               {group.species.map((species) => {
                 const selected = selectedBySpeciesId.get(species.id);
                 const options = species.options ?? [];
+                const selectedOptionIds = new Set(selected?.rule.optionIds ?? []);
 
                 return (
                   <View key={species.id} className="gap-2">
@@ -194,11 +197,11 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
                               {options.map((option) => (
                                 <OptionPill
                                   key={option.id}
-                                  active={selected.rule.optionIds.includes(option.id)}
+                                  active={selectedOptionIds.has(option.id)}
                                   disabled={disabled}
                                   label={option.label}
                                   onPress={() => {
-                                    const optionIds = selected.rule.optionIds.includes(option.id)
+                                    const optionIds = selectedOptionIds.has(option.id)
                                       ? selected.rule.optionIds.filter(
                                           (candidate) => candidate !== option.id
                                         )
@@ -240,13 +243,17 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
             accessibilityRole="button"
             disabled={disabled}
             onPress={() => onChange([...value, createCustomRule()])}
-            className="flex-row items-center gap-1 rounded-full bg-primary/10 px-3 py-2">
+            className="flex-row items-center gap-1 rounded-full bg-primary/10 px-3 py-2"
+          >
             <Ionicons name="add" size={16} color="#398048" />
             <Text className="text-sm font-semibold text-primary">Lägg till</Text>
           </Pressable>
         </View>
         {customRules.map(({ rule, index }) => (
-          <View key={rule.speciesId} className="gap-2 rounded-2xl border border-border bg-surface p-3">
+          <View
+            key={rule.speciesId}
+            className="gap-2 rounded-2xl border border-border bg-surface p-3"
+          >
             <View className="flex-row items-center gap-2">
               <Input
                 editable={!disabled}
@@ -259,7 +266,8 @@ export function AllowedGameEditor({ disabled, onChange, value }: AllowedGameEdit
                 accessibilityRole="button"
                 disabled={disabled}
                 onPress={() => removeRule(index)}
-                className="size-10 items-center justify-center rounded-full bg-muted">
+                className="size-10 items-center justify-center rounded-full bg-muted"
+              >
                 <Ionicons name="trash-outline" size={17} color="#636679" />
               </Pressable>
             </View>

@@ -5,7 +5,7 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import { APP_COLORS } from '@/lib/theme';
 import { useMutation, useQuery } from 'convex/react';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -33,21 +33,14 @@ export default function AddFriendSheet() {
   const pendingReceived = useQuery(api.friends.listPendingReceived);
   const sendFriendRequest = useMutation(api.friends.sendRequest);
 
-  const existingFriendUserIds = useMemo(
-    () => new Set((friends ?? []).flatMap((friend) => (friend.user?._id ? [friend.user._id] : []))),
-    [friends]
+  const existingFriendUserIds = new Set(
+    (friends ?? []).flatMap((friend) => (friend.user?._id ? [friend.user._id] : []))
   );
-  const pendingSentUserIds = useMemo(
-    () =>
-      new Set((pendingSent ?? []).flatMap((request) => (request.user?._id ? [request.user._id] : []))),
-    [pendingSent]
+  const pendingSentUserIds = new Set(
+    (pendingSent ?? []).flatMap((request) => (request.user?._id ? [request.user._id] : []))
   );
-  const pendingReceivedUserIds = useMemo(
-    () =>
-      new Set(
-        (pendingReceived ?? []).flatMap((request) => (request.user?._id ? [request.user._id] : []))
-      ),
-    [pendingReceived]
+  const pendingReceivedUserIds = new Set(
+    (pendingReceived ?? []).flatMap((request) => (request.user?._id ? [request.user._id] : []))
   );
 
   async function handleSendFriendRequest(addresseeId: Id<'users'>) {
@@ -69,13 +62,15 @@ export default function AddFriendSheet() {
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       collapsable={false}
-      style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+      style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+    >
       <ScrollView
         className="min-h-0 flex-1"
         contentContainerClassName="gap-4 px-5 pb-4 pt-5"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        collapsable={false}>
+        collapsable={false}
+      >
         <View className="gap-2" collapsable={false}>
           <Text className="text-[26px] font-semibold leading-[32px] text-foreground">
             Lägg till vän
@@ -124,7 +119,8 @@ export default function AddFriendSheet() {
                 accessibilityLabel={`Lägg till ${user.name || 'användare'}`}
                 disabled={disabled}
                 className="rounded-3xl border border-border bg-card p-4 active:bg-accent"
-                onPress={() => void handleSendFriendRequest(user._id)}>
+                onPress={() => void handleSendFriendRequest(user._id)}
+              >
                 <View className="flex-row items-center gap-3">
                   <UserAvatar imageUrl={user.imageUrl} name={user.name} />
                   <View className="min-w-0 flex-1 gap-1">
@@ -142,7 +138,8 @@ export default function AddFriendSheet() {
                     variant={disabled ? 'outline' : 'default'}
                     disabled={disabled}
                     onPress={() => void handleSendFriendRequest(user._id)}
-                    className="rounded-xl">
+                    className="rounded-xl"
+                  >
                     <Text>{label}</Text>
                   </Button>
                 </View>
@@ -160,7 +157,6 @@ export default function AddFriendSheet() {
           </Card>
         )}
       </ScrollView>
-
     </KeyboardAvoidingView>
   );
 }

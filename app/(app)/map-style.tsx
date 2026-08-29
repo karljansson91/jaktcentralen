@@ -43,9 +43,11 @@ export default function MapStyleScreen() {
     try {
       const savedStyle = await saveMapStyle(styleId);
       setSelectedStyleId(savedStyle.id);
-      back();
-    } finally {
       setSavingStyleId(null);
+      back();
+    } catch (error) {
+      setSavingStyleId(null);
+      throw error;
     }
   }
 
@@ -57,7 +59,8 @@ export default function MapStyleScreen() {
         paddingBottom: Math.max(insets.bottom, 16) + 12,
         paddingHorizontal: 20,
         paddingTop: 18,
-      }}>
+      }}
+    >
       {MAP_STYLE_OPTIONS.map((option) => {
         const selected = option.id === selectedStyleId;
 
@@ -70,7 +73,8 @@ export default function MapStyleScreen() {
             onPress={() => void handleSelect(option.id)}
             className={`min-h-14 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
               selected ? 'border-primary bg-primary/10' : 'border-border bg-card'
-            }`}>
+            }`}
+          >
             <View className="min-w-0 flex-1 gap-1">
               <Text className="text-base font-semibold text-foreground">{option.label}</Text>
               {option.description ? (
@@ -78,9 +82,7 @@ export default function MapStyleScreen() {
               ) : null}
             </View>
             <View className="size-7 items-center justify-center">
-              {selected ? (
-                <Ionicons name="checkmark" size={18} color={APP_COLORS.primary} />
-              ) : null}
+              {selected ? <Ionicons name="checkmark" size={18} color={APP_COLORS.primary} /> : null}
             </View>
           </Pressable>
         );

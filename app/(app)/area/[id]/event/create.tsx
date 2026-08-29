@@ -8,16 +8,12 @@ import type { Doc, Id } from '@/convex/_generated/dataModel';
 import type { AllowedGameRule } from '@/lib/allowed-game';
 import { isValidEventDate, normalizeEventDate } from '@/lib/event-dates';
 import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
-import {
-  createJoinCodeSuggestions,
-  formatJoinCodeInput,
-  validateJoinCode,
-} from '@/lib/join-code';
+import { createJoinCodeSuggestions, formatJoinCodeInput, validateJoinCode } from '@/lib/join-code';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -47,7 +43,8 @@ function FriendInviteRow({ disabled, isSelected, onPress, user }: FriendInviteRo
       onPress={onPress}
       className={`min-h-14 flex-row items-center gap-3 rounded-2xl border px-3 py-2 ${
         isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'
-      } ${disabled ? 'opacity-60' : 'active:bg-accent'}`}>
+      } ${disabled ? 'opacity-60' : 'active:bg-accent'}`}
+    >
       <UserAvatar imageUrl={user.imageUrl} name={user.name} size={36} />
       <View className="min-w-0 flex-1">
         <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
@@ -62,7 +59,8 @@ function FriendInviteRow({ disabled, isSelected, onPress, user }: FriendInviteRo
       <View
         className={`size-7 items-center justify-center rounded-full border ${
           isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30 bg-background'
-        }`}>
+        }`}
+      >
         {isSelected ? <Ionicons name="checkmark" size={16} color="white" /> : null}
       </View>
     </Pressable>
@@ -140,7 +138,7 @@ export default function CreateEventScreen() {
     },
   });
 
-  const toggleFriend = useCallback((userId: Id<'users'>) => {
+  const toggleFriend = (userId: Id<'users'>) => {
     setSelectedFriends((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) {
@@ -150,7 +148,7 @@ export default function CreateEventScreen() {
       }
       return next;
     });
-  }, []);
+  };
 
   if (area === undefined) {
     return (
@@ -161,13 +159,16 @@ export default function CreateEventScreen() {
   }
 
   if (area === null) {
-    return <AreaUnavailableState message="Det går inte att skapa en jakt från ett borttaget område." />;
+    return (
+      <AreaUnavailableState message="Det går inte att skapa en jakt från ett borttaget område." />
+    );
   }
 
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         className="flex-1 bg-background"
         contentInsetAdjustmentBehavior="automatic"
@@ -176,13 +177,15 @@ export default function CreateEventScreen() {
           paddingHorizontal: 24,
           paddingTop: 24,
         }}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Title */}
         <form.Field
           name="title"
           validators={{
             onSubmit: ({ value }) => (!value.trim() ? 'Titel krävs' : undefined),
-          }}>
+          }}
+        >
           {(field) => (
             <View className="mb-4">
               <Text className="mb-1 font-medium">Titel *</Text>
@@ -193,9 +196,7 @@ export default function CreateEventScreen() {
                 placeholder="Jaktens titel"
               />
               {field.state.meta.errors.length > 0 && (
-                <Text className="mt-1 text-sm text-destructive">
-                  {field.state.meta.errors[0]}
-                </Text>
+                <Text className="mt-1 text-sm text-destructive">{field.state.meta.errors[0]}</Text>
               )}
             </View>
           )}
@@ -225,7 +226,8 @@ export default function CreateEventScreen() {
           name="startDate"
           validators={{
             onSubmit: ({ value }) => (!isValidEventDate(value) ? 'Startdatum krävs' : undefined),
-          }}>
+          }}
+        >
           {(field) => (
             <>
               <EventDatePickerField
@@ -235,9 +237,7 @@ export default function CreateEventScreen() {
                 onValueChange={(date) => field.handleChange(normalizeEventDate(date))}
               />
               {field.state.meta.errors.length > 0 && (
-                <Text className="mt-1 text-sm text-destructive">
-                  {field.state.meta.errors[0]}
-                </Text>
+                <Text className="mt-1 text-sm text-destructive">{field.state.meta.errors[0]}</Text>
               )}
             </>
           )}
@@ -248,7 +248,8 @@ export default function CreateEventScreen() {
           name="endDate"
           validators={{
             onSubmit: ({ value }) => (!isValidEventDate(value) ? 'Slutdatum krävs' : undefined),
-          }}>
+          }}
+        >
           {(field) => (
             <>
               <EventDatePickerField
@@ -258,9 +259,7 @@ export default function CreateEventScreen() {
                 onValueChange={(date) => field.handleChange(normalizeEventDate(date))}
               />
               {field.state.meta.errors.length > 0 && (
-                <Text className="mt-1 text-sm text-destructive">
-                  {field.state.meta.errors[0]}
-                </Text>
+                <Text className="mt-1 text-sm text-destructive">{field.state.meta.errors[0]}</Text>
               )}
             </>
           )}
@@ -271,7 +270,8 @@ export default function CreateEventScreen() {
           name="joinCode"
           validators={{
             onSubmit: ({ value }) => validateJoinCode(value),
-          }}>
+          }}
+        >
           {(field) => (
             <View className="mb-6">
               <Text className="mb-1 font-medium">Anslutningskod</Text>
@@ -290,7 +290,8 @@ export default function CreateEventScreen() {
                 selector={(state) => ({
                   joinCode: state.values.joinCode,
                   startDate: state.values.startDate,
-                })}>
+                })}
+              >
                 {({ joinCode, startDate }) => {
                   const suggestions = createJoinCodeSuggestions(area?.name, startDate);
 
@@ -304,14 +305,14 @@ export default function CreateEventScreen() {
                             key={suggestion}
                             onPress={() => field.handleChange(suggestion)}
                             className={`rounded-full border px-3 py-2 ${
-                              isSelected
-                                ? 'border-primary bg-primary'
-                                : 'border-border bg-card'
-                            }`}>
+                              isSelected ? 'border-primary bg-primary' : 'border-border bg-card'
+                            }`}
+                          >
                             <Text
                               className={`text-sm font-medium ${
                                 isSelected ? 'text-primary-foreground' : 'text-foreground'
-                              }`}>
+                              }`}
+                            >
                               {suggestion}
                             </Text>
                           </Pressable>
@@ -322,9 +323,7 @@ export default function CreateEventScreen() {
                 }}
               </form.Subscribe>
               {field.state.meta.errors.length > 0 && (
-                <Text className="mt-2 text-sm text-destructive">
-                  {field.state.meta.errors[0]}
-                </Text>
+                <Text className="mt-2 text-sm text-destructive">{field.state.meta.errors[0]}</Text>
               )}
             </View>
           )}
@@ -337,7 +336,11 @@ export default function CreateEventScreen() {
               Valfritt. Välj arter och eventuella urval för den här jakten.
             </Text>
           </View>
-          <AllowedGameEditor value={allowedGame} onChange={setAllowedGame} disabled={isSubmitting} />
+          <AllowedGameEditor
+            value={allowedGame}
+            onChange={setAllowedGame}
+            disabled={isSubmitting}
+          />
         </View>
 
         {/* Friends list */}
@@ -365,25 +368,27 @@ export default function CreateEventScreen() {
             })}
           </View>
         )}
-
       </ScrollView>
 
       <View
         className="border-t border-border bg-background px-6 pt-3"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
         <View className="flex-row items-center gap-3">
           <Button
             variant="ghost"
             className="h-12 flex-1 rounded-xl"
             onPress={() => back()}
-            disabled={isSubmitting}>
+            disabled={isSubmitting}
+          >
             <Text className="text-muted-foreground">Avbryt</Text>
           </Button>
 
           <Button
             onPress={() => form.handleSubmit()}
             className="h-12 flex-1 rounded-xl"
-            disabled={isSubmitting}>
+            disabled={isSubmitting}
+          >
             <Text>{isSubmitting ? 'Skapar…' : 'Skapa jakt'}</Text>
           </Button>
         </View>

@@ -1,6 +1,7 @@
 import { Button, Text } from '@/components/ui';
 import { FastighetsindelningLayer } from '@/components/FastighetsindelningLayer';
 import { GlassSurface } from '@/components/glass';
+import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { useInitialPolygonCamera } from '@/hooks/use-initial-polygon-camera';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
@@ -28,7 +29,7 @@ import {
   MapView,
   ShapeSource,
 } from '@rnmapbox/maps';
-import React, { useCallback, useMemo, useReducer, useRef } from 'react';
+import React, { useReducer, useRef } from 'react';
 import { ActivityIndicator, Pressable, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -73,10 +74,7 @@ function buildMidpointsGeoJSON(points: LngLat[]): GeoJSON.FeatureCollection {
       properties: { insertAfter: i },
       geometry: {
         type: 'Point',
-        coordinates: [
-          (points[i][0] + points[i + 1][0]) / 2,
-          (points[i][1] + points[i + 1][1]) / 2,
-        ],
+        coordinates: [(points[i][0] + points[i + 1][0]) / 2, (points[i][1] + points[i + 1][1]) / 2],
       },
     });
   }
@@ -102,9 +100,7 @@ function SelectedInfoRow({ label, value }: { label: string; value?: string }) {
 
   return (
     <View className="flex-row items-center justify-between gap-3">
-      <Text className="shrink-0 text-xs font-medium uppercase text-muted-foreground">
-        {label}
-      </Text>
+      <Text className="shrink-0 text-xs font-medium uppercase text-muted-foreground">{label}</Text>
       <Text selectable className="min-w-0 flex-1 text-right text-sm font-medium">
         {value}
       </Text>
@@ -130,6 +126,8 @@ type FastighetEditorAction =
   | { type: 'selection-success'; fastighet: SelectedFastighet; geometry: FastighetGeometry }
   | { type: 'selection-error'; message: string };
 
+const OVERLAY_STACK_STYLE = { zIndex: 20, elevation: 20 };
+
 const initialFastighetEditorState: FastighetEditorState = {
   mode: 'draw',
   showFastighetsgrans: false,
@@ -151,7 +149,7 @@ function clearSelectionState(state: FastighetEditorState): FastighetEditorState 
 
 function fastighetEditorReducer(
   state: FastighetEditorState,
-  action: FastighetEditorAction,
+  action: FastighetEditorAction
 ): FastighetEditorState {
   switch (action.type) {
     case 'enter-draw':
@@ -204,10 +202,10 @@ interface PolygonDrawerProps {
 export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDrawerProps) {
   const mapRef = useRef<MapView | null>(null);
   const insets = useSafeAreaInsets();
-  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
+  const { hillshadeVisible, mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const [fastighetState, dispatchFastighet] = useReducer(
     fastighetEditorReducer,
-    initialFastighetEditorState,
+    initialFastighetEditorState
   );
   const {
     mode,
@@ -232,49 +230,35 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
     replacePolygonPoints,
   } = usePolygonEditing({ initialPoints, mapRef, onComplete });
 
-  const clearFastighetSelection = useCallback(() => {
+  const clearFastighetSelection = () => {
     dispatchFastighet({ type: 'clear-selection' });
-  }, []);
+  };
 
-  const handleEnterDrawMode = useCallback(() => {
+  const handleEnterDrawMode = () => {
     dispatchFastighet({ type: 'enter-draw' });
-  }, []);
+  };
 
-  const handleEnterSelectMode = useCallback(() => {
+  const handleEnterSelectMode = () => {
     dispatchFastighet({ type: 'enter-select' });
-  }, []);
+  };
 
-  const handleSetFastighetsgrans = useCallback((nextValue: boolean) => {
+  const handleSetFastighetsgrans = (nextValue: boolean) => {
     dispatchFastighet({ type: 'set-boundaries-visible', visible: nextValue });
-  }, []);
+  };
 
   // --- Derived data ---
 
-  const shapeGeoJSON = useMemo(
-    () => (polygonPoints.length >= 2 ? buildShapeGeoJSON(polygonPoints) : null),
-    [polygonPoints],
-  );
-  const verticesGeoJSON = useMemo(
-    () => buildVerticesGeoJSON(polygonPoints, draggingVertex),
-    [polygonPoints, draggingVertex],
-  );
-  const midpointsGeoJSON = useMemo(
-    () => buildMidpointsGeoJSON(polygonPoints),
-    [polygonPoints],
-  );
-  const selectedFastighetGeoJSON = useMemo(
-    () => (selectedFastighetGeometry ? buildFastighetGeoJSON(selectedFastighetGeometry) : null),
-    [selectedFastighetGeometry],
-  );
-  const selectedApplyState = useMemo(
-    () =>
-      selectedFastighetGeometry
-        ? getPolygonApplyPoints(selectedFastighetGeometry)
-        : { points: null, limitation: null },
-    [selectedFastighetGeometry],
-  );
+  const shapeGeoJSON = polygonPoints.length >= 2 ? buildShapeGeoJSON(polygonPoints) : null;
+  const verticesGeoJSON = buildVerticesGeoJSON(polygonPoints, draggingVertex);
+  const midpointsGeoJSON = buildMidpointsGeoJSON(polygonPoints);
+  const selectedFastighetGeoJSON = selectedFastighetGeometry
+    ? buildFastighetGeoJSON(selectedFastighetGeometry)
+    : null;
+  const selectedApplyState = selectedFastighetGeometry
+    ? getPolygonApplyPoints(selectedFastighetGeometry)
+    : { points: null, limitation: null };
 
-  const handleSelectFastighet = useCallback(async (feature: GeoJSON.Feature) => {
+  const handleSelectFastighet = async (feature: GeoJSON.Feature) => {
     const map = mapRef.current;
     const coordinate = getMapPressLngLat(feature);
     if (!map || !coordinate) {
@@ -292,7 +276,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       const result = await map.queryRenderedFeaturesAtPoint(
         screenPoint,
         [],
-        [FASTIGHETS_FILL_LAYER_ID],
+        [FASTIGHETS_FILL_LAYER_ID]
       );
       const fastighetFeature = findFastighetFeature(result?.features ?? []);
       if (!fastighetFeature) {
@@ -323,20 +307,17 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
         message: 'Kunde inte läsa fastighetsgränsen från kartan.',
       });
     }
-  }, []);
+  };
 
-  const handleMapPressForMode = useCallback(
-    (feature: GeoJSON.Feature) => {
-      if (mode === 'select-fastighet') {
-        void handleSelectFastighet(feature);
-        return;
-      }
-      handleMapPress(feature);
-    },
-    [handleMapPress, handleSelectFastighet, mode],
-  );
+  const handleMapPressForMode = (feature: GeoJSON.Feature) => {
+    if (mode === 'select-fastighet') {
+      void handleSelectFastighet(feature);
+      return;
+    }
+    handleMapPress(feature);
+  };
 
-  const handleApplySelectedFastighet = useCallback(() => {
+  const handleApplySelectedFastighet = () => {
     if (!selectedApplyState.points) {
       dispatchFastighet({
         type: 'selection-error',
@@ -347,13 +328,31 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
     replacePolygonPoints(selectedApplyState.points);
     dispatchFastighet({ type: 'enter-draw' });
-  }, [replacePolygonPoints, selectedApplyState]);
+  };
 
   const isDrawMode = mode === 'draw';
   const isSelectMode = mode === 'select-fastighet';
   const activeIconColor = '#FFFFFF';
   const inactiveIconColor = APP_COLORS.text;
-  const overlayStackStyle = { zIndex: 20, elevation: 20 };
+
+  if (!initialCamera) {
+    return (
+      <View className="flex-1 items-center justify-center gap-3 bg-background">
+        <ActivityIndicator color={APP_COLORS.primary} />
+        <Text className="text-sm text-muted-foreground">Hämtar position…</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Stäng"
+          hitSlop={10}
+          onPress={onCancel}
+          className="absolute right-4 size-10 items-center justify-center rounded-full"
+          style={{ top: Math.max(insets.top, 12) + 8 }}
+        >
+          <Ionicons name="close" size={23} color={APP_COLORS.text} />
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -376,11 +375,21 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
           pitchEnabled={!isDragging}
         >
           {'bounds' in initialCamera ? (
-            <Camera bounds={initialCamera.bounds} animationDuration={0} />
+            <Camera
+              bounds={initialCamera.bounds}
+              animationDuration={0}
+              defaultSettings={{ bounds: initialCamera.bounds, animationDuration: 0 }}
+            />
           ) : (
             <Camera
               zoomLevel={initialCamera.zoomLevel}
               centerCoordinate={initialCamera.centerCoordinate}
+              animationDuration={0}
+              defaultSettings={{
+                zoomLevel: initialCamera.zoomLevel,
+                centerCoordinate: initialCamera.centerCoordinate,
+                animationDuration: 0,
+              }}
             />
           )}
           <LocationPuck puckBearingEnabled puckBearing="heading" />
@@ -388,6 +397,10 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
           <LantmaterietTopoLayer
             idPrefix="polygon-drawer-lantmateriet-topo"
             surfaceMode={topoSurfaceMode}
+          />
+          <LantmaterietHillshadeLayer
+            belowLayerID="polygon-drawer-lantmateriet-topo-wetland-outline"
+            visible={hillshadeVisible}
           />
 
           <FastighetsindelningLayer visible={showFastighetsgrans} />
@@ -422,11 +435,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
 
           {/* Midpoints */}
           {!isDragging && polygonPoints.length >= 2 && (
-            <ShapeSource
-              id="midpoints"
-              shape={midpointsGeoJSON}
-              hitbox={{ width: 30, height: 30 }}
-            >
+            <ShapeSource id="midpoints" shape={midpointsGeoJSON} hitbox={{ width: 30, height: 30 }}>
               <CircleLayer
                 id="midpoint-circles"
                 style={{
@@ -469,7 +478,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       <View
         className="absolute left-4 right-4 z-10 gap-2"
         pointerEvents="box-none"
-        style={[{ top: Math.max(insets.top, 12) + 8 }, overlayStackStyle]}
+        style={[{ top: Math.max(insets.top, 12) + 8 }, OVERLAY_STACK_STYLE]}
       >
         <GlassSurface
           className="rounded-xl"
@@ -556,7 +565,7 @@ export function PolygonDrawer({ initialPoints, onComplete, onCancel }: PolygonDr
       <View
         className="absolute left-4 right-4 gap-2"
         pointerEvents="box-none"
-        style={[{ bottom: Math.max(insets.bottom, 8) + 8 }, overlayStackStyle]}
+        style={[{ bottom: Math.max(insets.bottom, 8) + 8 }, OVERLAY_STACK_STYLE]}
       >
         <GlassSurface
           className="rounded-xl"

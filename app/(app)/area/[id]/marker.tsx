@@ -5,6 +5,7 @@ import { ChoiceChip } from '@/components/area/marker-form-controls';
 import { CATEGORY_ICONS, MAX_MARKER_IMAGES } from '@/components/area/marker-form-constants';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { withLoadingState } from '@/lib/async-state';
 import {
   AREA_FEATURE_CATEGORY_LABELS,
   AREA_FEATURE_COLOR_PALETTE,
@@ -13,10 +14,7 @@ import {
   AreaFeatureImage,
   getDefaultColorForCategory,
 } from '@/lib/area-features';
-import {
-  clearAreaFeatureDraft,
-  getAreaFeatureDraft,
-} from '@/lib/area-feature-draft-store';
+import { clearAreaFeatureDraft, getAreaFeatureDraft } from '@/lib/area-feature-draft-store';
 import {
   MarkerFormValues,
   buildMarkerFormValues,
@@ -31,15 +29,8 @@ import { useMutation } from 'convex/react';
 import { File, UploadType } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function shouldClearDraft(
@@ -63,7 +54,7 @@ export default function MarkerFormScreen() {
   const [draft, setDraft] = useState<AreaFeatureDraft | undefined>(() =>
     draftId ? getAreaFeatureDraft(draftId) : undefined
   );
-  const initialFormValues = useMemo(() => buildMarkerFormValues(draft), [draft]);
+  const initialFormValues = buildMarkerFormValues(draft);
 
   useEffect(() => {
     return () => {
@@ -98,30 +89,28 @@ export default function MarkerFormScreen() {
     formRef.current = form;
   }, [form]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!draftId) {
-        return;
-      }
+  useFocusEffect(() => {
+    if (!draftId) {
+      return;
+    }
 
-      const nextDraft = getAreaFeatureDraft(draftId);
-      if (!nextDraft) {
-        return;
-      }
+    const nextDraft = getAreaFeatureDraft(draftId);
+    if (!nextDraft) {
+      return;
+    }
 
-      const nextValues = buildMarkerFormValues(nextDraft);
-      const activeForm = formRef.current;
+    const nextValues = buildMarkerFormValues(nextDraft);
+    const activeForm = formRef.current;
 
-      activeForm.setFieldValue('name', nextValues.name);
-      activeForm.setFieldValue('description', nextValues.description);
-      activeForm.setFieldValue('category', nextValues.category);
-      activeForm.setFieldValue('geometryType', nextValues.geometryType);
-      activeForm.setFieldValue('color', nextValues.color);
-      activeForm.setFieldValue('point', nextValues.point);
-      activeForm.setFieldValue('images', nextValues.images);
-      setDraft(nextDraft);
-    }, [draftId])
-  );
+    activeForm.setFieldValue('name', nextValues.name);
+    activeForm.setFieldValue('description', nextValues.description);
+    activeForm.setFieldValue('category', nextValues.category);
+    activeForm.setFieldValue('geometryType', nextValues.geometryType);
+    activeForm.setFieldValue('color', nextValues.color);
+    activeForm.setFieldValue('point', nextValues.point);
+    activeForm.setFieldValue('images', nextValues.images);
+    setDraft(nextDraft);
+  });
 
   if (!draftId || !draft) {
     return (
@@ -136,7 +125,8 @@ export default function MarkerFormScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Stäng"
                 hitSlop={12}
-                onPress={() => back()}>
+                onPress={() => back()}
+              >
                 <Ionicons name="close" size={24} color={APP_COLORS.text} />
               </Pressable>
             ),
@@ -234,7 +224,23 @@ export default function MarkerFormScreen() {
       throw new Error('Kunde inte ladda upp bilden.');
     }
 
-    const { storageId } = JSON.parse(uploadResponse.body) as { storageId: Id<'_storage'> };
+    let uploadResult: unknown;
+    try {
+      uploadResult = JSON.parse(uploadResponse.body);
+    } catch {
+      throw new Error('Bildservern svarade med ogiltig data.');
+    }
+
+    if (
+      !uploadResult ||
+      typeof uploadResult !== 'object' ||
+      !('storageId' in uploadResult) ||
+      typeof uploadResult.storageId !== 'string'
+    ) {
+      throw new Error('Bildserverns svar saknar ett fil-id.');
+    }
+
+    const storageId = uploadResult.storageId as Id<'_storage'>;
     return {
       fileId: storageId,
       url: asset.uri,
@@ -250,52 +256,51 @@ export default function MarkerFormScreen() {
       return;
     }
 
-    setIsUploadingImages(true);
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Behörighet krävs', 'Ge appen åtkomst till bilder för att ladda upp.');
-        setIsUploadingImages(false);
-        return;
+    await withLoadingState(setIsUploadingImages, async () => {
+      try {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Behörighet krävs', 'Ge appen åtkomst till bilder för att ladda upp.');
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          allowsMultipleSelection: remainingSlots > 1,
+          mediaTypes: ['images'],
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+          quality: 0.78,
+          selectionLimit: remainingSlots,
+        });
+
+        if (result.canceled) {
+          return;
+        }
+
+        const uploadedImages = await Promise.all(
+          result.assets.slice(0, remainingSlots).map((asset) => uploadImage(asset))
+        );
+
+        form.setFieldValue('images', (images) =>
+          [...images, ...uploadedImages].slice(0, MAX_MARKER_IMAGES)
+        );
+      } catch (error) {
+        Alert.alert(
+          'Kunde inte lägga till bild',
+          error instanceof Error ? error.message : 'Försök igen om en stund.'
+        );
       }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: remainingSlots > 1,
-        mediaTypes: ['images'],
-        preferredAssetRepresentationMode:
-          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
-        quality: 0.78,
-        selectionLimit: remainingSlots,
-      });
-
-      if (result.canceled) {
-        setIsUploadingImages(false);
-        return;
-      }
-
-      const uploadedImages = await Promise.all(
-        result.assets.slice(0, remainingSlots).map((asset) => uploadImage(asset))
-      );
-
-      form.setFieldValue('images', (images) =>
-        [...images, ...uploadedImages].slice(0, MAX_MARKER_IMAGES)
-      );
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte lägga till bild',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
-    }
-    setIsUploadingImages(false);
+    });
   }
 
   return (
-    <form.Subscribe selector={(state) => ({ values: state.values, isSubmitting: state.isSubmitting })}>
+    <form.Subscribe
+      selector={(state) => ({ values: state.values, isSubmitting: state.isSubmitting })}
+    >
       {({ values, isSubmitting }) => {
         const canDelete = activeDraft.mode !== 'create';
         const hasChanges =
-          Boolean(activeDraft.hasUnsavedChanges) ||
-          hasMarkerFormChanges(values, initialFormValues);
+          Boolean(activeDraft.hasUnsavedChanges) || hasMarkerFormChanges(values, initialFormValues);
         const isBusy = isSubmitting || isUploadingImages;
 
         const screenTitle = activeDraft.mode === 'create' ? 'Ny markör' : 'Redigera markör';
@@ -303,7 +308,8 @@ export default function MarkerFormScreen() {
         return (
           <KeyboardAvoidingView
             className="flex-1 bg-background"
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             <Stack.Screen
               options={{
                 contentStyle: { backgroundColor: APP_COLORS.background },
@@ -314,7 +320,8 @@ export default function MarkerFormScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Stäng"
                     hitSlop={12}
-                    onPress={discardAndClose}>
+                    onPress={discardAndClose}
+                  >
                     <Ionicons name="close" size={24} color={APP_COLORS.text} />
                   </Pressable>
                 ),
@@ -336,7 +343,8 @@ export default function MarkerFormScreen() {
               }}
               contentInset={{ bottom: Math.max(insets.bottom, 24) }}
               scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
-              keyboardShouldPersistTaps="handled">
+              keyboardShouldPersistTaps="handled"
+            >
               <ImageGrid
                 images={values.images}
                 isUploading={isUploadingImages}
@@ -376,7 +384,8 @@ export default function MarkerFormScreen() {
                 name="name"
                 validators={{
                   onSubmit: ({ value }) => (!value.trim() ? 'Namn krävs' : undefined),
-                }}>
+                }}
+              >
                 {(field) => (
                   <View className="mb-4">
                     <Text className="mb-1 font-medium">Namn *</Text>
@@ -429,7 +438,8 @@ export default function MarkerFormScreen() {
                 size="xl"
                 className="mb-3 rounded-2xl"
                 onPress={() => form.handleSubmit()}
-                disabled={isBusy || !hasChanges}>
+                disabled={isBusy || !hasChanges}
+              >
                 <Text>{isSubmitting ? 'Sparar...' : 'Spara markör'}</Text>
               </Button>
 
@@ -439,7 +449,8 @@ export default function MarkerFormScreen() {
                   size="xl"
                   className="mb-3 rounded-2xl"
                   onPress={confirmDelete}
-                  disabled={isBusy}>
+                  disabled={isBusy}
+                >
                   <Text>Ta bort markör</Text>
                 </Button>
               )}

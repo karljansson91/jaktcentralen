@@ -21,7 +21,7 @@ import { useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -141,18 +141,12 @@ export default function EventInfoScreen() {
   );
   const removeMember = useMutation(api.eventMembers.removeMember);
   const updateEvent = useMutation(api.events.update);
-  const savedDraft = useMemo(() => (event ? createHuntInfoDraft(event) : null), [event]);
-  const savedDraftKey = useMemo(
-    () => (savedDraft ? getHuntInfoDraftKey(savedDraft) : ''),
-    [savedDraft]
-  );
+  const savedDraft = event ? createHuntInfoDraft(event) : null;
+  const savedDraftKey = savedDraft ? getHuntInfoDraftKey(savedDraft) : '';
   const [draftState, setDraftState] = useState<HuntInfoDraftState | null>(null);
   const [saveStatus, setSaveStatus] = useState<HuntInfoSaveStatus>('idle');
 
-  const memberRows = useMemo(
-    () => (isCreator ? inviteStatuses ?? [] : acceptedMembers ?? []),
-    [acceptedMembers, inviteStatuses, isCreator]
-  );
+  const memberRows = isCreator ? (inviteStatuses ?? []) : (acceptedMembers ?? []);
   const currentUserDisplayFallback =
     clerkUser?.fullName ||
     clerkUser?.username ||
@@ -176,20 +170,17 @@ export default function EventInfoScreen() {
     return () => clearTimeout(timeout);
   }, [saveStatus]);
 
-  const handleResetDraft = useCallback(() => {
+  const handleResetDraft = () => {
     setDraftState(null);
     setSaveStatus('idle');
-  }, []);
+  };
 
-  const handleDraftChange = useCallback(
-    (nextDraft: HuntInfoDraft) => {
-      setDraftState({ draft: nextDraft, sourceKey: savedDraftKey });
-      setSaveStatus('idle');
-    },
-    [savedDraftKey]
-  );
+  const handleDraftChange = (nextDraft: HuntInfoDraft) => {
+    setDraftState({ draft: nextDraft, sourceKey: savedDraftKey });
+    setSaveStatus('idle');
+  };
 
-  const handleSaveDraft = useCallback(async () => {
+  const handleSaveDraft = async () => {
     if (!activeDraft) {
       return;
     }
@@ -239,7 +230,7 @@ export default function EventInfoScreen() {
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
     }
-  }, [activeDraft, eventId, updateEvent]);
+  };
 
   async function handleRemoveMember(userId: Id<'users'>) {
     setPendingUserId(userId);
@@ -285,7 +276,11 @@ export default function EventInfoScreen() {
     );
   }
 
-  if (area === undefined || acceptedMembers === undefined || (isCreator && inviteStatuses === undefined)) {
+  if (
+    area === undefined ||
+    acceptedMembers === undefined ||
+    (isCreator && inviteStatuses === undefined)
+  ) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="small" color={APP_COLORS.primary} />
@@ -304,7 +299,8 @@ export default function EventInfoScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         className="flex-1 bg-background"
         contentInsetAdjustmentBehavior="automatic"
@@ -316,7 +312,8 @@ export default function EventInfoScreen() {
         contentInset={{ bottom: Math.max(insets.bottom, 16) + (isCreator ? 80 : 0) }}
         scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) + (isCreator ? 80 : 0) }}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         {isCreator && activeDraft ? (
           <HuntInfoAdminFields
             acceptedCount={acceptedCount}
@@ -344,7 +341,8 @@ export default function EventInfoScreen() {
                 params: { eventId },
               } as Href)
             }
-            className="rounded-xl">
+            className="rounded-xl"
+          >
             <Ionicons name="person-add-outline" size={18} color={APP_COLORS.text} />
             <Text>Bjud in användare</Text>
           </Button>
@@ -388,7 +386,8 @@ export default function EventInfoScreen() {
                         <View className="min-w-0 flex-row items-center gap-2">
                           <Text
                             className="min-w-0 shrink text-base font-semibold text-foreground"
-                            numberOfLines={1}>
+                            numberOfLines={1}
+                          >
                             {name}
                           </Text>
                           {rowIsCurrentUser ? (
@@ -417,7 +416,8 @@ export default function EventInfoScreen() {
                         size="sm"
                         disabled={isPending}
                         onPress={() => confirmRemoveMember(member.userId, name, status)}
-                        className="self-end rounded-xl">
+                        className="self-end rounded-xl"
+                      >
                         <Text>{isPending ? 'Tar bort...' : 'Ta bort'}</Text>
                       </Button>
                     ) : null}
@@ -432,20 +432,23 @@ export default function EventInfoScreen() {
       {isCreator && activeDraft ? (
         <View
           className="border-t border-border bg-background px-6 pt-3"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+        >
           <View className="flex-row items-center gap-3">
             <Button
               variant="ghost"
               className="h-12 flex-1 rounded-xl"
               disabled={!hasDraftChanges || isSaving}
-              onPress={handleResetDraft}>
+              onPress={handleResetDraft}
+            >
               <Text className="text-muted-foreground">Återställ</Text>
             </Button>
 
             <Button
               className="h-12 flex-1 rounded-xl"
               disabled={!hasDraftChanges || isSaving}
-              onPress={() => void handleSaveDraft()}>
+              onPress={() => void handleSaveDraft()}
+            >
               <Text>{isSaving ? 'Sparar...' : saveStatus === 'saved' ? 'Sparat' : 'Spara'}</Text>
             </Button>
           </View>

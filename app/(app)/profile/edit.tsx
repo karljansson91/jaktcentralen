@@ -1,11 +1,12 @@
 import { Button, Input, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import type { Doc } from '@/convex/_generated/dataModel';
+import { withLoadingState } from '@/lib/async-state';
 import { APP_COLORS } from '@/lib/theme';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -93,42 +94,40 @@ function EditProfileForm({ user, onDone }: { user: Doc<'users'>; onDone: () => v
   const insets = useSafeAreaInsets();
   const updateProfile = useMutation(api.users.updateAppProfile);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const initialValues = useMemo<ProfileFormValues>(
-    () => ({
-      email: user.email ?? '',
-      name: user.name ?? '',
-      phoneNumber: user.phoneNumber ?? '',
-    }),
-    [user.email, user.name, user.phoneNumber]
-  );
+  const initialValues = {
+    email: user.email ?? '',
+    name: user.name ?? '',
+    phoneNumber: user.phoneNumber ?? '',
+  };
 
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
       const normalized = normalizeProfileValues(value);
 
-      setIsSubmitting(true);
-      try {
-        await updateProfile({
-          email: normalized.email,
-          name: normalized.name,
-          phoneNumber: normalized.phoneNumber || undefined,
-        });
-        onDone();
-      } catch (error) {
-        Alert.alert(
-          'Kunde inte spara profil',
-          error instanceof Error ? error.message : 'Försök igen om en stund.'
-        );
-        setIsSubmitting(false);
-      }
+      await withLoadingState(setIsSubmitting, async () => {
+        try {
+          await updateProfile({
+            email: normalized.email,
+            name: normalized.name,
+            phoneNumber: normalized.phoneNumber || undefined,
+          });
+          onDone();
+        } catch (error) {
+          Alert.alert(
+            'Kunde inte spara profil',
+            error instanceof Error ? error.message : 'Försök igen om en stund.'
+          );
+        }
+      });
     },
   });
 
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-5 px-5 pt-5"
@@ -136,7 +135,8 @@ function EditProfileForm({ user, onDone }: { user: Doc<'users'>; onDone: () => v
         contentInset={{ bottom: Math.max(insets.bottom, 16) }}
         keyboardShouldPersistTaps="handled"
         scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <View className="gap-2">
           <Text className="text-[26px] font-semibold leading-[32px] text-foreground">
             Redigera profil
@@ -209,7 +209,8 @@ function EditProfileForm({ user, onDone }: { user: Doc<'users'>; onDone: () => v
             variant="outline"
             className="h-12 flex-1 rounded-xl bg-background"
             disabled={isSubmitting}
-            onPress={onDone}>
+            onPress={onDone}
+          >
             <Text>Avbryt</Text>
           </Button>
           <form.Subscribe selector={(state) => state.values}>
@@ -217,7 +218,8 @@ function EditProfileForm({ user, onDone }: { user: Doc<'users'>; onDone: () => v
               <Button
                 className="h-12 flex-1 rounded-xl"
                 disabled={isSubmitting || !canSubmitProfileForm(initialValues, values)}
-                onPress={() => form.handleSubmit()}>
+                onPress={() => form.handleSubmit()}
+              >
                 <Text>{isSubmitting ? 'Sparar...' : 'Spara'}</Text>
               </Button>
             )}

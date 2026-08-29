@@ -1,6 +1,5 @@
 import { createScentPlumeFeature } from '@/lib/scent-plume';
 import { FillLayer, LineLayer, ShapeSource } from '@rnmapbox/maps';
-import { useMemo } from 'react';
 
 type ScentPlumeLayerProps = {
   directionDegrees: number;
@@ -31,23 +30,16 @@ const PLUME_BANDS = [
   },
 ] as const;
 
-export function ScentPlumeLayer({
-  directionDegrees,
-  originCoordinate,
-}: ScentPlumeLayerProps) {
-  const features = useMemo(
-    () =>
-      PLUME_BANDS.map((band) => ({
-        ...band,
-        feature: createScentPlumeFeature({
-          directionDegrees,
-          lengthMeters: band.lengthMeters,
-          origin: originCoordinate,
-          spreadDegrees: band.spreadDegrees,
-        }),
-      })),
-    [directionDegrees, originCoordinate]
-  );
+export function ScentPlumeLayer({ directionDegrees, originCoordinate }: ScentPlumeLayerProps) {
+  const features = PLUME_BANDS.map((band) => ({
+    ...band,
+    feature: createScentPlumeFeature({
+      directionDegrees,
+      lengthMeters: band.lengthMeters,
+      origin: originCoordinate,
+      spreadDegrees: band.spreadDegrees,
+    }),
+  }));
 
   return (
     <>

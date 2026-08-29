@@ -8,7 +8,7 @@ import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,18 +24,14 @@ export default function HomeScreen() {
   const pendingInvitations = useQuery(api.eventMembers.listMyInvitations, user ? {} : 'skip');
   const pendingFriendRequests = useQuery(api.friends.listPendingReceived, user ? {} : 'skip');
   const inboxCount = (pendingInvitations?.length ?? 0) + (pendingFriendRequests?.length ?? 0);
-  const sortedCurrentHunts = useMemo(
-    () =>
-      (events ?? []).slice().sort((a, b) => {
-        const lifecycleA = getEventLifecycle(a, currentTime);
-        const lifecycleB = getEventLifecycle(b, currentTime);
-        const rankA = lifecycleA === 'active' ? 0 : 1;
-        const rankB = lifecycleB === 'active' ? 0 : 1;
+  const sortedCurrentHunts = (events ?? []).slice().sort((a, b) => {
+    const lifecycleA = getEventLifecycle(a, currentTime);
+    const lifecycleB = getEventLifecycle(b, currentTime);
+    const rankA = lifecycleA === 'active' ? 0 : 1;
+    const rankB = lifecycleB === 'active' ? 0 : 1;
 
-        return rankA - rankB || a.startDate - b.startDate;
-      }),
-    [currentTime, events]
-  );
+    return rankA - rankB || a.startDate - b.startDate;
+  });
 
   const profileInitial =
     user?.name
@@ -46,7 +42,12 @@ export default function HomeScreen() {
       .join('')
       .toUpperCase() || null;
 
-  if (user === undefined || areas === undefined || events === undefined || endedEvents === undefined) {
+  if (
+    user === undefined ||
+    areas === undefined ||
+    events === undefined ||
+    endedEvents === undefined
+  ) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <View className="items-center gap-4">
@@ -69,13 +70,15 @@ export default function HomeScreen() {
         contentContainerClassName="gap-7 px-4 pb-8"
         contentContainerStyle={{ paddingTop: 14, paddingBottom: 96 }}
         contentInset={{ bottom: insets.bottom }}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}>
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
+      >
         <View className="flex-row justify-end">
           <IconButton
             accessibilityLabel="Öppna profil"
             variant="outline"
             onPress={() => push('/profile' as Href)}
-            className="relative border border-border/70 bg-card">
+            className="relative border border-border/70 bg-card"
+          >
             {profileInitial ? (
               <Text className="text-sm font-semibold text-primary">{profileInitial}</Text>
             ) : (
@@ -151,7 +154,8 @@ export default function HomeScreen() {
                 <Button
                   className="h-12 rounded-xl"
                   onPress={() => push('/join')}
-                  accessibilityLabel="Gå med i jakt med kod">
+                  accessibilityLabel="Gå med i jakt med kod"
+                >
                   <Ionicons name="key-outline" size={18} color="#f8f4ea" />
                   <Text>Gå med i jakt</Text>
                 </Button>
@@ -174,7 +178,8 @@ export default function HomeScreen() {
                 <Pressable
                   key={area._id}
                   accessibilityRole="button"
-                  onPress={() => push(`/area/${area._id}`)}>
+                  onPress={() => push(`/area/${area._id}`)}
+                >
                   <Card className="border-border/70 py-0">
                     <CardContent className="px-5 py-4">
                       <View className="flex-row items-center gap-4">
@@ -213,7 +218,8 @@ export default function HomeScreen() {
                   variant="outline"
                   className="h-12 rounded-xl bg-background/80"
                   onPress={() => push('/area/create')}
-                  accessibilityLabel="Skapa område">
+                  accessibilityLabel="Skapa område"
+                >
                   <Ionicons name="add-circle-outline" size={18} color="#35523b" />
                   <Text>Skapa område</Text>
                 </Button>
@@ -222,7 +228,6 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-
     </View>
   );
 }

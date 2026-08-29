@@ -12,7 +12,7 @@ import {
   toMeasurementRouteKey,
   type HuntMapMeasurementPoint,
 } from '@/lib/hunt-measurement';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type HuntMapMeasurementStatus = 'idle' | 'loading' | 'error';
 
@@ -28,13 +28,13 @@ export function useHuntMapMeasurement() {
   const [points, setPoints] = useState<HuntMapMeasurementPoint[]>([]);
   const [walkingRouteResult, setWalkingRouteResult] = useState<WalkingRouteResult | null>(null);
 
-  const createPoint = useCallback((coordinate: Coordinate): HuntMapMeasurementPoint => {
+  const createPoint = (coordinate: Coordinate): HuntMapMeasurementPoint => {
     nextPointIdRef.current += 1;
     return { coordinate, id: `measurement-point-${nextPointIdRef.current}` };
-  }, []);
+  };
 
-  const routeKey = useMemo(() => toMeasurementRouteKey(points), [points]);
-  const directRoute = useMemo(() => buildDirectMeasurementRoute(points), [points]);
+  const routeKey = toMeasurementRouteKey(points);
+  const directRoute = buildDirectMeasurementRoute(points);
 
   useEffect(() => {
     if (!routeKey || mode !== 'walking') return;
@@ -62,8 +62,7 @@ export function useHuntMapMeasurement() {
   }, [mode, points, routeKey, walkingRouteResult?.key]);
 
   const walkingRoute = walkingRouteResult?.key === routeKey ? walkingRouteResult.route : null;
-  const walkingRouteError =
-    walkingRouteResult?.key === routeKey ? walkingRouteResult.error : null;
+  const walkingRouteError = walkingRouteResult?.key === routeKey ? walkingRouteResult.error : null;
   const isWalkingRouteLoading = Boolean(
     mode === 'walking' && routeKey && walkingRouteResult?.key !== routeKey
   );
@@ -74,55 +73,43 @@ export function useHuntMapMeasurement() {
       ? 'error'
       : 'idle';
   const routeError = mode === 'walking' ? walkingRouteError : null;
-  const routeGeoJSON = useMemo(() => buildAssignmentRouteGeoJSON(route), [route]);
+  const routeGeoJSON = buildAssignmentRouteGeoJSON(route);
 
-  const addPoint = useCallback(
-    (point: LatLngPoint) => {
-      setPoints((current) => [...current, createPoint(latLngPointToCoordinate(point))]);
-    },
-    [createPoint]
-  );
+  const addPoint = (point: LatLngPoint) => {
+    const nextPoint = createPoint(latLngPointToCoordinate(point));
+    setPoints((current) => [...current, nextPoint]);
+  };
 
-  const replaceWithUserMeasurement = useCallback(
-    (startCoordinate: Coordinate, endPoint: LatLngPoint) => {
-      setPoints([
-        createPoint(startCoordinate),
-        createPoint(latLngPointToCoordinate(endPoint)),
-      ]);
-    },
-    [createPoint]
-  );
+  const replaceWithUserMeasurement = (startCoordinate: Coordinate, endPoint: LatLngPoint) => {
+    setPoints([createPoint(startCoordinate), createPoint(latLngPointToCoordinate(endPoint))]);
+  };
 
-  const updatePointCoordinate = useCallback((pointId: string, coordinate: Coordinate) => {
+  const updatePointCoordinate = (pointId: string, coordinate: Coordinate) => {
     setPoints((current) =>
       current.map((point) => (point.id === pointId ? { ...point, coordinate } : point))
     );
-  }, []);
+  };
 
-  const clear = useCallback(() => {
+  const clear = () => {
     setMode('direct');
     setPoints([]);
     setWalkingRouteResult(null);
-  }, []);
+  };
 
-  const undoLastPoint = useCallback(() => {
-    setPoints((current) => {
-      const nextPoints = current.slice(0, -1);
+  const undoLastPoint = () => {
+    const nextPoints = points.slice(0, -1);
+    setPoints(nextPoints);
+    if (nextPoints.length < 2) {
+      setWalkingRouteResult(null);
+    }
+    if (nextPoints.length === 0) {
+      setMode('direct');
+    }
+  };
 
-      if (nextPoints.length < 2) {
-        setWalkingRouteResult(null);
-      }
-      if (nextPoints.length === 0) {
-        setMode('direct');
-      }
-
-      return nextPoints;
-    });
-  }, []);
-
-  const toggleMode = useCallback(() => {
+  const toggleMode = () => {
     setMode((current) => (current === 'walking' ? 'direct' : 'walking'));
-  }, []);
+  };
 
   return {
     addPoint,

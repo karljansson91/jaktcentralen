@@ -7,7 +7,7 @@ import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -86,7 +86,8 @@ function InviteUserRow({ user, status, isPending, onInvite }: InviteUserRowProps
         size="sm"
         onPress={() => onInvite(user._id)}
         disabled={isDisabled}
-        className="rounded-xl">
+        className="rounded-xl"
+      >
         <Text>{getInviteLabel(status, isPending)}</Text>
       </Button>
     </View>
@@ -118,7 +119,7 @@ export default function EventInviteScreen() {
   );
   const inviteMember = useMutation(api.eventMembers.invite);
 
-  const statusByUserId = useMemo(() => {
+  const statusByUserId = (() => {
     const statuses = new Map<Id<'users'>, InviteStatus>();
     for (const status of inviteStatuses ?? []) {
       statuses.set(status.userId, status.status);
@@ -127,39 +128,30 @@ export default function EventInviteScreen() {
       statuses.set(userId, 'invited');
     }
     return statuses;
-  }, [inviteStatuses, invitedUserIds]);
+  })();
 
-  const friendRows = useMemo(
-    () =>
-      (friends ?? []).flatMap((friend) => (isInviteUser(friend.user) ? [friend.user] : [])),
-    [friends]
+  const friendRows = (friends ?? []).flatMap((friend) =>
+    isInviteUser(friend.user) ? [friend.user] : []
   );
-  const searchRows = useMemo(
-    () =>
-      (searchResults ?? []).filter(
-        (user) => !friendRows.some((friend) => friend._id === user._id)
-      ),
-    [friendRows, searchResults]
+  const searchRows = (searchResults ?? []).filter(
+    (user) => !friendRows.some((friend) => friend._id === user._id)
   );
 
-  const handleInvite = useCallback(
-    async (userId: Id<'users'>) => {
-      setPendingUserId(userId);
-      try {
-        await inviteMember({ eventId: eventId as Id<'events'>, userId });
-        setInvitedUserIds((previous) => new Set(previous).add(userId));
-      } catch (error) {
-        Alert.alert(
-          'Kunde inte bjuda in',
-          error instanceof Error ? error.message : 'Försök igen om en stund.'
-        );
-      }
-      setPendingUserId(null);
-    },
-    [eventId, inviteMember]
-  );
+  const handleInvite = async (userId: Id<'users'>) => {
+    setPendingUserId(userId);
+    try {
+      await inviteMember({ eventId: eventId as Id<'events'>, userId });
+      setInvitedUserIds((previous) => new Set(previous).add(userId));
+    } catch (error) {
+      Alert.alert(
+        'Kunde inte bjuda in',
+        error instanceof Error ? error.message : 'Försök igen om en stund.'
+      );
+    }
+    setPendingUserId(null);
+  };
 
-  const handleShareCode = useCallback(async () => {
+  const handleShareCode = async () => {
     if (!event?.joinCode) {
       Alert.alert('Ingen jaktkod', 'Den här jakten har ingen kod att kopiera.');
       return;
@@ -183,7 +175,7 @@ export default function EventInviteScreen() {
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
     }
-  }, [event]);
+  };
 
   if (
     event === undefined ||
@@ -223,14 +215,16 @@ export default function EventInviteScreen() {
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      collapsable={false}>
+      collapsable={false}
+    >
       <ScrollView
         className="min-h-0 flex-1"
         contentContainerClassName="gap-5 px-5 pt-5"
         contentContainerStyle={{ paddingBottom: 18 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        collapsable={false}>
+        collapsable={false}
+      >
         {!isSearchMode ? (
           <>
             <Card>
@@ -243,7 +237,8 @@ export default function EventInviteScreen() {
                     <Text className="text-sm font-medium text-muted-foreground">Jaktkod</Text>
                     <Text
                       className="text-2xl font-semibold tracking-wide text-foreground"
-                      numberOfLines={1}>
+                      numberOfLines={1}
+                    >
                       {event.joinCode ?? 'Ingen kod'}
                     </Text>
                   </View>
@@ -294,32 +289,33 @@ export default function EventInviteScreen() {
 
         {!isSearchMode ? (
           <View className="gap-3">
-          <Text className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Vänner
-          </Text>
-
-          {friendRows.length > 0 ? (
-            friendRows.map((user) => (
-              <InviteUserRow
-                key={user._id}
-                user={user}
-                status={statusByUserId.get(user._id)}
-                isPending={pendingUserId === user._id}
-                onInvite={handleInvite}
-              />
-            ))
-          ) : (
-            <Text className="rounded-2xl border border-border bg-card p-4 text-sm leading-5 text-muted-foreground">
-              Inga vänner ännu. Sök användare ovan eller kopiera jaktkoden.
+            <Text className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Vänner
             </Text>
-          )}
+
+            {friendRows.length > 0 ? (
+              friendRows.map((user) => (
+                <InviteUserRow
+                  key={user._id}
+                  user={user}
+                  status={statusByUserId.get(user._id)}
+                  isPending={pendingUserId === user._id}
+                  onInvite={handleInvite}
+                />
+              ))
+            ) : (
+              <Text className="rounded-2xl border border-border bg-card p-4 text-sm leading-5 text-muted-foreground">
+                Inga vänner ännu. Sök användare ovan eller kopiera jaktkoden.
+              </Text>
+            )}
           </View>
         ) : null}
       </ScrollView>
 
       <View
         className="border-t border-border bg-background px-5 pt-3"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
         <Text className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Sök användare
         </Text>

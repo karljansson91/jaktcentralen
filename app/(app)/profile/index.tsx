@@ -46,7 +46,8 @@ function SectionHeader({ title, subtitle, actionLabel, onActionPress }: SectionH
           variant="default"
           size="sm"
           className="bg-primary"
-          onPress={onActionPress}>
+          onPress={onActionPress}
+        >
           <Ionicons name="add" size={20} color={APP_COLORS.surface} />
         </IconButton>
       ) : null}
@@ -75,7 +76,8 @@ function NotificationSwitchRow({
     <View
       className={`min-h-14 flex-row items-center justify-between gap-4 px-5 py-3 ${
         muted ? 'opacity-50' : ''
-      }`}>
+      }`}
+    >
       <Text className="min-w-0 flex-1 text-base font-medium text-foreground">{label}</Text>
       <Switch
         disabled={disabled}
@@ -96,10 +98,7 @@ export default function ProfileScreen() {
     useState<NotificationPreferenceKey | null>(null);
 
   const user = useQuery(api.users.getCurrentUserProfile);
-  const notificationPreferences = useQuery(
-    api.notifications.getPreferences,
-    user ? {} : 'skip'
-  );
+  const notificationPreferences = useQuery(api.notifications.getPreferences, user ? {} : 'skip');
   const invitations = useQuery(api.eventMembers.listMyInvitations);
   const friendRequests = useQuery(api.friends.listPendingReceived);
   const sentFriendRequests = useQuery(api.friends.listPendingSent);
@@ -132,12 +131,12 @@ export default function ProfileScreen() {
     setUpdatingNotificationKey(key);
     try {
       await updateNotificationPreferences({ [key]: value });
+      setUpdatingNotificationKey(null);
     } catch (error) {
       Alert.alert(
         'Kunde inte uppdatera notiser',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
       setUpdatingNotificationKey(null);
     }
   }
@@ -219,7 +218,8 @@ export default function ProfileScreen() {
         paddingBottom: 24,
       }}
       contentInset={{ bottom: Math.max(insets.bottom, 16) }}
-      scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}>
+      scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) }}
+    >
       <Card className="overflow-hidden border-border/70 bg-card py-0">
         <CardContent className="gap-5 p-5">
           <View className="flex-row items-center gap-4">
@@ -242,7 +242,8 @@ export default function ProfileScreen() {
             variant="outline"
             className="h-11 rounded-xl bg-background/70"
             onPress={() => push('/profile/edit' as Href)}
-            accessibilityLabel="Redigera profil">
+            accessibilityLabel="Redigera profil"
+          >
             <Ionicons name="create-outline" size={18} color={APP_COLORS.primary} />
             <Text>Redigera profil</Text>
           </Button>
@@ -322,13 +323,15 @@ export default function ProfileScreen() {
                     disabled={!invitation.event}
                     onPress={() =>
                       void handleAcceptInvite(invitation._id, invitation.event?._id as Id<'events'>)
-                    }>
+                    }
+                  >
                     <Text>Gå med</Text>
                   </Button>
                   <Button
                     variant="outline"
                     className="h-11 flex-1 rounded-xl bg-background/70"
-                    onPress={() => void handleDeclineInvite(invitation._id)}>
+                    onPress={() => void handleDeclineInvite(invitation._id)}
+                  >
                     <Text>Avböj</Text>
                   </Button>
                 </View>
@@ -354,13 +357,15 @@ export default function ProfileScreen() {
                 <View className="flex-row gap-2">
                   <Button
                     className="h-11 flex-1 rounded-xl"
-                    onPress={() => void handleAcceptFriendRequest(request.friendshipId)}>
+                    onPress={() => void handleAcceptFriendRequest(request.friendshipId)}
+                  >
                     <Text>Acceptera</Text>
                   </Button>
                   <Button
                     variant="outline"
                     className="h-11 flex-1 rounded-xl bg-background/70"
-                    onPress={() => void handleDeclineFriendRequest(request.friendshipId)}>
+                    onPress={() => void handleDeclineFriendRequest(request.friendshipId)}
+                  >
                     <Text>Avböj</Text>
                   </Button>
                 </View>
@@ -409,35 +414,36 @@ export default function ProfileScreen() {
           onActionPress={() => push('/profile/add-friend' as Href)}
         />
 
-        {friends && friends.length > 0 ? (
-          friends.map((friend) => (
-            <Pressable
-              key={friend.friendshipId}
-              accessibilityRole="button"
-              accessibilityLabel={`${friend.user?.name || 'Vän'}, håll in för att ta bort`}
-              onLongPress={() => confirmRemoveFriend(friend.friendshipId, friend.user?.name)}>
-              <Card className="border-border/70 bg-card py-0">
-                <CardContent className="px-5 py-4">
-                  <View className="flex-row items-center gap-3">
-                    <UserAvatar imageUrl={friend.user?.imageUrl} name={friend.user?.name} />
-                    <View className="min-w-0 flex-1 gap-1">
-                      <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-                        {getUserDisplayName(friend.user)}
-                      </Text>
-                      {getUserContactLine(friend.user) ? (
-                        <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                          {getUserContactLine(friend.user)}
+        {friends && friends.length > 0
+          ? friends.map((friend) => (
+              <Pressable
+                key={friend.friendshipId}
+                accessibilityRole="button"
+                accessibilityLabel={`${friend.user?.name || 'Vän'}, håll in för att ta bort`}
+                onLongPress={() => confirmRemoveFriend(friend.friendshipId, friend.user?.name)}
+              >
+                <Card className="border-border/70 bg-card py-0">
+                  <CardContent className="px-5 py-4">
+                    <View className="flex-row items-center gap-3">
+                      <UserAvatar imageUrl={friend.user?.imageUrl} name={friend.user?.name} />
+                      <View className="min-w-0 flex-1 gap-1">
+                        <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+                          {getUserDisplayName(friend.user)}
                         </Text>
-                      ) : (
-                        <Text className="text-sm text-muted-foreground">Vän</Text>
-                      )}
+                        {getUserContactLine(friend.user) ? (
+                          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+                            {getUserContactLine(friend.user)}
+                          </Text>
+                        ) : (
+                          <Text className="text-sm text-muted-foreground">Vän</Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                </CardContent>
-              </Card>
-            </Pressable>
-          ))
-        ) : null}
+                  </CardContent>
+                </Card>
+              </Pressable>
+            ))
+          : null}
       </View>
 
       <View className="gap-3">
@@ -446,7 +452,8 @@ export default function ProfileScreen() {
           variant="outline"
           className="h-11 rounded-xl bg-card"
           onPress={() => push('/issues' as Href)}
-          accessibilityLabel="Visa feedback">
+          accessibilityLabel="Visa feedback"
+        >
           <Ionicons name="chatbubble-ellipses-outline" size={18} color={APP_COLORS.primary} />
           <Text>Feedback</Text>
         </Button>

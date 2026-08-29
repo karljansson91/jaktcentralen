@@ -1,6 +1,5 @@
 import { GlassMenuButton } from '@/components/glass/glass-menu-button';
 import { type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
-import { useCallback, useMemo } from 'react';
 
 const ACTION_MARK_IN_POSITION = 'mark-in-position';
 const ACTION_CLEAR_IN_POSITION = 'clear-in-position';
@@ -58,117 +57,89 @@ export function HuntMapToolsMenu({
 }: HuntMapToolsMenuProps) {
   const { hasDirection: hasScentDirection, onSet: handleSetScentDirection } = scent;
 
-  const actions = useMemo<MenuAction[]>(
-    () => [
-      {
-        attributes: { hidden: !inPosition.available },
-        id: inPosition.marked ? ACTION_CLEAR_IN_POSITION : ACTION_MARK_IN_POSITION,
-        image: inPosition.marked ? 'xmark.circle' : 'checkmark.circle',
-        title: inPosition.marked ? 'Ta bort på plats' : 'Markera mig på plats',
-      },
-      {
-        id: ACTION_TOGGLE_OWN_SHARING,
-        image: positions.ownSharingEnabled ? 'location.north.fill' : 'location.north',
-        state: positions.ownSharingEnabled ? 'on' : 'off',
-        title: 'Dela min position',
-      },
-      {
-        id: ACTION_TOGGLE_OTHER_POSITIONS,
-        image: 'person.2',
-        state: positions.showOthers ? 'on' : 'off',
-        title: 'Visa andras positioner',
-      },
-      {
-        id: ACTION_SET_SCENT_DIRECTION,
-        image: 'wind',
-        title: hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
-      },
-      {
-        attributes: { hidden: !route.available },
-        id: ACTION_TOGGLE_ROUTE,
-        image: 'figure.walk',
-        state: route.visible ? 'on' : 'off',
-        title: 'Visa väg till pass',
-      },
-      {
-        attributes: { hidden: !otherMarkers.available },
-        id: ACTION_TOGGLE_OTHER_MARKERS,
-        image: otherMarkers.showing ? 'eye' : 'eye.slash',
-        state: otherMarkers.showing ? 'on' : 'off',
-        title: otherMarkers.showing ? 'Dölj övriga pass' : 'Visa övriga pass',
-      },
-      {
-        attributes: { hidden: !animalSightings.available },
-        id: ACTION_TOGGLE_ANIMAL_SIGHTINGS,
-        image: animalSightings.showing ? 'eye.slash' : 'eye',
-        state: animalSightings.showing ? 'on' : 'off',
-        title: animalSightings.showing ? 'Dölj observationer' : 'Visa observationer',
-      },
-      {
-        id: ACTION_LOCATE,
-        image: 'scope',
-        title: 'Centrera på mig',
-      },
-    ],
-    [
-      animalSightings.available,
-      animalSightings.showing,
-      inPosition.available,
-      inPosition.marked,
-      otherMarkers.available,
-      otherMarkers.showing,
-      positions.ownSharingEnabled,
-      positions.showOthers,
-      route.available,
-      route.visible,
-      hasScentDirection,
-    ],
-  );
-
-  const handlePressAction = useCallback(
-    (event: NativeActionEvent) => {
-      switch (event.nativeEvent.event) {
-        case ACTION_MARK_IN_POSITION:
-          requestAnimationFrame(inPosition.onMark);
-          break;
-        case ACTION_CLEAR_IN_POSITION:
-          requestAnimationFrame(inPosition.onClear);
-          break;
-        case ACTION_TOGGLE_OWN_SHARING:
-          requestAnimationFrame(positions.onToggleOwnSharing);
-          break;
-        case ACTION_TOGGLE_OTHER_POSITIONS:
-          requestAnimationFrame(positions.onToggleOthers);
-          break;
-        case ACTION_SET_SCENT_DIRECTION:
-          handleSetScentDirection();
-          break;
-        case ACTION_TOGGLE_ROUTE:
-          requestAnimationFrame(route.onToggle);
-          break;
-        case ACTION_TOGGLE_ANIMAL_SIGHTINGS:
-          requestAnimationFrame(animalSightings.onToggle);
-          break;
-        case ACTION_TOGGLE_OTHER_MARKERS:
-          requestAnimationFrame(otherMarkers.onToggle);
-          break;
-        case ACTION_LOCATE:
-          requestAnimationFrame(onLocate);
-          break;
-      }
+  const actions: MenuAction[] = [
+    {
+      attributes: { hidden: !inPosition.available },
+      id: inPosition.marked ? ACTION_CLEAR_IN_POSITION : ACTION_MARK_IN_POSITION,
+      image: inPosition.marked ? 'xmark.circle' : 'checkmark.circle',
+      title: inPosition.marked ? 'Ta bort på plats' : 'Markera mig på plats',
     },
-    [
-      animalSightings.onToggle,
-      inPosition.onClear,
-      inPosition.onMark,
-      onLocate,
-      otherMarkers.onToggle,
-      positions.onToggleOthers,
-      positions.onToggleOwnSharing,
-      route.onToggle,
-      handleSetScentDirection,
-    ],
-  );
+    {
+      id: ACTION_TOGGLE_OWN_SHARING,
+      image: positions.ownSharingEnabled ? 'location.north.fill' : 'location.north',
+      state: positions.ownSharingEnabled ? 'on' : 'off',
+      title: 'Dela min position',
+    },
+    {
+      id: ACTION_TOGGLE_OTHER_POSITIONS,
+      image: 'person.2',
+      state: positions.showOthers ? 'on' : 'off',
+      title: 'Visa andras positioner',
+    },
+    {
+      id: ACTION_SET_SCENT_DIRECTION,
+      image: 'wind',
+      title: hasScentDirection ? 'Ändra vindriktning' : 'Sätt vindriktning',
+    },
+    {
+      attributes: { hidden: !route.available },
+      id: ACTION_TOGGLE_ROUTE,
+      image: 'figure.walk',
+      state: route.visible ? 'on' : 'off',
+      title: 'Visa väg till pass',
+    },
+    {
+      attributes: { hidden: !otherMarkers.available },
+      id: ACTION_TOGGLE_OTHER_MARKERS,
+      image: otherMarkers.showing ? 'eye' : 'eye.slash',
+      state: otherMarkers.showing ? 'on' : 'off',
+      title: otherMarkers.showing ? 'Dölj övriga pass' : 'Visa övriga pass',
+    },
+    {
+      attributes: { hidden: !animalSightings.available },
+      id: ACTION_TOGGLE_ANIMAL_SIGHTINGS,
+      image: animalSightings.showing ? 'eye.slash' : 'eye',
+      state: animalSightings.showing ? 'on' : 'off',
+      title: animalSightings.showing ? 'Dölj observationer' : 'Visa observationer',
+    },
+    {
+      id: ACTION_LOCATE,
+      image: 'scope',
+      title: 'Centrera på mig',
+    },
+  ];
+
+  const handlePressAction = (event: NativeActionEvent) => {
+    switch (event.nativeEvent.event) {
+      case ACTION_MARK_IN_POSITION:
+        requestAnimationFrame(inPosition.onMark);
+        break;
+      case ACTION_CLEAR_IN_POSITION:
+        requestAnimationFrame(inPosition.onClear);
+        break;
+      case ACTION_TOGGLE_OWN_SHARING:
+        requestAnimationFrame(positions.onToggleOwnSharing);
+        break;
+      case ACTION_TOGGLE_OTHER_POSITIONS:
+        requestAnimationFrame(positions.onToggleOthers);
+        break;
+      case ACTION_SET_SCENT_DIRECTION:
+        handleSetScentDirection();
+        break;
+      case ACTION_TOGGLE_ROUTE:
+        requestAnimationFrame(route.onToggle);
+        break;
+      case ACTION_TOGGLE_ANIMAL_SIGHTINGS:
+        requestAnimationFrame(animalSightings.onToggle);
+        break;
+      case ACTION_TOGGLE_OTHER_MARKERS:
+        requestAnimationFrame(otherMarkers.onToggle);
+        break;
+      case ACTION_LOCATE:
+        requestAnimationFrame(onLocate);
+        break;
+    }
+  };
 
   return (
     <GlassMenuButton

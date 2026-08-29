@@ -4,7 +4,7 @@ import { getWindDirectionDisplay, normalizeDegrees } from '@/lib/wind-direction'
 import { publishWindDirectionSelection } from '@/lib/wind-direction-selection';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -72,59 +72,54 @@ export default function WindDirectionScreen() {
   const { back, canGoBack, replace } = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const initialWindDirectionDegrees = useMemo(
-    () => parseInitialDegrees(initialDegrees),
-    [initialDegrees]
-  );
+  const initialWindDirectionDegrees = parseInitialDegrees(initialDegrees);
   const [draftDegrees, setDraftDegrees] = useState(initialWindDirectionDegrees ?? 0);
   const compassSize = Math.min(256, Math.max(218, width - 96));
 
-  const close = useCallback(() => {
+  const close = () => {
     if (canGoBack()) {
       back();
       return;
     }
 
     replace(`/event/${eventId}`);
-  }, [back, canGoBack, eventId, replace]);
+  };
 
   useEffect(() => {
     publishWindDirectionSelection(initialWindDirectionDegrees ?? 0);
   }, [initialWindDirectionDegrees]);
 
-  const setWindDirection = useCallback((degrees: number) => {
+  const setWindDirection = (degrees: number) => {
     const nextDegrees = Math.round(normalizeDegrees(degrees));
     setDraftDegrees(nextDegrees);
     publishWindDirectionSelection(nextDegrees);
-  }, []);
+  };
 
-  const handleCompassPress = useCallback(
-    (event: GestureResponderEvent) => {
-      const nextDegrees = degreesFromTouch(
-        event.nativeEvent.locationX,
-        event.nativeEvent.locationY,
-        compassSize
-      );
-      if (nextDegrees == null) {
-        return;
-      }
+  const handleCompassPress = (event: GestureResponderEvent) => {
+    const nextDegrees = degreesFromTouch(
+      event.nativeEvent.locationX,
+      event.nativeEvent.locationY,
+      compassSize
+    );
+    if (nextDegrees == null) {
+      return;
+    }
 
-      setWindDirection(nextDegrees);
-    },
-    [compassSize, setWindDirection]
-  );
+    setWindDirection(nextDegrees);
+  };
 
-  const handleClear = useCallback(() => {
+  const handleClear = () => {
     publishWindDirectionSelection(null);
     close();
-  }, [close]);
+  };
   const selectedWindLabel = getWindDirectionDisplay(draftDegrees).label;
   const selectedDegrees = Math.round(normalizeDegrees(draftDegrees));
 
   return (
     <View
       className="items-center bg-background px-6 pt-5"
-      style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}>
+      style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}
+    >
       <View className="w-full gap-1">
         <Text variant="h3" className="text-center">
           Vindriktning
@@ -144,12 +139,14 @@ export default function WindDirectionScreen() {
             marginTop: 20,
             width: compassSize,
           },
-        ]}>
+        ]}
+      >
         {COMPASS_TICKS.map((degrees, index) => (
           <View
             key={degrees}
             pointerEvents="none"
-            style={[styles.compassTickRing, { transform: [{ rotate: `${degrees}deg` }] }]}>
+            style={[styles.compassTickRing, { transform: [{ rotate: `${degrees}deg` }] }]}
+          >
             <View style={index % 6 === 0 ? styles.compassMajorTick : styles.compassTick} />
           </View>
         ))}
@@ -162,21 +159,24 @@ export default function WindDirectionScreen() {
               styles.compassLabel,
               item.label === selectedWindLabel ? styles.compassLabelSelected : null,
               getCompassLabelStyle(item.degrees, compassSize),
-            ]}>
+            ]}
+          >
             {item.label}
           </Text>
         ))}
 
         <View
           pointerEvents="none"
-          style={[styles.windNeedleRing, { paddingTop: compassSize * 0.14 }]}>
+          style={[styles.windNeedleRing, { paddingTop: compassSize * 0.14 }]}
+        >
           <View
             style={[
               styles.windNeedle,
               {
                 transform: [{ rotate: `${selectedDegrees}deg` }],
               },
-            ]}>
+            ]}
+          >
             <Ionicons
               accessibilityElementsHidden
               importantForAccessibility="no"
@@ -209,7 +209,8 @@ export default function WindDirectionScreen() {
         <Button
           variant="outline"
           className="h-12 flex-1 rounded-2xl bg-background"
-          onPress={handleClear}>
+          onPress={handleClear}
+        >
           <Text>Rensa vind</Text>
         </Button>
         <Button className="h-12 flex-1 rounded-2xl" onPress={close}>

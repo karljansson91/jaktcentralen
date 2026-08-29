@@ -10,7 +10,7 @@
     "lint": "expo lint",
     "postinstall": "patch-package",
     "doctor": "react-doctor .",
-    "doctor:staged": "react-doctor --staged --fail-on error --no-score",
+    "doctor:staged": "react-doctor --staged --blocking error --no-score",
     "fallow:dead-code": "fallow dead-code --format compact",
     "issues": "node scripts/issues.mjs"
   },
@@ -69,7 +69,7 @@
     "eslint-config-expo": "~56.0.4",
     "fallow": "^2.89.0",
     "patch-package": "^8.0.1",
-    "react-doctor": "^0.2.4",
+    "react-doctor": "0.9.12",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~6.0.3"

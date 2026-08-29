@@ -14,7 +14,7 @@ import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,7 +31,7 @@ export default function IssuesScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
-  const filteredIssues = useMemo(() => {
+  const filteredIssues = (() => {
     if (!issues) {
       return [];
     }
@@ -48,7 +48,7 @@ export default function IssuesScreen() {
       }
       return true;
     });
-  }, [currentUser?._id, issues, scopeFilter, statusFilter, typeFilter]);
+  })();
 
   function openIssue(issueId: Id<'issues'>) {
     push(`/issues/${issueId}` as Href);
@@ -74,20 +74,32 @@ export default function IssuesScreen() {
       contentInset={{ bottom: Math.max(insets.bottom, 16) + 24 }}
       contentContainerClassName="gap-5 px-4 pt-4"
       scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 16) + 24 }}
-      showsVerticalScrollIndicator={false}>
+      showsVerticalScrollIndicator={false}
+    >
       <View className="gap-3">
         <Button
           className="h-12 rounded-xl"
           onPress={openNewIssueReport}
-          accessibilityLabel="Skapa feedback">
+          accessibilityLabel="Skapa feedback"
+        >
           <Ionicons name="add" size={19} color={APP_COLORS.surface} />
           <Text>Ny feedback</Text>
         </Button>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row gap-2 pr-4">
-            <IssueChip label="Alla" selected={scopeFilter === 'all'} value="all" onPress={setScopeFilter} />
-            <IssueChip label="Mina" selected={scopeFilter === 'mine'} value="mine" onPress={setScopeFilter} />
+            <IssueChip
+              label="Alla"
+              selected={scopeFilter === 'all'}
+              value="all"
+              onPress={setScopeFilter}
+            />
+            <IssueChip
+              label="Mina"
+              selected={scopeFilter === 'mine'}
+              value="mine"
+              onPress={setScopeFilter}
+            />
           </View>
         </ScrollView>
 

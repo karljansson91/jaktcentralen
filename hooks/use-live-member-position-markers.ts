@@ -1,12 +1,10 @@
-import type {
-  LiveMemberPositionMarkerItem,
-} from "@/components/event/live-member-position-marker";
-import type { Id } from "@/convex/_generated/dataModel";
-import { getMemberInitials } from "@/lib/event-formatting";
-import { useMemo } from "react";
+import type { LiveMemberPositionMarkerItem } from '@/components/event/live-member-position-marker';
+import type { Id } from '@/convex/_generated/dataModel';
+import { getMemberInitials } from '@/lib/event-formatting';
+import { useMemo } from 'react';
 
 type LiveMember = {
-  _id: Id<"eventMembers">;
+  _id: Id<'eventMembers'>;
   lastLatitude?: number | null;
   lastLongitude?: number | null;
   positionSharingDisabled?: boolean;
@@ -14,11 +12,11 @@ type LiveMember = {
     imageUrl?: string | null;
     name?: string | null;
   } | null;
-  userId: Id<"users">;
+  userId: Id<'users'>;
 };
 
 type LiveMemberPositionMarkersArgs = {
-  currentUserId?: Id<"users">;
+  currentUserId?: Id<'users'>;
   members: LiveMember[] | undefined;
   showOtherUserPositions: boolean;
 };
@@ -28,7 +26,7 @@ export function useLiveMemberPositionMarkers({
   members,
   showOtherUserPositions,
 }: LiveMemberPositionMarkersArgs) {
-  return useMemo(() => {
+  return (() => {
     if (!members || !currentUserId || !showOtherUserPositions) {
       return null;
     }
@@ -43,7 +41,7 @@ export function useLiveMemberPositionMarkers({
         continue;
       }
 
-      const name = member.user?.name?.trim() || "Okänd";
+      const name = member.user?.name?.trim() || 'Okänd';
       markers.push({
         coordinates: [member.lastLongitude, member.lastLatitude],
         id: member._id,
@@ -55,5 +53,5 @@ export function useLiveMemberPositionMarkers({
     }
 
     return markers;
-  }, [currentUserId, members, showOtherUserPositions]);
+  })();
 }

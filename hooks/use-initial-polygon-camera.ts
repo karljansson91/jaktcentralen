@@ -1,8 +1,30 @@
 import type { LngLat } from '@/lib/geo';
-import { useMemo } from 'react';
+import { getCurrentUserCoordinate } from '@/lib/location';
+import { useEffect, useState } from 'react';
+
+type PolygonCamera =
+  | {
+      bounds: {
+        ne: LngLat;
+        sw: LngLat;
+        paddingTop: number;
+        paddingBottom: number;
+        paddingLeft: number;
+        paddingRight: number;
+      };
+    }
+  | {
+      zoomLevel: number;
+      centerCoordinate: LngLat;
+    };
+
+const SWEDEN_CAMERA: PolygonCamera = {
+  zoomLevel: 4,
+  centerCoordinate: [16, 62],
+};
 
 export function useInitialPolygonCamera(initialPoints: LngLat[] | undefined) {
-  return useMemo(() => {
+  const polygonCamera = (() => {
     if (initialPoints && initialPoints.length >= 2) {
       const lngs = initialPoints.map((point) => point[0]);
       const lats = initialPoints.map((point) => point[1]);
@@ -25,9 +47,43 @@ export function useInitialPolygonCamera(initialPoints: LngLat[] | undefined) {
       };
     }
 
-    return {
-      zoomLevel: 4,
-      centerCoordinate: [16, 62] as LngLat,
+    return null;
+  })();
+
+  const [newPolygonCamera, setNewPolygonCamera] = useState<PolygonCamera | null>(null);
+
+  useEffect(() => {
+    if (polygonCamera) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void getCurrentUserCoordinate()
+      .then((coordinate) => {
+        if (cancelled) {
+          return;
+        }
+
+        setNewPolygonCamera(
+          coordinate
+            ? {
+                zoomLevel: 13,
+                centerCoordinate: coordinate,
+              }
+            : SWEDEN_CAMERA
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNewPolygonCamera(SWEDEN_CAMERA);
+        }
+      });
+
+    return () => {
+      cancelled = true;
     };
-  }, [initialPoints]);
+  }, [polygonCamera]);
+
+  return polygonCamera ?? newPolygonCamera;
 }

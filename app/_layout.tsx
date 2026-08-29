@@ -14,7 +14,7 @@ import { useEffect, type ReactNode } from 'react';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '');
+Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_PUBLISHABLE_KEY ?? '');
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL ?? '';
@@ -53,7 +53,9 @@ function NotificationResponseRouting() {
 function IssueReportGestureBoundary({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
 
-  return <IssueReportGesture enabled={isLoaded && Boolean(isSignedIn)}>{children}</IssueReportGesture>;
+  return (
+    <IssueReportGesture enabled={isLoaded && Boolean(isSignedIn)}>{children}</IssueReportGesture>
+  );
 }
 
 export default function RootLayout() {

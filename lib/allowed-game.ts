@@ -30,7 +30,10 @@ export type AllowedGameGroup = {
 export const CUSTOM_ALLOWED_GAME_SPECIES_ID = 'custom';
 
 export function isCustomAllowedGameSpeciesId(speciesId: string) {
-  return speciesId === CUSTOM_ALLOWED_GAME_SPECIES_ID || speciesId.startsWith(`${CUSTOM_ALLOWED_GAME_SPECIES_ID}:`);
+  return (
+    speciesId === CUSTOM_ALLOWED_GAME_SPECIES_ID ||
+    speciesId.startsWith(`${CUSTOM_ALLOWED_GAME_SPECIES_ID}:`)
+  );
 }
 
 const GENERIC_ALLOWED_GAME_NOTE_PLACEHOLDER = 'Anteckning';
@@ -162,7 +165,7 @@ export function formatAllowedGameSummary(rules?: AllowedGameRule[] | null, maxIt
     return null;
   }
 
-  const labels = rules.map(getAllowedGameSpeciesLabel).filter(Boolean);
+  const labels = rules.map(getAllowedGameSpeciesLabel);
   if (labels.length <= maxItems) {
     return labels.join(', ');
   }

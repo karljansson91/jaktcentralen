@@ -5,7 +5,7 @@ import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,7 +19,7 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
   const updateArea = useMutation(api.areas.update);
   const [name, setName] = useState(() => area.name);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     if (!name.trim()) {
       Alert.alert('Fel', 'Namn krävs');
       return;
@@ -34,22 +34,25 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
     } catch (e: any) {
       Alert.alert('Fel', e.message ?? 'Kunde inte uppdatera område');
     }
-  }, [area._id, back, name, updateArea]);
+  };
 
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View
         className="border-b border-border bg-background px-5 pb-3"
-        style={{ paddingTop: Math.max(insets.top, 12) }}>
+        style={{ paddingTop: Math.max(insets.top, 12) }}
+      >
         <View className="h-11 flex-row items-center justify-between gap-3">
           <View className="size-10" />
           <Text
             className="min-w-0 flex-1 text-center text-base font-semibold"
             numberOfLines={1}
             adjustsFontSizeToFit
-            minimumFontScale={0.72}>
+            minimumFontScale={0.72}
+          >
             Uppdatera info
           </Text>
           <Pressable
@@ -58,7 +61,8 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
             hitSlop={10}
             onPress={() => back()}
             className="size-10 items-center justify-center rounded-full border border-border bg-card"
-            style={{ boxShadow: '0 5px 14px rgba(49, 52, 68, 0.10)' }}>
+            style={{ boxShadow: '0 5px 14px rgba(49, 52, 68, 0.10)' }}
+          >
             <Ionicons name="close" size={22} color={APP_COLORS.text} />
           </Pressable>
         </View>
@@ -73,26 +77,20 @@ export function EditAreaForm({ area }: EditAreaFormProps) {
           paddingHorizontal: 24,
           paddingTop: 24,
         }}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="flex-1">
           <Text className="mb-1 font-medium">Namn *</Text>
-          <Input
-            value={name}
-            onChangeText={setName}
-            placeholder="Områdesnamn"
-            className="mb-4"
-          />
+          <Input value={name} onChangeText={setName} placeholder="Områdesnamn" className="mb-4" />
         </View>
       </ScrollView>
 
       <View
         className="border-t border-border bg-background px-6 pt-3"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
         <View className="flex-row items-center gap-3">
-          <Button
-            variant="ghost"
-            className="h-12 flex-1 rounded-xl"
-            onPress={() => back()}>
+          <Button variant="ghost" className="h-12 flex-1 rounded-xl" onPress={() => back()}>
             <Text className="text-muted-foreground">Avbryt</Text>
           </Button>
 

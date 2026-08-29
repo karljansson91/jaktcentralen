@@ -5,13 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   View,
   useWindowDimensions,
+  type ListRenderItemInfo,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +20,22 @@ type ChatViewerImage = {
   fileId: Id<'_storage'>;
   url: string;
 };
+
+function ChatViewerImageSlide({ image, width }: { image: ChatViewerImage; width: number }) {
+  return (
+    <View className="items-center justify-center" style={{ width }}>
+      <Image
+        source={{ uri: image.url }}
+        contentFit="contain"
+        style={{
+          backgroundColor: '#000000',
+          height: '100%',
+          width,
+        }}
+      />
+    </View>
+  );
+}
 
 function parseInitialIndex(value?: string) {
   const parsed = Number.parseInt(value ?? '0', 10);
@@ -34,7 +51,7 @@ export default function ChatImageViewerScreen() {
   const { back, canGoBack, replace } = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const requestedIndex = useMemo(() => parseInitialIndex(index), [index]);
+  const requestedIndex = parseInitialIndex(index);
   const message = useQuery(
     api.messages.getImageMessage,
     messageId
@@ -50,6 +67,10 @@ export default function ChatImageViewerScreen() {
   const displayedIndex = Math.min(activeIndex, Math.max(images.length - 1, 0));
   const flatListRef = useRef<FlatList<ChatViewerImage>>(null);
 
+  function renderImage({ item }: ListRenderItemInfo<ChatViewerImage>) {
+    return <ChatViewerImageSlide image={item} width={width} />;
+  }
+
   function closeViewer() {
     if (canGoBack()) {
       back();
@@ -63,12 +84,14 @@ export default function ChatImageViewerScreen() {
     <View className="flex-1 bg-black">
       <View
         className="absolute left-0 right-0 z-10 flex-row items-center justify-between px-4"
-        style={{ paddingTop: Math.max(insets.top, 14) }}>
+        style={{ paddingTop: Math.max(insets.top, 14) }}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Stäng bild"
           className="size-10 items-center justify-center rounded-full bg-black/55"
-          onPress={closeViewer}>
+          onPress={closeViewer}
+        >
           <Ionicons name="close" size={24} color="white" />
         </Pressable>
 
@@ -88,9 +111,7 @@ export default function ChatImageViewerScreen() {
         </View>
       ) : images.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-center text-sm text-white/75">
-            Bilden kunde inte visas.
-          </Text>
+          <Text className="text-center text-sm text-white/75">Bilden kunde inte visas.</Text>
         </View>
       ) : (
         <>
@@ -119,30 +140,15 @@ export default function ChatImageViewerScreen() {
                 });
               });
             }}
-            renderItem={({ item }) => (
-              <View
-                className="items-center justify-center"
-                style={{ width }}>
-                <Image
-                  source={{ uri: item.url }}
-                  contentFit="contain"
-                  style={{
-                    backgroundColor: '#000000',
-                    height: '100%',
-                    width,
-                  }}
-                />
-              </View>
-            )}
+            renderItem={renderImage}
           />
 
           {message.body.trim() ? (
             <View
               className="absolute bottom-0 left-0 right-0 bg-black/45 px-5"
-              style={{ paddingBottom: Math.max(insets.bottom, 18), paddingTop: 12 }}>
-              <Text className="text-center text-sm leading-5 text-white">
-                {message.body}
-              </Text>
+              style={{ paddingBottom: Math.max(insets.bottom, 18), paddingTop: 12 }}
+            >
+              <Text className="text-center text-sm leading-5 text-white">{message.body}</Text>
             </View>
           ) : null}
         </>

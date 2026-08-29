@@ -1,5 +1,5 @@
 import type { LatLngPoint } from '@/lib/geo';
-import { useCallback, useReducer } from 'react';
+import { useReducer } from 'react';
 
 type HuntMapUiState = {
   longPressActionPoint: LatLngPoint | null;
@@ -32,15 +32,15 @@ function huntMapUiReducer(state: HuntMapUiState, action: HuntMapUiAction): HuntM
 export function useHuntMapUiState() {
   const [state, dispatch] = useReducer(huntMapUiReducer, INITIAL_HUNT_MAP_UI_STATE);
 
-  const setLongPressActionPoint = useCallback((point: LatLngPoint | null) => {
+  const setLongPressActionPoint = (point: LatLngPoint | null) => {
     dispatch({ type: 'setLongPressActionPoint', point });
-  }, []);
-  const setVisibleAssignmentTrailTargetKey = useCallback((targetKey: string | null) => {
+  };
+  const setVisibleAssignmentTrailTargetKey = (targetKey: string | null) => {
     dispatch({ type: 'setVisibleAssignmentTrailTargetKey', targetKey });
-  }, []);
-  const toggleOtherUserPositions = useCallback(() => {
+  };
+  const toggleOtherUserPositions = () => {
     dispatch({ type: 'toggleOtherUserPositions' });
-  }, []);
+  };
 
   return {
     ...state,

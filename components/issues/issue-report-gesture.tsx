@@ -1,6 +1,6 @@
 import { setPendingIssueReportDraft } from '@/lib/issue-report-draft';
 import { Href, usePathname, useRouter } from 'expo-router';
-import { PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import { NativeModules, TextInput, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
@@ -32,6 +32,15 @@ async function captureIssueScreenshot(width: number, height: number) {
   }
 }
 
+async function prepareIssueReportDraft(pathname: string, width: number, height: number) {
+  const screenshotUri = await captureIssueScreenshot(width, height);
+  setPendingIssueReportDraft({
+    capturedAt: Date.now(),
+    screenPath: pathname,
+    screenshotUri,
+  });
+}
+
 type IssueReportGestureProps = PropsWithChildren<{
   enabled?: boolean;
 }>;
@@ -56,7 +65,7 @@ export function IssueReportGesture({ children, enabled = true }: IssueReportGest
     };
   }, [isOpening]);
 
-  const openIssueReport = useCallback(async () => {
+  const openIssueReport = async () => {
     if (!enabled || isOpening || isReportScreen(pathname)) {
       return;
     }
@@ -67,35 +76,25 @@ export function IssueReportGesture({ children, enabled = true }: IssueReportGest
 
     setIsOpening(true);
     try {
-      const screenshotUri = await captureIssueScreenshot(dimensions.width, dimensions.height);
-
-      setPendingIssueReportDraft({
-        capturedAt: Date.now(),
-        screenPath: pathname,
-        screenshotUri,
-      });
+      await prepareIssueReportDraft(pathname, dimensions.width, dimensions.height);
       push('/issue-report' as Href);
     } catch {
       setIsOpening(false);
       return;
     }
-  }, [dimensions.height, dimensions.width, enabled, isOpening, pathname, push]);
+  };
 
-  const reportGesture = useMemo(
-    () =>
-      Gesture.LongPress()
-        .enabled(enabled && !isReportScreen(pathname))
-        .minDuration(REPORT_GESTURE_DURATION_MS)
-        .maxDistance(REPORT_GESTURE_MAX_DISTANCE)
-        .numberOfPointers(2)
-        .cancelsTouchesInView(false)
-        .shouldCancelWhenOutside(false)
-        .runOnJS(true)
-        .onStart(() => {
-          void openIssueReport();
-        }),
-    [enabled, openIssueReport, pathname]
-  );
+  const reportGesture = Gesture.LongPress()
+    .enabled(enabled && !isReportScreen(pathname))
+    .minDuration(REPORT_GESTURE_DURATION_MS)
+    .maxDistance(REPORT_GESTURE_MAX_DISTANCE)
+    .numberOfPointers(2)
+    .cancelsTouchesInView(false)
+    .shouldCancelWhenOutside(false)
+    .runOnJS(true)
+    .onStart(() => {
+      void openIssueReport();
+    });
 
   return (
     <GestureDetector gesture={reportGesture}>

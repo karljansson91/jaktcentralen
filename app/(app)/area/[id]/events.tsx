@@ -7,8 +7,13 @@ import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { ActivityIndicator, FlatList, Pressable, View, type ListRenderItemInfo } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  View,
+  type ListRenderItemInfo,
+} from 'react-native';
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('sv-SE');
@@ -49,20 +54,13 @@ export default function EventsListScreen() {
   const { back, push } = useRouter();
   const { insets } = useGlassHeaderSpacing();
   const area = useQuery(api.areas.get, { areaId: id as Id<'areas'> });
-  const events = useQuery(
-    api.events.listByArea,
-    area ? { areaId: id as Id<'areas'> } : 'skip'
-  );
-  const openEvent = useCallback(
-    (eventId: Id<'events'>) => {
-      back();
-      setTimeout(() => push(`/event/${eventId}`), 100);
-    },
-    [back, push]
-  );
-  const renderEventItem = useCallback(
-    ({ item }: ListRenderItemInfo<AreaEventItem>) => <EventRow item={item} onOpen={openEvent} />,
-    [openEvent]
+  const events = useQuery(api.events.listByArea, area ? { areaId: id as Id<'areas'> } : 'skip');
+  const openEvent = (eventId: Id<'events'>) => {
+    back();
+    setTimeout(() => push(`/event/${eventId}`), 100);
+  };
+  const renderEventItem = ({ item }: ListRenderItemInfo<AreaEventItem>) => (
+    <EventRow item={item} onOpen={openEvent} />
   );
 
   if (area === undefined || (area && events === undefined)) {

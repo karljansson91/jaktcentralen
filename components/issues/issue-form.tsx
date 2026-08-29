@@ -10,7 +10,7 @@ import {
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import {
   KeyboardAwareScrollView,
@@ -27,7 +27,7 @@ export type IssueFormValues = {
   type: IssueType;
 };
 
-export type IssueFormImage = {
+type IssueFormImage = {
   id: string;
   url: string;
 };
@@ -77,7 +77,7 @@ export function IssueForm({
 }: IssueFormProps) {
   const insets = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
-  const startingValues = useMemo(() => initialValues ?? DEFAULT_VALUES, [initialValues]);
+  const startingValues = initialValues ?? DEFAULT_VALUES;
   const [values, setValues] = useState<IssueFormValues>(startingValues);
   const [actionFooterHeight, setActionFooterHeight] = useState(ACTION_FOOTER_FALLBACK_HEIGHT);
   const isBusy = busyState !== 'idle';
@@ -104,11 +104,10 @@ export function IssueForm({
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         scrollIndicatorInsets={{ bottom: scrollBottomSpace }}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <View className="gap-1">
-          <Text className="text-[26px] font-semibold leading-[32px] text-foreground">
-            {title}
-          </Text>
+          <Text className="text-[26px] font-semibold leading-[32px] text-foreground">{title}</Text>
           {!showStatusEditor ? (
             <Text className="text-sm text-muted-foreground">
               Status: {getIssueStatusLabel('triage')}
@@ -142,7 +141,8 @@ export function IssueForm({
                 {attachmentImages.map((image) => (
                   <View
                     key={image.id}
-                    className="relative size-24 overflow-hidden rounded-xl border border-border bg-card">
+                    className="relative size-24 overflow-hidden rounded-xl border border-border bg-card"
+                  >
                     <Image
                       source={{ uri: image.url }}
                       contentFit="cover"
@@ -158,7 +158,8 @@ export function IssueForm({
                         accessibilityLabel="Ta bort bild"
                         className="absolute right-1 top-1 rounded-full bg-black/65 p-1"
                         hitSlop={8}
-                        onPress={() => onRemoveAttachment(image.id)}>
+                        onPress={() => onRemoveAttachment(image.id)}
+                      >
                         <Ionicons name="close" size={14} color="white" />
                       </Pressable>
                     ) : null}
@@ -172,7 +173,8 @@ export function IssueForm({
                 variant="outline"
                 className="h-12 rounded-xl border-dashed bg-card"
                 disabled={isBusy}
-                onPress={onAddAttachment}>
+                onPress={onAddAttachment}
+              >
                 <Ionicons name="image-outline" size={18} color={APP_COLORS.primary} />
                 <Text>{busyState === 'addingAttachment' ? 'Öppnar...' : 'Lägg till bild'}</Text>
               </Button>
@@ -247,19 +249,22 @@ export function IssueForm({
             setActionFooterHeight((currentHeight) =>
               Math.abs(currentHeight - nextHeight) > 1 ? nextHeight : currentHeight
             );
-          }}>
+          }}
+        >
           <View className="flex-row gap-3">
             <Button
               variant="outline"
               className="h-12 flex-1 rounded-xl bg-background"
               disabled={isBusy}
-              onPress={onCancel}>
+              onPress={onCancel}
+            >
               <Text>Avbryt</Text>
             </Button>
             <Button
               className="h-12 flex-1 rounded-xl"
               disabled={!canSubmit}
-              onPress={() => onSubmit(values)}>
+              onPress={() => onSubmit(values)}
+            >
               {busyState === 'saving' ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
@@ -273,7 +278,8 @@ export function IssueForm({
               variant="destructive"
               className="h-12 rounded-xl"
               disabled={isBusy}
-              onPress={onDelete}>
+              onPress={onDelete}
+            >
               <Text>{busyState === 'deleting' ? 'Tar bort...' : 'Ta bort feedback'}</Text>
             </Button>
           ) : null}

@@ -75,7 +75,7 @@ export async function fetchWalkingAssignmentRoute(
   trail: AssignmentTrail,
   signal: AbortSignal
 ): Promise<AssignmentRoute> {
-  const accessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const accessToken = process.env.EXPO_PUBLIC_MAPBOX_PUBLISHABLE_KEY;
   if (!accessToken) {
     throw new Error('Mapbox token saknas.');
   }

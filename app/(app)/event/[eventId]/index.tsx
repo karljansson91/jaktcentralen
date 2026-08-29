@@ -9,6 +9,7 @@ import { HuntMapMeasurementControls } from '@/components/event/hunt-map-measurem
 import { HuntMapTopNav } from '@/components/event/hunt-map-top-nav';
 import { HuntMapToolsMenu } from '@/components/event/hunt-map-tools-menu';
 import { GlassIconButton } from '@/components/glass';
+import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { LiveMemberPositionMarker } from '@/components/event/live-member-position-marker';
 import { MapScaleBar } from '@/components/map/map-scale-bar';
@@ -23,7 +24,6 @@ import { AreaFeatureListItem, getAreaFeatureTargetKey } from '@/lib/area-feature
 import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { getEventLifecycle, isEventActive } from '@/lib/event-lifecycle';
 import { isPointInPolygon, type LatLngPoint } from '@/lib/geo';
-import type { AssignmentTrail } from '@/lib/hunt-navigation';
 import { subscribeToHuntMapLongPressActions } from '@/lib/hunt-map-long-press-actions';
 import {
   IN_POSITION_RADIUS_METERS,
@@ -57,14 +57,7 @@ import {
 import { useMutation, useQuery } from 'convex/react';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  type ElementRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ElementRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -91,7 +84,7 @@ export default function EventMapScreen() {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const currentTime = useCurrentTime();
-  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
+  const { hillshadeVisible, mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const {
     handleCameraChanged,
     heading: mapHeading,
@@ -165,9 +158,7 @@ export default function EventMapScreen() {
   const updatePosition = useMutation(api.eventMembers.updatePosition);
   const markInPosition = useMutation(api.eventMembers.markInPosition);
   const clearInPosition = useMutation(api.eventMembers.clearInPosition);
-  const setPositionSharingDisabled = useMutation(
-    api.eventMembers.setPositionSharingDisabled
-  );
+  const setPositionSharingDisabled = useMutation(api.eventMembers.setPositionSharingDisabled);
   const isActiveHunt = Boolean(event && isEventActive(event, currentTime));
   const isEndedHunt = Boolean(event && getEventLifecycle(event, currentTime) === 'ended');
   const activeWindSourceDirectionDegrees = isActiveHunt ? windSourceDirectionDegrees : null;
@@ -184,18 +175,15 @@ export default function EventMapScreen() {
     visibleSightings: visibleAnimalSightings,
   } = useAnimalSightingMapVisibility(animalSightings, currentTime);
 
-  const handlePressSighting = useCallback(
-    (sighting: AnimalSightingMapItem) => {
-      showAnimalSightingActionMenu({
-        currentTime,
-        sighting,
-        onHide: () => {
-          void handleHideSighting(sighting);
-        },
-      });
-    },
-    [currentTime, handleHideSighting]
-  );
+  const handlePressSighting = (sighting: AnimalSightingMapItem) => {
+    showAnimalSightingActionMenu({
+      currentTime,
+      sighting,
+      onHide: () => {
+        void handleHideSighting(sighting);
+      },
+    });
+  };
 
   useEffect(() => subscribeToWindDirectionSelection(setWindSourceDirectionDegrees), []);
 
@@ -250,12 +238,12 @@ export default function EventMapScreen() {
     };
   }, [event, eventId, isActiveHunt, updatePosition]);
 
-  const polygonGeoJSON = useMemo(() => {
+  const polygonGeoJSON = (() => {
     if (!area) return null;
     return buildAreaPolygonFeature(area);
-  }, [area]);
+  })();
 
-  const cameraBounds = useMemo(() => {
+  const cameraBounds = (() => {
     if (!area) return null;
     return getAreaCameraBounds(area, {
       top: Math.max(insets.top + 92, 112),
@@ -263,7 +251,7 @@ export default function EventMapScreen() {
       left: 42,
       right: 42,
     });
-  }, [area, insets.bottom, insets.top]);
+  })();
 
   const {
     activeSat,
@@ -307,7 +295,7 @@ export default function EventMapScreen() {
     members,
   });
 
-  const longPressPointGeoJSON = useMemo<GeoJSON.Feature<GeoJSON.Point> | null>(() => {
+  const longPressPointGeoJSON: GeoJSON.Feature<GeoJSON.Point> | null = (() => {
     if (!longPressActionPoint) {
       return null;
     }
@@ -320,13 +308,13 @@ export default function EventMapScreen() {
         coordinates: [longPressActionPoint.longitude, longPressActionPoint.latitude],
       },
     };
-  }, [longPressActionPoint]);
+  })();
 
   useEffect(() => {
     ownPositionSharingEnabledRef.current = isOwnPositionSharingEnabled;
   }, [isOwnPositionSharingEnabled, ownPositionSharingEnabledRef]);
 
-  const assignmentTrail = useMemo<AssignmentTrail | null>(() => {
+  const assignmentTrail = (() => {
     if (
       !isActiveHunt ||
       !currentUserAssignedStation ||
@@ -343,13 +331,7 @@ export default function EventMapScreen() {
       endCoordinate: currentUserAssignedStation.coordinate,
       targetKey: currentUserAssignedStation.targetKey,
     };
-  }, [
-    activeAssignmentTrailTargetKey,
-    currentCoordinate,
-    currentUserAssignedStation,
-    currentUserMemberCoordinate,
-    isActiveHunt,
-  ]);
+  })();
 
   const {
     mode: assignmentRouteMode,
@@ -387,72 +369,52 @@ export default function EventMapScreen() {
         }
       : null;
 
-  const handlePressStationTarget = useCallback(
-    () => {
-      push(`/event/${eventId}/sat`);
-    },
-    [eventId, push]
-  );
+  const handlePressStationTarget = () => {
+    push(`/event/${eventId}/sat`);
+  };
 
-  const handlePressPointFeature = useCallback(
-    (feature: AreaFeatureListItem) => {
-      const targetKey = getAreaFeatureTargetKey(feature);
-      if (feature.category !== 'pass' || !selectedPassTargetKeys.has(targetKey)) {
-        return;
+  const handlePressPointFeature = (feature: AreaFeatureListItem) => {
+    const targetKey = getAreaFeatureTargetKey(feature);
+    if (feature.category !== 'pass' || !selectedPassTargetKeys.has(targetKey)) {
+      return;
+    }
+    handlePressStationTarget();
+  };
+
+  const handleMapLongPress = (mapEvent: GeoJSON.Feature) => {
+    if (!isActiveHunt) {
+      return;
+    }
+
+    const point = pointFromMapLongPress(mapEvent);
+    Vibration.vibrate(8);
+
+    if (measurementActive) {
+      addMeasurementPoint(point);
+      setLongPressActionPoint(null);
+      return;
+    }
+
+    setLongPressActionPoint(point);
+    const satOptions: { id: string; name: string }[] = [];
+    if (event && currentUser && event.creatorId === currentUser._id && areaSats) {
+      for (const sat of areaSats) {
+        if (isPointInPolygon(point, sat.polygon)) {
+          satOptions.push({ id: String(sat.id), name: sat.name });
+        }
       }
-      handlePressStationTarget();
-    },
-    [handlePressStationTarget, selectedPassTargetKeys]
-  );
+    }
+    const satOptionsParam =
+      satOptions.length > 0 ? `&satOptions=${encodeURIComponent(JSON.stringify(satOptions))}` : '';
+    push(
+      `/event/${eventId}/map-point-actions?latitude=${point.latitude}&longitude=${point.longitude}&canMeasureFromUser=${
+        currentMeasurementStartCoordinate ? '1' : '0'
+      }${satOptionsParam}`
+    );
+  };
 
-  const handleMapLongPress = useCallback(
-    (mapEvent: GeoJSON.Feature) => {
-      if (!isActiveHunt) {
-        return;
-      }
-
-      const point = pointFromMapLongPress(mapEvent);
-      Vibration.vibrate(8);
-
-      if (measurementActive) {
-        addMeasurementPoint(point);
-        setLongPressActionPoint(null);
-        return;
-      }
-
-      setLongPressActionPoint(point);
-      const satOptions =
-        event && currentUser && event.creatorId === currentUser._id && areaSats
-          ? areaSats
-              .filter((sat) => isPointInPolygon(point, sat.polygon))
-              .map((sat) => ({ id: String(sat.id), name: sat.name }))
-          : [];
-      const satOptionsParam =
-        satOptions.length > 0
-          ? `&satOptions=${encodeURIComponent(JSON.stringify(satOptions))}`
-          : '';
-      push(
-        `/event/${eventId}/map-point-actions?latitude=${point.latitude}&longitude=${point.longitude}&canMeasureFromUser=${
-          currentMeasurementStartCoordinate ? '1' : '0'
-        }${satOptionsParam}`
-      );
-    },
-    [
-      addMeasurementPoint,
-      areaSats,
-      currentMeasurementStartCoordinate,
-      currentUser,
-      event,
-      eventId,
-      isActiveHunt,
-      measurementActive,
-      push,
-      setLongPressActionPoint,
-    ]
-  );
-
-  const handleMeasureToLongPressPoint = useCallback(
-    (point: LatLngPoint) => {
+  useEffect(() => {
+    function handleMeasureToLongPressPoint(point: LatLngPoint) {
       if (!currentMeasurementStartCoordinate) {
         Alert.alert('Plats saknas', 'Ge appen platsbehörighet för att mäta från din position.');
         return;
@@ -460,19 +422,13 @@ export default function EventMapScreen() {
 
       replaceWithUserMeasurement(currentMeasurementStartCoordinate, point);
       setLongPressActionPoint(null);
-    },
-    [currentMeasurementStartCoordinate, replaceWithUserMeasurement, setLongPressActionPoint]
-  );
+    }
 
-  const handleAddMeasurementPoint = useCallback(
-    (point: LatLngPoint) => {
+    function handleAddMeasurementPoint(point: LatLngPoint) {
       addMeasurementPoint(point);
       setLongPressActionPoint(null);
-    },
-    [addMeasurementPoint, setLongPressActionPoint]
-  );
+    }
 
-  useEffect(() => {
     return subscribeToHuntMapLongPressActions((action) => {
       switch (action.type) {
         case 'addMeasurementPoint':
@@ -487,12 +443,13 @@ export default function EventMapScreen() {
       }
     });
   }, [
-    handleAddMeasurementPoint,
-    handleMeasureToLongPressPoint,
+    addMeasurementPoint,
+    currentMeasurementStartCoordinate,
+    replaceWithUserMeasurement,
     setLongPressActionPoint,
   ]);
 
-  const handleMarkSelfInPosition = useCallback(async () => {
+  const handleMarkSelfInPosition = async () => {
     try {
       await markInPosition({ eventId: eventId as Id<'events'> });
       await clearInPositionPromptIgnored(currentUserAssignmentPromptIgnoreKey);
@@ -500,9 +457,9 @@ export default function EventMapScreen() {
       console.error('Failed to mark in position:', error);
       Alert.alert('Kunde inte markera på plats', 'Försök igen om en stund.');
     }
-  }, [currentUserAssignmentPromptIgnoreKey, eventId, markInPosition]);
+  };
 
-  const handleClearSelfInPosition = useCallback(async () => {
+  const handleClearSelfInPosition = async () => {
     try {
       await clearInPosition({ eventId: eventId as Id<'events'> });
       await clearInPositionPromptIgnored(currentUserAssignmentPromptIgnoreKey);
@@ -510,9 +467,9 @@ export default function EventMapScreen() {
       console.error('Failed to clear in-position status:', error);
       Alert.alert('Kunde inte ta bort status', 'Försök igen om en stund.');
     }
-  }, [clearInPosition, currentUserAssignmentPromptIgnoreKey, eventId]);
+  };
 
-  const handleToggleOwnPositionSharing = useCallback(async () => {
+  const handleToggleOwnPositionSharing = async () => {
     const nextEnabled = !isOwnPositionSharingEnabled;
     ownPositionSharingEnabledRef.current = nextEnabled;
 
@@ -526,24 +483,21 @@ export default function EventMapScreen() {
       console.error('Failed to update position sharing:', error);
       Alert.alert('Kunde inte ändra positionsdelning', 'Försök igen om en stund.');
     }
-  }, [eventId, isOwnPositionSharingEnabled, setPositionSharingDisabled]);
+  };
 
-  const focusMapForWindEditor = useCallback(
-    (coordinate: [number, number]) => {
-      setCurrentCoordinate(coordinate);
-      cameraRef.current?.setCamera({
-        animationDuration: 650,
-        animationMode: 'easeTo',
-        centerCoordinate: coordinate,
-        padding: getWindEditorCameraPadding(insets),
-        pitch: 0,
-        zoomLevel: 16.5,
-      });
-    },
-    [insets]
-  );
+  const focusMapForWindEditor = (coordinate: [number, number]) => {
+    setCurrentCoordinate(coordinate);
+    cameraRef.current?.setCamera({
+      animationDuration: 650,
+      animationMode: 'easeTo',
+      centerCoordinate: coordinate,
+      padding: getWindEditorCameraPadding(insets),
+      pitch: 0,
+      zoomLevel: 16.5,
+    });
+  };
 
-  const handleStartSettingScentDirection = useCallback(() => {
+  const handleStartSettingScentDirection = () => {
     const existingCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
     if (existingCoordinate) {
       focusMapForWindEditor(existingCoordinate);
@@ -564,14 +518,7 @@ export default function EventMapScreen() {
         ? ''
         : `?initialDegrees=${encodeURIComponent(String(Math.round(windSourceDirectionDegrees)))}`;
     push(`/event/${eventId}/wind-direction${initialDegrees}`);
-  }, [
-    currentCoordinate,
-    currentUserMemberCoordinate,
-    eventId,
-    focusMapForWindEditor,
-    push,
-    windSourceDirectionDegrees,
-  ]);
+  };
 
   const isCurrentUserPastInPositionRadius =
     isActiveHunt &&
@@ -592,7 +539,7 @@ export default function EventMapScreen() {
     promptIgnoreKey: currentUserAssignmentPromptIgnoreKey,
   });
 
-  const renderHuntActionsMenu = useCallback(() => {
+  const renderHuntActionsMenu = () => {
     if (!event || !currentUser) {
       return undefined;
     }
@@ -604,9 +551,9 @@ export default function EventMapScreen() {
         eventId={eventId as Id<'events'>}
       />
     );
-  }, [currentUser, event, eventId]);
+  };
 
-  const handleGoToMyPosition = useCallback(async () => {
+  const handleGoToMyPosition = async () => {
     try {
       const coordinate = await getCurrentUserCoordinate();
       if (!coordinate) {
@@ -625,9 +572,9 @@ export default function EventMapScreen() {
       console.error('Failed to center on user position:', error);
       Alert.alert('Kunde inte hitta position', 'Försök igen om en stund.');
     }
-  }, []);
+  };
 
-  const handleToggleAssignmentTrail = useCallback(async () => {
+  const handleToggleAssignmentTrail = async () => {
     if (!isActiveHunt) return;
     if (!currentUserAssignedStation) return;
 
@@ -651,15 +598,7 @@ export default function EventMapScreen() {
 
     setCurrentCoordinate(coordinate);
     setVisibleAssignmentTrailTargetKey(currentUserAssignedStation.targetKey);
-  }, [
-    currentCoordinate,
-    currentUserAssignedStation,
-    currentUserMemberCoordinate,
-    isActiveHunt,
-    setAssignmentRouteMode,
-    setVisibleAssignmentTrailTargetKey,
-    visibleAssignmentTrailTargetKey,
-  ]);
+  };
 
   if (event === undefined) {
     return (
@@ -716,15 +655,17 @@ export default function EventMapScreen() {
         attributionEnabled={false}
         onCameraChanged={handleCameraChanged}
         onLongPress={isActiveHunt ? handleMapLongPress : undefined}
-        scaleBarEnabled={false}>
+        scaleBarEnabled={false}
+      >
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
         {!currentUserInPositionEffective ? (
           <LocationPuck puckBearingEnabled puckBearing="heading" />
         ) : null}
 
-        <LantmaterietTopoLayer
-          idPrefix="event-lantmateriet-topo"
-          surfaceMode={topoSurfaceMode}
+        <LantmaterietTopoLayer idPrefix="event-lantmateriet-topo" surfaceMode={topoSurfaceMode} />
+        <LantmaterietHillshadeLayer
+          belowLayerID="event-lantmateriet-topo-wetland-outline"
+          visible={hillshadeVisible}
         />
 
         {polygonGeoJSON && (
@@ -820,7 +761,8 @@ export default function EventMapScreen() {
         <View
           pointerEvents="box-none"
           className="absolute left-4 right-4"
-          style={{ top: Math.max(insets.top, 8) + 8 }}>
+          style={{ top: Math.max(insets.top, 8) + 8 }}
+        >
           <HuntMapTopNav
             allowedGameLabel={allowedGameSummary}
             compassHeading={mapHeading}
@@ -850,19 +792,13 @@ export default function EventMapScreen() {
           />
         ) : null}
 
-        <View
-          className="absolute left-6"
-          style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
+        <View className="absolute left-6" style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
           {visibleMeasurementActive ? (
-            <HuntMapMeasurementControls
-              onClear={clearMeasurement}
-              onUndo={undoMeasurementPoint}
-            />
+            <HuntMapMeasurementControls onClear={clearMeasurement} onUndo={undoMeasurementPoint} />
           ) : isActiveHunt ? (
             <HuntMapToolsMenu
               animalSightings={{
-                available:
-                  visibleAnimalSightings.length > 0 || hasLocallyHiddenCurrentSightings,
+                available: visibleAnimalSightings.length > 0 || hasLocallyHiddenCurrentSightings,
                 onToggle: handleToggleAnimalSightingVisibility,
                 showing: !hasLocallyHiddenCurrentSightings,
               }}
@@ -910,9 +846,7 @@ export default function EventMapScreen() {
         </View>
 
         {!visibleMeasurementActive ? (
-          <View
-            className="absolute right-6"
-            style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
+          <View className="absolute right-6" style={{ bottom: Math.max(insets.bottom, 20) + 18 }}>
             <GlassIconButton
               onPress={() => push(`/event/${eventId}/chat?focusComposer=1`)}
               accessibilityLabel={

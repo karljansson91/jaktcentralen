@@ -7,7 +7,7 @@ import {
   type AssignmentTrail,
   type AssignmentTrailMode,
 } from '@/lib/hunt-navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type AssignmentRouteStatus = 'idle' | 'loading' | 'error';
 
@@ -21,8 +21,8 @@ export function useAssignmentRoute(trail: AssignmentTrail | null) {
   const [mode, setMode] = useState<AssignmentTrailMode>('walking');
   const [walkingRouteResult, setWalkingRouteResult] = useState<WalkingRouteResult | null>(null);
 
-  const trailKey = useMemo(() => (trail ? buildAssignmentTrailKey(trail) : null), [trail]);
-  const directRoute = useMemo(() => (trail ? buildDirectAssignmentRoute(trail) : null), [trail]);
+  const trailKey = trail ? buildAssignmentTrailKey(trail) : null;
+  const directRoute = trail ? buildDirectAssignmentRoute(trail) : null;
 
   useEffect(() => {
     if (!trail || !trailKey || mode !== 'walking') return;
@@ -49,10 +49,8 @@ export function useAssignmentRoute(trail: AssignmentTrail | null) {
     };
   }, [mode, trail, trailKey, walkingRouteResult?.key]);
 
-  const walkingRoute =
-    walkingRouteResult?.key === trailKey ? walkingRouteResult.route : null;
-  const walkingRouteError =
-    walkingRouteResult?.key === trailKey ? walkingRouteResult.error : null;
+  const walkingRoute = walkingRouteResult?.key === trailKey ? walkingRouteResult.route : null;
+  const walkingRouteError = walkingRouteResult?.key === trailKey ? walkingRouteResult.error : null;
   const isWalkingRouteLoading = Boolean(
     mode === 'walking' && trailKey && walkingRouteResult?.key !== trailKey
   );
@@ -63,10 +61,10 @@ export function useAssignmentRoute(trail: AssignmentTrail | null) {
       ? 'error'
       : 'idle';
   const routeError = mode === 'walking' ? walkingRouteError : null;
-  const routeGeoJSON = useMemo(() => buildAssignmentRouteGeoJSON(route), [route]);
-  const toggleMode = useCallback(() => {
+  const routeGeoJSON = buildAssignmentRouteGeoJSON(route);
+  const toggleMode = () => {
     setMode((current) => (current === 'walking' ? 'direct' : 'walking'));
-  }, []);
+  };
 
   return {
     mode,

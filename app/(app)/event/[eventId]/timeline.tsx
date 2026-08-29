@@ -1,13 +1,13 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
 import { GlassSurface, GlassTopNav } from '@/components/glass';
+import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
-import { AnimalSightingMapItem } from '@/lib/animal-sightings';
 import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import { APP_COLORS } from '@/lib/theme';
@@ -23,7 +23,7 @@ import {
 } from '@rnmapbox/maps';
 import { useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type ElementRef, useMemo, useRef, useState } from 'react';
+import { type ElementRef, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -44,8 +44,6 @@ type ReplayGroup = {
   points: ReplayPoint[];
   userId: string;
 };
-
-type ReplayAnimalSighting = AnimalSightingMapItem;
 
 function formatReplayTimestamp(timestamp: number) {
   return new Date(timestamp).toLocaleString('sv-SE', {
@@ -92,7 +90,7 @@ export default function EventTimelineScreen() {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
   const currentTime = useCurrentTime();
-  const { mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
+  const { hillshadeVisible, mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
 
   const event = useQuery(api.events.get, {
@@ -115,9 +113,11 @@ export default function EventTimelineScreen() {
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
-  const polygonGeoJSON = useMemo(() => {
+  const polygonGeoJSON = (() => {
     if (!area) return null;
-    const coords = area.polygon.map((point) => [point.longitude, point.latitude] as [number, number]);
+    const coords = area.polygon.map(
+      (point) => [point.longitude, point.latitude] as [number, number]
+    );
     return {
       type: 'Feature' as const,
       properties: {},
@@ -126,9 +126,9 @@ export default function EventTimelineScreen() {
         coordinates: [[...coords, coords[0]]],
       },
     };
-  }, [area]);
+  })();
 
-  const cameraBounds = useMemo(() => {
+  const cameraBounds = (() => {
     if (!area || area.polygon.length < 2) return null;
     const lngs = area.polygon.map((point) => point.longitude);
     const lats = area.polygon.map((point) => point.latitude);
@@ -141,15 +141,13 @@ export default function EventTimelineScreen() {
       paddingLeft: 42,
       paddingRight: 42,
     };
-  }, [area, insets.bottom, insets.top]);
+  })();
 
-  const timeline = useMemo(() => {
+  const timeline = (() => {
     if (!replay || !animalSightings) return null;
 
     const sorted = Array.from(replay).sort((a, b) => a.timestamp - b.timestamp);
-    const sortedSightings = Array.from(animalSightings).sort(
-      (a, b) => a.timestamp - b.timestamp
-    );
+    const sortedSightings = Array.from(animalSightings).sort((a, b) => a.timestamp - b.timestamp);
     const timestamps = [
       ...sorted.map((point) => point.timestamp),
       ...sortedSightings.map((sighting) => sighting.timestamp),
@@ -183,7 +181,7 @@ export default function EventTimelineScreen() {
       sightingCount: sortedSightings.length,
       sightings: sortedSightings,
     };
-  }, [animalSightings, replay]);
+  })();
 
   const selectedReplayTimestamp =
     timeline?.maxTimestamp == null || timeline.minTimestamp == null
@@ -192,7 +190,7 @@ export default function EventTimelineScreen() {
         ? timeline.maxTimestamp
         : Math.min(Math.max(selectedTimestamp, timeline.minTimestamp), timeline.maxTimestamp);
 
-  const visibleGroups = useMemo(() => {
+  const visibleGroups = (() => {
     if (!timeline || selectedReplayTimestamp == null) return [];
 
     return timeline.groups
@@ -207,13 +205,13 @@ export default function EventTimelineScreen() {
         };
       })
       .filter((group) => group.currentPoint !== null);
-  }, [selectedReplayTimestamp, timeline]);
+  })();
 
-  const visibleSightings = useMemo<ReplayAnimalSighting[]>(() => {
+  const visibleSightings = (() => {
     if (!timeline || selectedReplayTimestamp == null) return [];
 
     return timeline.sightings.filter((sighting) => sighting.timestamp <= selectedReplayTimestamp);
-  }, [selectedReplayTimestamp, timeline]);
+  })();
 
   if (
     event === undefined ||
@@ -243,7 +241,8 @@ export default function EventTimelineScreen() {
         <View
           pointerEvents="box-none"
           className="absolute left-4 right-4 z-10"
-          style={{ top: Math.max(insets.top, 8) + 8 }}>
+          style={{ top: Math.max(insets.top, 8) + 8 }}
+        >
           <GlassTopNav appearance="screen" title="Jakt tidslinje" onBack={() => back()} />
         </View>
         <View className="flex-1 items-center justify-center px-8">
@@ -272,12 +271,17 @@ export default function EventTimelineScreen() {
         zoomEnabled
         rotateEnabled={false}
         pitchEnabled={false}
-        attributionEnabled={false}>
+        attributionEnabled={false}
+      >
         {cameraBounds && <Camera ref={cameraRef} bounds={cameraBounds} animationDuration={0} />}
 
         <LantmaterietTopoLayer
           idPrefix="timeline-lantmateriet-topo"
           surfaceMode={topoSurfaceMode}
+        />
+        <LantmaterietHillshadeLayer
+          belowLayerID="timeline-lantmateriet-topo-wetland-outline"
+          visible={hillshadeVisible}
         />
 
         {polygonGeoJSON && (
@@ -303,7 +307,8 @@ export default function EventTimelineScreen() {
             <ShapeSource
               key={`trail-${group.userId}`}
               id={`timeline-trail-${index}`}
-              shape={buildLineShape(group.visiblePoints)}>
+              shape={buildLineShape(group.visiblePoints)}
+            >
               <LineLayer
                 id={`timeline-trail-line-${index}`}
                 style={{
@@ -323,7 +328,8 @@ export default function EventTimelineScreen() {
             <ShapeSource
               key={`member-${group.userId}`}
               id={`timeline-member-${index}`}
-              shape={buildPointShape(group, group.currentPoint)}>
+              shape={buildPointShape(group, group.currentPoint)}
+            >
               <CircleLayer
                 id={`timeline-member-circle-${index}`}
                 style={{
@@ -360,7 +366,8 @@ export default function EventTimelineScreen() {
         <View
           pointerEvents="box-none"
           className="absolute left-4 right-4"
-          style={{ top: Math.max(insets.top, 8) + 8 }}>
+          style={{ top: Math.max(insets.top, 8) + 8 }}
+        >
           <GlassTopNav
             appearance="floating"
             title={event.title}
@@ -372,11 +379,13 @@ export default function EventTimelineScreen() {
 
         <View
           className="absolute left-4 right-4"
-          style={{ bottom: Math.max(insets.bottom, 12) + 12 }}>
+          style={{ bottom: Math.max(insets.bottom, 12) + 12 }}
+        >
           <GlassSurface
             className="rounded-[28px]"
             contentClassName="gap-4 px-5 py-4"
-            fallbackIntensity={86}>
+            fallbackIntensity={86}
+          >
             <View className="flex-row items-start justify-between gap-4">
               <View className="min-w-0 flex-1 gap-1">
                 <Text className="text-xs font-semibold uppercase tracking-[1.2px] text-muted-foreground">
@@ -418,7 +427,8 @@ export default function EventTimelineScreen() {
                 {visibleGroups.map((group) => (
                   <View
                     key={group.userId}
-                    className="flex-row items-center gap-2 rounded-full bg-background/75 px-3 py-2">
+                    className="flex-row items-center gap-2 rounded-full bg-background/75 px-3 py-2"
+                  >
                     <View
                       className="size-2.5 rounded-full"
                       style={{ backgroundColor: group.color }}

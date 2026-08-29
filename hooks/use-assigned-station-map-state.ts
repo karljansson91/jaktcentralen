@@ -1,34 +1,37 @@
-import type { AssignedStationMarkerItem } from "@/components/event/assigned-station-marker";
-import type { Id } from "@/convex/_generated/dataModel";
-import type { AreaFeatureListItem } from "@/lib/area-features";
-import { getAreaFeatureTargetKey } from "@/lib/area-features";
-import type { AreaSatListItem } from "@/lib/area-sats";
-import { getMemberInitials } from "@/lib/event-formatting";
-import type { LatLngPoint } from "@/lib/geo";
-import { distanceMeters } from "@/lib/geo";
-import type { AssignmentTrail } from "@/lib/hunt-navigation";
-import { isMemberEffectivelyInPosition } from "@/lib/hunt-in-position";
-import { getInPositionPromptIgnoreKey } from "@/lib/in-position-prompt-ignore";
-import { useMemo } from "react";
+import type { AssignedStationMarkerItem } from '@/components/event/assigned-station-marker';
+import type { Id } from '@/convex/_generated/dataModel';
+import type { AreaFeatureListItem } from '@/lib/area-features';
+import { getAreaFeatureTargetKey } from '@/lib/area-features';
+import type { AreaSatListItem } from '@/lib/area-sats';
+import { getMemberInitials } from '@/lib/event-formatting';
+import type { LatLngPoint } from '@/lib/geo';
+import { distanceMeters } from '@/lib/geo';
+import type { AssignmentTrail } from '@/lib/hunt-navigation';
+import { isMemberEffectivelyInPosition } from '@/lib/hunt-in-position';
+import { getInPositionPromptIgnoreKey } from '@/lib/in-position-prompt-ignore';
+import { useMemo } from 'react';
 
 type Assignment = {
   assignedUser?: { name?: string | null } | null;
-  assignedUserId: Id<"users">;
+  assignedUserId: Id<'users'>;
   targetKey: string;
 };
 
 type EventMember = {
-  _id: Id<"eventMembers">;
+  _id: Id<'eventMembers'>;
   inPositionTargetKey?: string;
   lastLatitude?: number;
   lastLongitude?: number;
   positionSharingDisabled?: boolean;
-  userId: Id<"users">;
+  userId: Id<'users'>;
 };
 
-type CurrentUser = {
-  _id: Id<"users">;
-} | null | undefined;
+type CurrentUser =
+  | {
+      _id: Id<'users'>;
+    }
+  | null
+  | undefined;
 
 type AssignedStationMapStateArgs = {
   activeSat: AreaSatListItem | null;
@@ -51,11 +54,11 @@ export function useAssignedStationMapState({
   eventId,
   members,
 }: AssignedStationMapStateArgs) {
-  const assignmentPointByTargetKey = useMemo(() => {
+  const assignmentPointByTargetKey = (() => {
     const points = new Map<string, LatLngPoint>();
 
     for (const feature of areaFeatures ?? []) {
-      if (feature.geometryType !== "point" || !feature.point) {
+      if (feature.geometryType !== 'point' || !feature.point) {
         continue;
       }
 
@@ -63,14 +66,11 @@ export function useAssignedStationMapState({
     }
 
     return points;
-  }, [areaFeatures]);
+  })();
 
-  const memberByUserId = useMemo(
-    () => new Map((members ?? []).map((member) => [member.userId, member])),
-    [members]
-  );
+  const memberByUserId = new Map((members ?? []).map((member) => [member.userId, member]));
 
-  const readinessSummary = useMemo(() => {
+  const readinessSummary = (() => {
     if (!activeSat || !assignments) return null;
 
     let confirmed = 0;
@@ -90,16 +90,16 @@ export function useAssignedStationMapState({
     }
 
     return { confirmed, total };
-  }, [activeSat, assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
+  })();
 
-  const assignedStationMarkers = useMemo(() => {
+  const assignedStationMarkers = (() => {
     if (!activeSat || !areaFeatures || !assignments) return null;
 
     const assignmentsByTargetKey = new Map(
       assignments.map((assignment) => [assignment.targetKey, assignment])
     );
     return areaFeatures.flatMap((feature) => {
-      if (feature.geometryType !== "point" || !feature.point) {
+      if (feature.geometryType !== 'point' || !feature.point) {
         return [];
       }
 
@@ -110,7 +110,7 @@ export function useAssignedStationMapState({
 
       const point = assignmentPointByTargetKey.get(assignment.targetKey);
       const member = memberByUserId.get(assignment.assignedUserId);
-      const name = assignment.assignedUser?.name?.trim() || "Okänd";
+      const name = assignment.assignedUser?.name?.trim() || 'Okänd';
       return [
         {
           confirmed: point
@@ -122,9 +122,9 @@ export function useAssignedStationMapState({
         } satisfies AssignedStationMarkerItem,
       ];
     });
-  }, [activeSat, areaFeatures, assignmentPointByTargetKey, assignments, currentTime, memberByUserId]);
+  })();
 
-  const currentUserAssignedStation = useMemo(() => {
+  const currentUserAssignedStation = (() => {
     if (!activeSat || !currentUser || !assignments) return null;
 
     const assignment = assignments.find(
@@ -141,20 +141,20 @@ export function useAssignedStationMapState({
       point,
       targetKey: assignment.targetKey,
     };
-  }, [activeSat, assignmentPointByTargetKey, assignments, currentUser]);
+  })();
 
-  const currentUserMember = useMemo(() => {
+  const currentUserMember = (() => {
     if (!currentUser) return null;
     return memberByUserId.get(currentUser._id) ?? null;
-  }, [currentUser, memberByUserId]);
+  })();
 
-  const currentUserMemberCoordinate = useMemo(() => {
+  const currentUserMemberCoordinate = (() => {
     if (currentUserMember?.lastLatitude == null || currentUserMember.lastLongitude == null) {
       return null;
     }
 
     return [currentUserMember.lastLongitude, currentUserMember.lastLatitude] as [number, number];
-  }, [currentUserMember]);
+  })();
 
   const currentUserMarkedInPosition = Boolean(
     currentUserAssignedStation &&
@@ -173,7 +173,7 @@ export function useAssignedStationMapState({
         currentTime
       )
   );
-  const currentUserAssignmentDistance = useMemo(() => {
+  const currentUserAssignmentDistance = (() => {
     if (!currentCoordinate || !currentUserAssignedStation) {
       return null;
     }
@@ -182,7 +182,7 @@ export function useAssignedStationMapState({
       { latitude: currentCoordinate[1], longitude: currentCoordinate[0] },
       currentUserAssignedStation.point
     );
-  }, [currentCoordinate, currentUserAssignedStation]);
+  })();
   const isOwnPositionSharingEnabled = !currentUserMember?.positionSharingDisabled;
   const currentMeasurementStartCoordinate = currentCoordinate ?? currentUserMemberCoordinate;
 

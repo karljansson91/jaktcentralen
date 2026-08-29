@@ -1,13 +1,14 @@
 import { GlassMenuButton } from '@/components/glass/glass-menu-button';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { withLoadingState } from '@/lib/async-state';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { useMapStylePicker } from '@/hooks/use-map-style-picker';
 import { getEventLifecycle, type EventLifecycleInput } from '@/lib/event-lifecycle';
 import { type MenuAction, type NativeActionEvent } from '@expo/ui/community/menu';
 import { useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert } from 'react-native';
 
 const ACTION_INFO = 'info';
@@ -25,11 +26,7 @@ type HuntActionsMenuProps = {
   eventId: Id<'events'>;
 };
 
-export function HuntActionsMenu({
-  currentUserId,
-  event,
-  eventId,
-}: HuntActionsMenuProps) {
+export function HuntActionsMenu({ currentUserId, event, eventId }: HuntActionsMenuProps) {
   const { push, replace } = useRouter();
   const currentTime = useCurrentTime();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,37 +37,35 @@ export function HuntActionsMenu({
   const isEnded = getEventLifecycle(event, currentTime) === 'ended';
   const destructiveTitle = isCreator ? 'Avsluta jakt' : 'Lämna jakt';
 
-  const handleLeaveEvent = useCallback(async () => {
-    setIsSubmitting(true);
-    try {
-      await leaveEvent({ eventId });
-      replace('/');
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte lämna jakten',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [eventId, leaveEvent, replace]);
+  const handleLeaveEvent = async () => {
+    await withLoadingState(setIsSubmitting, async () => {
+      try {
+        await leaveEvent({ eventId });
+        replace('/');
+      } catch (error) {
+        Alert.alert(
+          'Kunde inte lämna jakten',
+          error instanceof Error ? error.message : 'Försök igen om en stund.'
+        );
+      }
+    });
+  };
 
-  const handleEndEvent = useCallback(async () => {
-    setIsSubmitting(true);
-    try {
-      await endEvent({ eventId });
-      replace(`/event/${eventId}`);
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte avsluta jakten',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [endEvent, eventId, replace]);
+  const handleEndEvent = async () => {
+    await withLoadingState(setIsSubmitting, async () => {
+      try {
+        await endEvent({ eventId });
+        replace(`/event/${eventId}`);
+      } catch (error) {
+        Alert.alert(
+          'Kunde inte avsluta jakten',
+          error instanceof Error ? error.message : 'Försök igen om en stund.'
+        );
+      }
+    });
+  };
 
-  const confirmLeaveOrEnd = useCallback(() => {
+  const confirmLeaveOrEnd = () => {
     if (isCreator) {
       Alert.alert(
         'Avsluta jakt',
@@ -87,75 +82,69 @@ export function HuntActionsMenu({
       { text: 'Avbryt', style: 'cancel' },
       { text: 'Lämna jakt', style: 'destructive', onPress: () => void handleLeaveEvent() },
     ]);
-  }, [handleEndEvent, handleLeaveEvent, isCreator]);
+  };
 
-  const actions = useMemo<MenuAction[]>(
-    () => [
-      {
-        attributes: { disabled: isSubmitting, hidden: isEnded },
-        id: ACTION_SAT,
-        image: 'map.circle',
-        title: 'Såt',
-      },
-      {
-        attributes: { disabled: isSubmitting },
-        id: ACTION_INFO,
-        image: 'info.circle',
-        title: 'Info',
-      },
-      {
-        attributes: { disabled: isSubmitting },
-        id: ACTION_MAP_STYLE,
-        image: 'map',
-        title: 'Ändra kartvy',
-      },
-      {
-        attributes: { disabled: isSubmitting, hidden: !isEnded },
-        id: ACTION_TIMELINE,
-        image: 'chart.line.uptrend.xyaxis',
-        title: 'Jakt tidslinje',
-      },
-      {
-        attributes: { disabled: isSubmitting, hidden: !isCreator || isEnded },
-        id: ACTION_INVITE,
-        image: 'person.badge.plus',
-        title: 'Bjud in användare',
-      },
-      {
-        attributes: { destructive: true, disabled: isSubmitting, hidden: isEnded },
-        id: ACTION_LEAVE_OR_END,
-        image: isCreator ? 'archivebox' : 'rectangle.portrait.and.arrow.right',
-        title: destructiveTitle,
-      },
-    ],
-    [destructiveTitle, isCreator, isEnded, isSubmitting]
-  );
-
-  const handlePressAction = useCallback(
-    (event: NativeActionEvent) => {
-      switch (event.nativeEvent.event) {
-        case ACTION_INFO:
-          push(`/event/${eventId}/members`);
-          break;
-        case ACTION_MAP_STYLE:
-          handleSelectMapStyle();
-          break;
-        case ACTION_SAT:
-          push(`/event/${eventId}/sat`);
-          break;
-        case ACTION_TIMELINE:
-          push(`/event/${eventId}/timeline`);
-          break;
-        case ACTION_INVITE:
-          push(`/event/${eventId}/invite`);
-          break;
-        case ACTION_LEAVE_OR_END:
-          confirmLeaveOrEnd();
-          break;
-      }
+  const actions: MenuAction[] = [
+    {
+      attributes: { disabled: isSubmitting, hidden: isEnded },
+      id: ACTION_SAT,
+      image: 'map.circle',
+      title: 'Såt',
     },
-    [confirmLeaveOrEnd, eventId, handleSelectMapStyle, push]
-  );
+    {
+      attributes: { disabled: isSubmitting },
+      id: ACTION_INFO,
+      image: 'info.circle',
+      title: 'Info',
+    },
+    {
+      attributes: { disabled: isSubmitting },
+      id: ACTION_MAP_STYLE,
+      image: 'map',
+      title: 'Ändra kartvy',
+    },
+    {
+      attributes: { disabled: isSubmitting, hidden: !isEnded },
+      id: ACTION_TIMELINE,
+      image: 'chart.line.uptrend.xyaxis',
+      title: 'Jakt tidslinje',
+    },
+    {
+      attributes: { disabled: isSubmitting, hidden: !isCreator || isEnded },
+      id: ACTION_INVITE,
+      image: 'person.badge.plus',
+      title: 'Bjud in användare',
+    },
+    {
+      attributes: { destructive: true, disabled: isSubmitting, hidden: isEnded },
+      id: ACTION_LEAVE_OR_END,
+      image: isCreator ? 'archivebox' : 'rectangle.portrait.and.arrow.right',
+      title: destructiveTitle,
+    },
+  ];
+
+  const handlePressAction = (event: NativeActionEvent) => {
+    switch (event.nativeEvent.event) {
+      case ACTION_INFO:
+        push(`/event/${eventId}/members`);
+        break;
+      case ACTION_MAP_STYLE:
+        handleSelectMapStyle();
+        break;
+      case ACTION_SAT:
+        push(`/event/${eventId}/sat`);
+        break;
+      case ACTION_TIMELINE:
+        push(`/event/${eventId}/timeline`);
+        break;
+      case ACTION_INVITE:
+        push(`/event/${eventId}/invite`);
+        break;
+      case ACTION_LEAVE_OR_END:
+        confirmLeaveOrEnd();
+        break;
+    }
+  };
 
   return (
     <GlassMenuButton

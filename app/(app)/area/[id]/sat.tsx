@@ -2,21 +2,19 @@ import { ColorSwatch } from '@/components/area/color-swatch';
 import { Button, Input, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { withLoadingState } from '@/lib/async-state';
 import {
   AREA_SAT_COLOR_PALETTE,
   AreaSatDraft,
   getDefaultAreaSatColor,
   getPassMarkersInsideSat,
 } from '@/lib/area-sats';
-import {
-  clearAreaSatDraft,
-  getAreaSatDraft,
-} from '@/lib/area-sat-draft-store';
+import { clearAreaSatDraft, getAreaSatDraft } from '@/lib/area-sat-draft-store';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -62,40 +60,37 @@ export default function SatFormScreen() {
     };
   }, [draftId]);
 
-  const activeDraft = useMemo<AreaSatDraft | null>(
-    () =>
-      draft ??
-      (existingSat
-        ? {
-            areaId: id as Id<'areas'>,
-            color: existingSat.color,
-            name: existingSat.name,
-            polygon: existingSat.polygon,
-            satId: existingSat.id,
-          }
-        : null),
-    [draft, existingSat, id]
-  );
+  const activeDraft =
+    draft ??
+    (existingSat
+      ? {
+          areaId: id as Id<'areas'>,
+          color: existingSat.color,
+          name: existingSat.name,
+          polygon: existingSat.polygon,
+          satId: existingSat.id,
+        }
+      : null);
   const name = nameOverride ?? activeDraft?.name ?? '';
   const color = colorOverride ?? activeDraft?.color ?? getDefaultAreaSatColor();
 
-  const passMarkers = useMemo(() => {
+  const passMarkers = (() => {
     if (!activeDraft?.polygon || !areaFeatures) {
       return [];
     }
-    return getPassMarkersInsideSat({ polygon: activeDraft.polygon }, areaFeatures);
-  }, [activeDraft, areaFeatures]);
+    return getPassMarkersInsideSat({ polygon: activeDraft.polygon }, areaFeatures) ?? [];
+  })();
 
   const canDelete = Boolean(satId || activeDraft?.satId);
   const canSave = Boolean(name.trim() && activeDraft?.polygon);
 
-  const close = useCallback(() => {
+  const close = () => {
     if (draftId) {
       clearAreaSatDraft(draftId);
     }
     preserveDraftRef.current = true;
     back();
-  }, [back, draftId]);
+  };
 
   async function handleSave() {
     if (!activeDraft?.polygon) {
@@ -106,21 +101,21 @@ export default function SatFormScreen() {
       setErrorText('Namn krävs.');
       return;
     }
-    setIsSubmitting(true);
+    const polygon = activeDraft.polygon;
     setErrorText(null);
-    try {
-      await saveSat({
-        ...(activeDraft.satId ? { satId: activeDraft.satId } : { areaId: id as Id<'areas'> }),
-        color,
-        name: name.trim(),
-        polygon: activeDraft.polygon,
-      });
-      close();
-    } catch (error) {
-      setErrorText(error instanceof Error ? error.message : 'Kunde inte spara såten.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await withLoadingState(setIsSubmitting, async () => {
+      try {
+        await saveSat({
+          ...(activeDraft.satId ? { satId: activeDraft.satId } : { areaId: id as Id<'areas'> }),
+          color,
+          name: name.trim(),
+          polygon,
+        });
+        close();
+      } catch (error) {
+        setErrorText(error instanceof Error ? error.message : 'Kunde inte spara såten.');
+      }
+    });
   }
 
   async function handleDelete() {
@@ -130,18 +125,17 @@ export default function SatFormScreen() {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await removeSat({ satId: targetSatId });
-      close();
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte ta bort såten',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    await withLoadingState(setIsSubmitting, async () => {
+      try {
+        await removeSat({ satId: targetSatId });
+        close();
+      } catch (error) {
+        Alert.alert(
+          'Kunde inte ta bort såten',
+          error instanceof Error ? error.message : 'Försök igen om en stund.'
+        );
+      }
+    });
   }
 
   function confirmDelete() {
@@ -179,7 +173,8 @@ export default function SatFormScreen() {
       }}
       contentInset={{ bottom: Math.max(insets.bottom, 24) }}
       scrollIndicatorInsets={{ bottom: Math.max(insets.bottom, 24) }}
-      keyboardShouldPersistTaps="handled">
+      keyboardShouldPersistTaps="handled"
+    >
       <Stack.Screen
         options={{
           headerRight: () => (
@@ -187,7 +182,8 @@ export default function SatFormScreen() {
               accessibilityRole="button"
               accessibilityLabel="Stäng"
               hitSlop={12}
-              onPress={close}>
+              onPress={close}
+            >
               <Ionicons name="close" size={24} color={APP_COLORS.text} />
             </Pressable>
           ),
@@ -204,7 +200,9 @@ export default function SatFormScreen() {
         <Text className="font-medium">Område</Text>
         <View className="rounded-2xl border border-border bg-card px-4 py-3">
           <Text className="text-sm text-muted-foreground">
-            {activeDraft?.polygon ? `${activeDraft.polygon.length} polygonpunkter` : 'Ingen såt ritad'}
+            {activeDraft?.polygon
+              ? `${activeDraft.polygon.length} polygonpunkter`
+              : 'Ingen såt ritad'}
           </Text>
         </View>
       </View>
@@ -234,7 +232,12 @@ export default function SatFormScreen() {
 
       {errorText ? <Text className="text-sm text-destructive">{errorText}</Text> : null}
 
-      <Button size="xl" className="rounded-2xl" onPress={() => void handleSave()} disabled={isSubmitting || !canSave}>
+      <Button
+        size="xl"
+        className="rounded-2xl"
+        onPress={() => void handleSave()}
+        disabled={isSubmitting || !canSave}
+      >
         <Text>{isSubmitting ? 'Sparar...' : 'Spara såt'}</Text>
       </Button>
 
@@ -244,7 +247,8 @@ export default function SatFormScreen() {
           size="xl"
           className="rounded-2xl"
           onPress={confirmDelete}
-          disabled={isSubmitting}>
+          disabled={isSubmitting}
+        >
           <Text>Ta bort såt</Text>
         </Button>
       ) : null}

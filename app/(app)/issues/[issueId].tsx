@@ -2,6 +2,7 @@ import { IssueForm, type IssueFormValues } from '@/components/issues/issue-form'
 import { Button, Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import { withLoadingState } from '@/lib/async-state';
 import { APP_COLORS } from '@/lib/theme';
 import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,10 +12,7 @@ import { ActivityIndicator, Alert, View } from 'react-native';
 export default function IssueDetailsScreen() {
   const { issueId } = useLocalSearchParams<{ issueId?: string }>();
   const { back } = useRouter();
-  const issue = useQuery(
-    api.issues.get,
-    issueId ? { issueId: issueId as Id<'issues'> } : 'skip'
-  );
+  const issue = useQuery(api.issues.get, issueId ? { issueId: issueId as Id<'issues'> } : 'skip');
   const updateIssue = useMutation(api.issues.update);
   const removeIssue = useMutation(api.issues.remove);
   const [isSaving, setIsSaving] = useState(false);
@@ -25,23 +23,23 @@ export default function IssueDetailsScreen() {
       return;
     }
 
-    setIsSaving(true);
-    try {
-      await updateIssue({
-        description: values.description,
-        issueId: issueId as Id<'issues'>,
-        status: values.status,
-        title: values.title,
-        type: values.type,
-      });
-      back();
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte spara feedback',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
-      setIsSaving(false);
-    }
+    await withLoadingState(setIsSaving, async () => {
+      try {
+        await updateIssue({
+          description: values.description,
+          issueId: issueId as Id<'issues'>,
+          status: values.status,
+          title: values.title,
+          type: values.type,
+        });
+        back();
+      } catch (error) {
+        Alert.alert(
+          'Kunde inte spara feedback',
+          error instanceof Error ? error.message : 'Försök igen om en stund.'
+        );
+      }
+    });
   }
 
   function confirmDelete() {
@@ -62,17 +60,17 @@ export default function IssueDetailsScreen() {
       return;
     }
 
-    setIsDeleting(true);
-    try {
-      await removeIssue({ issueId: issueId as Id<'issues'> });
-      back();
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte ta bort feedback',
-        error instanceof Error ? error.message : 'Försök igen om en stund.'
-      );
-      setIsDeleting(false);
-    }
+    await withLoadingState(setIsDeleting, async () => {
+      try {
+        await removeIssue({ issueId: issueId as Id<'issues'> });
+        back();
+      } catch (error) {
+        Alert.alert(
+          'Kunde inte ta bort feedback',
+          error instanceof Error ? error.message : 'Försök igen om en stund.'
+        );
+      }
+    });
   }
 
   if (issue === undefined) {

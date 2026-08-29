@@ -1,11 +1,11 @@
 import { api } from '@/convex/_generated/api';
-import { useMutation } from 'convex/react';
+import { type ReactMutation, useMutation } from 'convex/react';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { type Href, router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 const INSTALLATION_ID_KEY = 'jaktcentralen.pushInstallationId';
 
@@ -38,9 +38,7 @@ function getProjectId() {
 function createInstallationId() {
   return (
     globalThis.crypto?.randomUUID?.() ??
-    `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random()
-      .toString(36)
-      .slice(2)}`
+    `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
   );
 }
 
@@ -81,6 +79,43 @@ async function getNotificationPermissionStatus() {
   return requested.status;
 }
 
+async function registerCurrentPushDevice(
+  registerDevice: ReactMutation<typeof api.notifications.registerDevice>
+) {
+  if (!canUseRemotePushNotifications()) {
+    return;
+  }
+
+  const [installationId, permissionStatus] = await Promise.all([
+    getPushInstallationId(),
+    getNotificationPermissionStatus(),
+  ]);
+  const storedPermissionStatus = toStoredPermissionStatus(permissionStatus);
+
+  if (storedPermissionStatus !== 'granted') {
+    await registerDevice({
+      installationId,
+      permissionStatus: storedPermissionStatus,
+      platform: 'ios',
+    });
+    return;
+  }
+
+  const projectId = getProjectId();
+  if (!projectId) {
+    console.error('Missing EAS project id for Expo push token registration.');
+    return;
+  }
+
+  const token = await Notifications.getExpoPushTokenAsync({ projectId });
+  await registerDevice({
+    expoPushToken: token.data,
+    installationId,
+    permissionStatus: storedPermissionStatus,
+    platform: 'ios',
+  });
+}
+
 function getNotificationHref(data: Record<string, unknown>): Href | null {
   if (data.kind === 'chat' && typeof data.eventId === 'string') {
     return `/event/${data.eventId}/chat` as Href;
@@ -96,22 +131,22 @@ function getNotificationHref(data: Record<string, unknown>): Href | null {
 export function useNotificationResponseRouting() {
   const handledNotificationIdRef = useRef<string | null>(null);
 
-  const handleResponse = useCallback((response: Notifications.NotificationResponse) => {
-    const notificationId = response.notification.request.identifier;
-    if (handledNotificationIdRef.current === notificationId) {
-      return;
-    }
-
-    const href = getNotificationHref(response.notification.request.content.data ?? {});
-    if (!href) {
-      return;
-    }
-
-    handledNotificationIdRef.current = notificationId;
-    router.push(href);
-  }, []);
-
   useEffect(() => {
+    function handleResponse(response: Notifications.NotificationResponse) {
+      const notificationId = response.notification.request.identifier;
+      if (handledNotificationIdRef.current === notificationId) {
+        return;
+      }
+
+      const href = getNotificationHref(response.notification.request.content.data ?? {});
+      if (!href) {
+        return;
+      }
+
+      handledNotificationIdRef.current = notificationId;
+      router.push(href);
+    }
+
     try {
       const lastResponse = Notifications.getLastNotificationResponse();
       if (lastResponse) {
@@ -123,7 +158,7 @@ export function useNotificationResponseRouting() {
 
     const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
     return () => subscription.remove();
-  }, [handleResponse]);
+  }, []);
 }
 
 export function usePushNotificationsRegistration(enabled: boolean) {
@@ -131,40 +166,9 @@ export function usePushNotificationsRegistration(enabled: boolean) {
   const unregisterDevice = useMutation(api.notifications.unregisterDevice);
   const hasAttemptedRegistrationRef = useRef(false);
 
-  const registerCurrentDevice = useCallback(async () => {
-    if (!canUseRemotePushNotifications()) {
-      return;
-    }
+  const registerCurrentDevice = () => registerCurrentPushDevice(registerDevice);
 
-    const installationId = await getPushInstallationId();
-    const permissionStatus = await getNotificationPermissionStatus();
-    const storedPermissionStatus = toStoredPermissionStatus(permissionStatus);
-
-    if (storedPermissionStatus !== 'granted') {
-      await registerDevice({
-        installationId,
-        permissionStatus: storedPermissionStatus,
-        platform: 'ios',
-      });
-      return;
-    }
-
-    const projectId = getProjectId();
-    if (!projectId) {
-      console.error('Missing EAS project id for Expo push token registration.');
-      return;
-    }
-
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
-    await registerDevice({
-      expoPushToken: token.data,
-      installationId,
-      permissionStatus: storedPermissionStatus,
-      platform: 'ios',
-    });
-  }, [registerDevice]);
-
-  const unregisterCurrentDevice = useCallback(async () => {
+  const unregisterCurrentDevice = async () => {
     if (!canUseRemotePushNotifications()) {
       return;
     }
@@ -175,7 +179,7 @@ export function usePushNotificationsRegistration(enabled: boolean) {
     }
 
     await unregisterDevice({ installationId });
-  }, [unregisterDevice]);
+  };
 
   useEffect(() => {
     if (!enabled) {
@@ -187,10 +191,10 @@ export function usePushNotificationsRegistration(enabled: boolean) {
     }
 
     hasAttemptedRegistrationRef.current = true;
-    registerCurrentDevice().catch((error) => {
+    registerCurrentPushDevice(registerDevice).catch((error) => {
       console.error('Failed to register push notifications:', error);
     });
-  }, [enabled, registerCurrentDevice]);
+  }, [enabled, registerDevice]);
 
   return { registerCurrentDevice, unregisterCurrentDevice };
 }

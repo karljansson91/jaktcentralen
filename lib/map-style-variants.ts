@@ -79,7 +79,7 @@ function cloneStyleSpec(style: MapboxStyleJSON, name: string): MapboxStyleJSON {
 }
 
 function getMapboxAccessToken() {
-  return process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '';
+  return process.env.EXPO_PUBLIC_MAPBOX_PUBLISHABLE_KEY ?? '';
 }
 
 async function fetchOutdoorsStyleJSON() {

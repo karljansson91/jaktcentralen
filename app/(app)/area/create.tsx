@@ -3,7 +3,7 @@ import { LngLat, PolygonDrawer } from '@/components/PolygonDrawer';
 import { api } from '@/convex/_generated/api';
 import { useMutation } from 'convex/react';
 import { Stack, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,20 +17,20 @@ export default function CreateAreaScreen() {
 
   const createArea = useMutation(api.areas.create);
 
-  const handlePolygonComplete = useCallback((points: LngLat[]) => {
+  const handlePolygonComplete = (points: LngLat[]) => {
     setPolygonPoints(points);
-  }, []);
+  };
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = () => {
     if (polygonPoints) {
       // Go back to drawing
       setPolygonPoints(null);
     } else {
       back();
     }
-  }, [back, polygonPoints]);
+  };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     if (!name.trim()) {
       Alert.alert('Fel', 'Namn krävs');
       return;
@@ -54,17 +54,14 @@ export default function CreateAreaScreen() {
     } catch (e: any) {
       Alert.alert('Fel', e.message ?? 'Kunde inte skapa område');
     }
-  }, [createArea, name, polygonPoints, replace]);
+  };
 
   // Step 1: Draw polygon
   if (!polygonPoints) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <PolygonDrawer
-          onComplete={handlePolygonComplete}
-          onCancel={() => back()}
-        />
+        <PolygonDrawer onComplete={handlePolygonComplete} onCancel={() => back()} />
       </>
     );
   }
@@ -75,7 +72,8 @@ export default function CreateAreaScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         className="flex-1 bg-background"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
           className="flex-1 bg-background"
           contentInsetAdjustmentBehavior="automatic"
@@ -86,13 +84,12 @@ export default function CreateAreaScreen() {
           }}
           contentInset={{ top: topContentInset, bottom: bottomContentInset }}
           scrollIndicatorInsets={{ top: topContentInset, bottom: bottomContentInset }}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+        >
           <Text variant="h3" className="mb-2">
             Namnge ditt område
           </Text>
-          <Text className="mb-6 text-muted-foreground">
-            {polygonPoints.length} punkter ritade
-          </Text>
+          <Text className="mb-6 text-muted-foreground">{polygonPoints.length} punkter ritade</Text>
 
           <Text className="mb-1 font-medium">Namn *</Text>
           <Input

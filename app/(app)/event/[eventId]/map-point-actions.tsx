@@ -2,7 +2,7 @@ import { HuntMapLongPressActionSheet } from '@/components/event/hunt-map-long-pr
 import type { LatLngPoint } from '@/lib/geo';
 import { publishHuntMapLongPressAction } from '@/lib/hunt-map-long-press-actions';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 
 function parseCoordinate(value: string | string[] | undefined) {
   const rawValue = Array.isArray(value) ? value[0] : value;
@@ -24,7 +24,7 @@ export default function MapPointActionsScreen() {
   }>();
   const { back, canGoBack, replace } = useRouter();
 
-  const coordinate = useMemo<LatLngPoint | null>(() => {
+  const coordinate = (() => {
     const parsedLatitude = parseCoordinate(latitude);
     const parsedLongitude = parseCoordinate(longitude);
     if (parsedLatitude == null || parsedLongitude == null) {
@@ -35,8 +35,8 @@ export default function MapPointActionsScreen() {
       latitude: parsedLatitude,
       longitude: parsedLongitude,
     };
-  }, [latitude, longitude]);
-  const parsedSatOptions = useMemo(() => {
+  })();
+  const parsedSatOptions = (() => {
     if (!satOptions || Array.isArray(satOptions)) {
       return [];
     }
@@ -51,16 +51,16 @@ export default function MapPointActionsScreen() {
     } catch {
       return [];
     }
-  }, [satOptions]);
+  })();
 
-  const closeSheet = useCallback(() => {
+  const closeSheet = () => {
     if (canGoBack()) {
       back();
       return;
     }
 
     replace(`/event/${eventId}`);
-  }, [back, canGoBack, eventId, replace]);
+  };
 
   useEffect(() => {
     return () => {
@@ -70,41 +70,29 @@ export default function MapPointActionsScreen() {
     };
   }, [coordinate]);
 
-  const handleMeasureToPoint = useCallback(
-    (point: LatLngPoint) => {
-      publishHuntMapLongPressAction({ point, type: 'measureToPoint' });
-      closeSheet();
-    },
-    [closeSheet]
-  );
+  const handleMeasureToPoint = (point: LatLngPoint) => {
+    publishHuntMapLongPressAction({ point, type: 'measureToPoint' });
+    closeSheet();
+  };
 
-  const handleAddMeasurementPoint = useCallback(
-    (point: LatLngPoint) => {
-      publishHuntMapLongPressAction({ point, type: 'addMeasurementPoint' });
-      closeSheet();
-    },
-    [closeSheet]
-  );
+  const handleAddMeasurementPoint = (point: LatLngPoint) => {
+    publishHuntMapLongPressAction({ point, type: 'addMeasurementPoint' });
+    closeSheet();
+  };
 
-  const handleMarkAnimalSighting = useCallback(
-    (point: LatLngPoint) => {
-      publishHuntMapLongPressAction({ point, type: 'clearPoint' });
-      replace(
-        `/event/${eventId}/animal-sighting?latitude=${point.latitude}&longitude=${point.longitude}`
-      );
-    },
-    [eventId, replace]
-  );
+  const handleMarkAnimalSighting = (point: LatLngPoint) => {
+    publishHuntMapLongPressAction({ point, type: 'clearPoint' });
+    replace(
+      `/event/${eventId}/animal-sighting?latitude=${point.latitude}&longitude=${point.longitude}`
+    );
+  };
 
-  const handleSelectSat = useCallback(
-    (satId: string) => {
-      if (coordinate) {
-        publishHuntMapLongPressAction({ point: coordinate, type: 'clearPoint' });
-      }
-      replace(`/event/${eventId}/sat?satId=${satId}`);
-    },
-    [coordinate, eventId, replace]
-  );
+  const handleSelectSat = (satId: string) => {
+    if (coordinate) {
+      publishHuntMapLongPressAction({ point: coordinate, type: 'clearPoint' });
+    }
+    replace(`/event/${eventId}/sat?satId=${satId}`);
+  };
 
   return (
     <HuntMapLongPressActionSheet

@@ -1,7 +1,6 @@
 import { areaFeaturePointToLngLat } from '@/lib/area-features';
 import type { LatLngPoint } from '@/lib/geo';
 import { CircleLayer, FillLayer, LineLayer, ShapeSource } from '@rnmapbox/maps';
-import { useMemo } from 'react';
 
 type PolygonDrawingLayersProps = {
   closeLine?: boolean;
@@ -11,10 +10,7 @@ type PolygonDrawingLayersProps = {
   lineDasharray?: number[] | null;
   lineWidth?: number;
   points: LatLngPoint[];
-  showFill?: boolean;
-  showLineHalo?: boolean;
-  showMidpoints?: boolean;
-  showVertices?: boolean;
+  preset?: 'area-edit' | 'default' | 'outline' | 'preview';
 };
 
 export function PolygonDrawingLayers({
@@ -25,12 +21,13 @@ export function PolygonDrawingLayers({
   lineDasharray = [1.5, 1.1],
   lineWidth = 2,
   points,
-  showFill = true,
-  showLineHalo = false,
-  showMidpoints = false,
-  showVertices = true,
+  preset = 'default',
 }: PolygonDrawingLayersProps) {
-  const geometry = useMemo(() => {
+  const showFill = preset === 'default' || preset === 'area-edit';
+  const showLineHalo = preset === 'outline';
+  const showMidpoints = preset === 'area-edit';
+  const showVertices = preset === 'default' || preset === 'area-edit';
+  const geometry = (() => {
     const outline = points.map(areaFeaturePointToLngLat);
     const closedOutline = outline.length >= 3 ? [...outline, outline[0]] : outline;
     const lineOutline = closeLine ? closedOutline : outline;
@@ -105,7 +102,7 @@ export function PolygonDrawingLayers({
     };
 
     return { line, midpoints, polygon, vertices };
-  }, [closeLine, draggingIndex, points]);
+  })();
 
   if (points.length === 0) {
     return null;

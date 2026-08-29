@@ -1,6 +1,6 @@
 import { getMapHeadingDelta } from '@/lib/map-heading';
 import type { CameraStop, MapState } from '@rnmapbox/maps';
-import { useCallback, useState, type RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 
 type HeadingCameraRef = {
   setCamera: (config: CameraStop) => void;
@@ -17,7 +17,7 @@ export function useMapCameraState<TCamera extends HeadingCameraRef>(
   const [heading, setHeading] = useState(0);
   const [scale, setScale] = useState<MapScale | null>(null);
 
-  const handleCameraChanged = useCallback((state: MapState) => {
+  const handleCameraChanged = (state: MapState) => {
     const nextHeading = state.properties.heading;
     if (Number.isFinite(nextHeading)) {
       setHeading((currentHeading) =>
@@ -42,16 +42,16 @@ export function useMapCameraState<TCamera extends HeadingCameraRef>(
 
       return { latitude, zoom };
     });
-  }, []);
+  };
 
-  const resetHeading = useCallback(() => {
+  const resetHeading = () => {
     cameraRef.current?.setCamera({
       animationDuration: 300,
       animationMode: 'easeTo',
       heading: 0,
     });
     setHeading(0);
-  }, [cameraRef]);
+  };
 
   return {
     handleCameraChanged,

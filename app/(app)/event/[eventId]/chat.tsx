@@ -1,6 +1,7 @@
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { withLoadingState } from '@/lib/async-state';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
@@ -8,14 +9,8 @@ import { Image } from 'expo-image';
 import { File, UploadType } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type ElementRef } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  TextInput,
-  View,
-} from 'react-native';
+import { useEffect, useRef, useState, type ElementRef } from 'react';
+import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
 import {
   KeyboardChatScrollView,
   KeyboardStickyView,
@@ -25,6 +20,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMPOSER_KEYBOARD_OFFSET = 76;
 const COMPOSER_KEYBOARD_BOTTOM_PADDING = 8;
+
+type ChatScrollViewRef = ElementRef<typeof KeyboardChatScrollView>;
+
+function scrollToLatestMessage(
+  scrollViewRef: { current: ChatScrollViewRef | null },
+  animated = true
+) {
+  requestAnimationFrame(() => {
+    scrollViewRef.current?.scrollToEnd({ animated });
+  });
+}
 const MIN_COMPOSER_BOTTOM_PADDING = 20;
 const COMPOSER_SCROLL_GAP = 12;
 const CHAT_SCROLL_BOTTOM_PADDING = 16;
@@ -155,13 +161,11 @@ function ChatImageGrid({
   if (images.length === 0) {
     return (
       <View
-        className={`rounded-2xl px-3 py-2 ${
-          isMine ? 'bg-primary-foreground/15' : 'bg-background'
-        }`}>
+        className={`rounded-2xl px-3 py-2 ${isMine ? 'bg-primary-foreground/15' : 'bg-background'}`}
+      >
         <Text
-          className={`text-sm ${
-            isMine ? 'text-primary-foreground/80' : 'text-muted-foreground'
-          }`}>
+          className={`text-sm ${isMine ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
+        >
           Bilden kunde inte visas
         </Text>
       </View>
@@ -175,7 +179,8 @@ function ChatImageGrid({
         accessibilityLabel="Visa bild"
         className="overflow-hidden rounded-[20px]"
         style={{ width: CHAT_IMAGE_GRID_WIDTH }}
-        onPress={() => onImagePress(0)}>
+        onPress={() => onImagePress(0)}
+      >
         <Image
           source={{ uri: images[0].url }}
           contentFit="cover"
@@ -190,9 +195,7 @@ function ChatImageGrid({
   }
 
   return (
-    <View
-      className="flex-row flex-wrap gap-2"
-      style={{ width: CHAT_IMAGE_GRID_WIDTH }}>
+    <View className="flex-row flex-wrap gap-2" style={{ width: CHAT_IMAGE_GRID_WIDTH }}>
       {images.map((image, index) => (
         <Pressable
           key={image.fileId}
@@ -200,7 +203,8 @@ function ChatImageGrid({
           accessibilityLabel={`Visa bild ${index + 1}`}
           className="overflow-hidden rounded-2xl"
           style={{ height: CHAT_IMAGE_TILE_SIZE, width: CHAT_IMAGE_TILE_SIZE }}
-          onPress={() => onImagePress(index)}>
+          onPress={() => onImagePress(index)}
+        >
           <Image
             source={{ uri: image.url }}
             contentFit="cover"
@@ -236,12 +240,14 @@ function ChatMessageRow({
     <View
       className={`max-w-[82%] rounded-[26px] ${
         isImageMessage ? 'p-2' : 'px-4 py-3'
-      } ${isMine ? 'self-end bg-primary' : 'self-start bg-muted'}`}>
+      } ${isMine ? 'self-end bg-primary' : 'self-start bg-muted'}`}
+    >
       {!isMine && (
         <Text
           className={`mb-1 text-xs font-semibold text-muted-foreground ${
             isImageMessage ? 'px-2 pt-1' : ''
-          }`}>
+          }`}
+        >
           {message.user?.name ?? 'Okänd'}
         </Text>
       )}
@@ -254,9 +260,8 @@ function ChatMessageRow({
           />
           {hasBody ? (
             <Text
-              className={`px-2 leading-5 ${
-                isMine ? 'text-primary-foreground' : 'text-foreground'
-              }`}>
+              className={`px-2 leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}
+            >
               {message.body}
             </Text>
           ) : null}
@@ -265,15 +270,15 @@ function ChatMessageRow({
       <View className="flex-row items-start gap-2">
         {eventIcon ? (
           <View
-            className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}>
+            className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}
+          >
             <Ionicons name={eventIcon.icon} size={15} color={eventIcon.color} />
           </View>
         ) : null}
         {!isImageMessage ? (
           <Text
-            className={`shrink leading-5 ${
-              isMine ? 'text-primary-foreground' : 'text-foreground'
-            }`}>
+            className={`shrink leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}
+          >
             {message.body}
           </Text>
         ) : null}
@@ -281,7 +286,8 @@ function ChatMessageRow({
       <Text
         className={`mt-1 text-right text-[11px] ${isImageMessage ? 'px-2' : ''} ${
           isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'
-        }`}>
+        }`}
+      >
         {formatTime(message._creationTime)}
       </Text>
     </View>
@@ -321,23 +327,17 @@ export default function EventChatScreen() {
     { eventId: eventId as Id<'events'> },
     { initialNumItems: 30 }
   );
-  const messages = useMemo(() => [...results].reverse(), [results]);
-
-  const scrollToLatestMessage = useCallback((animated = true) => {
-    requestAnimationFrame(() => {
-      scrollViewRef.current?.scrollToEnd({ animated });
-    });
-  }, []);
+  const messages = [...results].reverse();
 
   useEffect(() => {
     if (messages.length === 0) return;
-    scrollToLatestMessage();
-  }, [messages.length, scrollToLatestMessage]);
+    scrollToLatestMessage(scrollViewRef);
+  }, [messages.length]);
 
   useEffect(() => {
     if (!keyboardVisible || messages.length === 0) return;
-    scrollToLatestMessage(false);
-  }, [keyboardVisible, messages.length, scrollToLatestMessage]);
+    scrollToLatestMessage(scrollViewRef, false);
+  }, [keyboardVisible, messages.length]);
 
   useEffect(() => {
     if (focusComposer !== '1') return;
@@ -357,7 +357,7 @@ export default function EventChatScreen() {
     });
   }, [eventId, markMessagesRead, messages.length, status]);
 
-  const handlePickImages = useCallback(async () => {
+  const handlePickImages = async () => {
     const remainingSlots = MAX_CHAT_IMAGES - pendingImages.length;
     if (remainingSlots <= 0) {
       Alert.alert('Max antal bilder', `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`);
@@ -369,6 +369,7 @@ export default function EventChatScreen() {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Behörighet krävs', 'Ge appen åtkomst till bilder för att skicka dem.');
+        setIsAddingImages(false);
         return;
       }
 
@@ -382,6 +383,7 @@ export default function EventChatScreen() {
       });
 
       if (result.canceled) {
+        setIsAddingImages(false);
         return;
       }
 
@@ -398,12 +400,13 @@ export default function EventChatScreen() {
         'Kunde inte lägga till bild',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
       setIsAddingImages(false);
+      return;
     }
-  }, [pendingImages.length]);
+    setIsAddingImages(false);
+  };
 
-  const handleTakePhoto = useCallback(async () => {
+  const handleTakePhoto = async () => {
     if (pendingImages.length >= MAX_CHAT_IMAGES) {
       Alert.alert('Max antal bilder', `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`);
       return;
@@ -414,6 +417,7 @@ export default function EventChatScreen() {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Behörighet krävs', 'Ge appen åtkomst till kameran för att ta en bild.');
+        setIsAddingImages(false);
         return;
       }
 
@@ -423,6 +427,7 @@ export default function EventChatScreen() {
       });
 
       if (result.canceled || result.assets.length === 0) {
+        setIsAddingImages(false);
         return;
       }
 
@@ -443,12 +448,13 @@ export default function EventChatScreen() {
         'Kunde inte ta bild',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
-    } finally {
       setIsAddingImages(false);
+      return;
     }
-  }, [pendingImages.length]);
+    setIsAddingImages(false);
+  };
 
-  const handleChooseImageSource = useCallback(() => {
+  const handleChooseImageSource = () => {
     if (isBusy) return;
 
     if (pendingImages.length >= MAX_CHAT_IMAGES) {
@@ -461,75 +467,59 @@ export default function EventChatScreen() {
       { text: 'Välj från bilder', onPress: () => void handlePickImages() },
       { text: 'Avbryt', style: 'cancel' },
     ]);
-  }, [handlePickImages, handleTakePhoto, isBusy, pendingImages.length]);
+  };
 
-  const handleRemovePendingImage = useCallback((imageId: string) => {
+  const handleRemovePendingImage = (imageId: string) => {
     setPendingImages((current) => current.filter((image) => image.id !== imageId));
-  }, []);
+  };
 
-  const handleOpenImage = useCallback(
-    (message: ChatMessageItem, imageIndex: number) => {
-      push(
-        `/event/${eventId}/chat-image-viewer?messageId=${message._id}&index=${imageIndex}` as Href
-      );
-    },
-    [eventId, push]
-  );
+  const handleOpenImage = (message: ChatMessageItem, imageIndex: number) => {
+    push(
+      `/event/${eventId}/chat-image-viewer?messageId=${message._id}&index=${imageIndex}` as Href
+    );
+  };
 
-  const handleSend = useCallback(async () => {
+  const handleSend = async () => {
     const trimmed = body.trim();
     if (!trimmed && pendingImages.length === 0) return;
     if (isSending) return;
 
-    setIsSending(true);
-    try {
-      if (pendingImages.length > 0) {
-        const imageFileIds = await Promise.all(
-          pendingImages.map(async (image) => {
-            const uploadUrl = await generateUploadUrl();
-            return await uploadChatImage(uploadUrl, image);
-          })
-        );
+    await withLoadingState(setIsSending, async () => {
+      try {
+        if (pendingImages.length > 0) {
+          const imageFileIds = await Promise.all(
+            pendingImages.map(async (image) => {
+              const uploadUrl = await generateUploadUrl();
+              return await uploadChatImage(uploadUrl, image);
+            })
+          );
 
-        await sendImageMessage({
-          body: trimmed,
-          eventId: eventId as Id<'events'>,
-          imageFileIds,
-        });
-        setPendingImages([]);
-      } else {
-        await sendMessage({ eventId: eventId as Id<'events'>, body: trimmed });
+          await sendImageMessage({
+            body: trimmed,
+            eventId: eventId as Id<'events'>,
+            imageFileIds,
+          });
+          setPendingImages([]);
+        } else {
+          await sendMessage({ eventId: eventId as Id<'events'>, body: trimmed });
+        }
+
+        setBody('');
+        scrollToLatestMessage(scrollViewRef);
+      } catch (error) {
+        Alert.alert('Kunde inte skicka meddelandet', getChatSendErrorMessage(error));
       }
+    });
+  };
 
-      setBody('');
-      scrollToLatestMessage();
-    } catch (error) {
-      Alert.alert(
-        'Kunde inte skicka meddelandet',
-        getChatSendErrorMessage(error)
-      );
-    } finally {
-      setIsSending(false);
-    }
-  }, [
-    body,
-    eventId,
-    generateUploadUrl,
-    isSending,
-    pendingImages,
-    scrollToLatestMessage,
-    sendImageMessage,
-    sendMessage,
-  ]);
-
-  const closeChat = useCallback(() => {
+  const closeChat = () => {
     if (canGoBack()) {
       back();
       return;
     }
 
     replace(`/event/${eventId}`);
-  }, [back, canGoBack, eventId, replace]);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: APP_COLORS.background }} collapsable={false}>
@@ -539,7 +529,8 @@ export default function EventChatScreen() {
           accessibilityRole="button"
           accessibilityLabel="Stäng chat"
           className="absolute right-4 size-9 items-center justify-center rounded-full bg-card active:bg-muted"
-          onPress={closeChat}>
+          onPress={closeChat}
+        >
           <Ionicons name="close" size={22} color={APP_COLORS.text} />
         </Pressable>
       </View>
@@ -560,20 +551,22 @@ export default function EventChatScreen() {
         offset={composerHeight}
         onContentSizeChange={() => {
           if (messages.length > 0) {
-            scrollToLatestMessage(false);
+            scrollToLatestMessage(scrollViewRef, false);
           }
         }}
         onLayout={() => {
           if (keyboardVisible && messages.length > 0) {
-            scrollToLatestMessage(false);
+            scrollToLatestMessage(scrollViewRef, false);
           }
         }}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}>
+        scrollEventThrottle={16}
+      >
         {status === 'CanLoadMore' && (
           <Pressable
             onPress={() => loadMore(20)}
-            className="self-center rounded-full bg-card px-4 py-2">
+            className="self-center rounded-full bg-card px-4 py-2"
+          >
             <Text className="text-sm font-medium text-muted-foreground">
               Ladda äldre meddelanden
             </Text>
@@ -628,7 +621,8 @@ export default function EventChatScreen() {
               Math.abs(currentHeight - nextHeight) > 1 ? nextHeight : currentHeight
             );
           }}
-          collapsable={false}>
+          collapsable={false}
+        >
           {pendingImages.length > 0 ? (
             <View className="mb-3 gap-2">
               <View className="flex-row items-center justify-between">
@@ -640,7 +634,8 @@ export default function EventChatScreen() {
                 {pendingImages.map((image) => (
                   <View
                     key={image.id}
-                    className="relative size-14 overflow-hidden rounded-2xl bg-muted">
+                    className="relative size-14 overflow-hidden rounded-2xl bg-muted"
+                  >
                     <Image
                       source={{ uri: image.uri }}
                       contentFit="cover"
@@ -651,7 +646,8 @@ export default function EventChatScreen() {
                       accessibilityLabel="Ta bort bild"
                       className="absolute right-1 top-1 rounded-full bg-black/65 p-0.5"
                       disabled={isSending}
-                      onPress={() => handleRemovePendingImage(image.id)}>
+                      onPress={() => handleRemovePendingImage(image.id)}
+                    >
                       <Ionicons name="close" size={12} color="white" />
                     </Pressable>
                   </View>
@@ -668,7 +664,8 @@ export default function EventChatScreen() {
               }`}
               disabled={isBusy}
               accessibilityRole="button"
-              accessibilityLabel="Lägg till bild">
+              accessibilityLabel="Lägg till bild"
+            >
               {isAddingImages ? (
                 <ActivityIndicator size="small" color={APP_COLORS.primary} />
               ) : (
@@ -698,7 +695,8 @@ export default function EventChatScreen() {
               }`}
               disabled={!canSend || isBusy}
               accessibilityRole="button"
-              accessibilityLabel="Skicka meddelande">
+              accessibilityLabel="Skicka meddelande"
+            >
               {isSending ? (
                 <ActivityIndicator size="small" color={APP_COLORS.surface} />
               ) : (
