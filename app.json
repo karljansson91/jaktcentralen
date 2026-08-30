@@ -7,6 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "jaktcentralen",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#398048",
     "ios": {
       "icon": "./assets/images/ios-icon.png",
       "supportsTablet": true,
@@ -42,7 +43,18 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#398048",
+          "android": {
+            "dark": {
+              "backgroundColor": "#398048"
+            }
+          }
+        }
+      ],
+      [
+        "expo-status-bar",
+        {
+          "style": "light"
         }
       ],
       "@clerk/expo",
@@ -67,7 +79,6 @@
         }
       ],
       "expo-notifications",
-      "expo-status-bar",
       "expo-web-browser",
       "expo-font",
       "expo-image"

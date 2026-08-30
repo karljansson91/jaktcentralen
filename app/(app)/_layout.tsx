@@ -7,7 +7,7 @@ import { APP_COLORS } from '@/lib/theme';
 import * as Location from 'expo-location';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
 
 const ISSUE_SHEET_OPTIONS = {
   presentation: 'formSheet' as const,
@@ -21,7 +21,7 @@ const ISSUE_SHEET_OPTIONS = {
 };
 
 export default function AppLayout() {
-  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const { isSignedIn, signOut } = useAuth();
   const { back } = useRouter();
   const getOrCreateUser = useMutation(api.users.getOrCreateCurrentUser);
   const hasSynced = useRef(false);
@@ -99,14 +99,6 @@ export default function AppLayout() {
       });
     }
   }, [isSignedIn]);
-
-  if (!isLoaded) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="small" color="#2c4b31" />
-      </View>
-    );
-  }
 
   if (!isSignedIn) {
     return <Redirect href="/sign-in" />;
@@ -193,12 +185,3 @@ export default function AppLayout() {
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-  },
-});

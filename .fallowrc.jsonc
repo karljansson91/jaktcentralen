@@ -2,12 +2,14 @@
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "ignorePatterns": ["convex/_generated/**"],
   "ignoreDependencies": [
+    "@edge-runtime/vm",
     "@expo/ngrok",
     "babel-preset-expo",
     "expo",
     "expo-auth-session",
     "expo-dev-client",
     "expo-splash-screen",
+    "expo-system-ui",
     "react-native-web"
   ]
 }

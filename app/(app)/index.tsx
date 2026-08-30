@@ -1,6 +1,7 @@
 import { EndedHuntsDropdown } from '@/components/home/ended-hunts-dropdown';
 import { HomeSectionHeader } from '@/components/home/home-section-header';
 import { HomeHuntCard } from '@/components/home/hunt-card';
+import { StartupScreen } from '@/components/startup-screen';
 import { Button, Card, CardContent, IconButton, Text } from '@/components/ui';
 import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
@@ -10,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -39,19 +40,10 @@ export default function HomeScreen() {
     user === undefined ||
     areas === undefined ||
     events === undefined ||
-    endedEvents === undefined
+    endedEvents === undefined ||
+    pendingInvitations === undefined
   ) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <View className="items-center gap-4">
-          <View className="size-14 items-center justify-center rounded-full bg-primary/10">
-            <Ionicons name="trail-sign-outline" size={28} color="#35523b" />
-          </View>
-          <ActivityIndicator size="small" color="#35523b" />
-          <Text className="text-sm text-muted-foreground">Laddar…</Text>
-        </View>
-      </View>
-    );
+    return <StartupScreen />;
   }
 
   return (
