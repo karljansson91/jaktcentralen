@@ -1,6 +1,6 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { isEventEnded } from "./eventLifecycle";
+import { isEventEnded } from "../lib/event-lifecycle";
 
 const MIN_TRAIL_DISTANCE_METERS = 10;
 const STATIONARY_TRAIL_INTERVAL_MS = 30_000;

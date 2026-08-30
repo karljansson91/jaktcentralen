@@ -2,6 +2,7 @@ import { EndedHuntsDropdown } from '@/components/home/ended-hunts-dropdown';
 import { HomeSectionHeader } from '@/components/home/home-section-header';
 import { HomeHuntCard } from '@/components/home/hunt-card';
 import { Button, Card, CardContent, IconButton, Text } from '@/components/ui';
+import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
 import { useCurrentTime } from '@/hooks/use-current-time';
 import { getEventLifecycle } from '@/lib/event-lifecycle';
@@ -22,8 +23,9 @@ export default function HomeScreen() {
   const events = useQuery(api.events.listMyEvents, user ? {} : 'skip');
   const endedEvents = useQuery(api.events.listMyEndedEvents, user ? {} : 'skip');
   const pendingInvitations = useQuery(api.eventMembers.listMyInvitations, user ? {} : 'skip');
-  const pendingFriendRequests = useQuery(api.friends.listPendingReceived, user ? {} : 'skip');
-  const inboxCount = (pendingInvitations?.length ?? 0) + (pendingFriendRequests?.length ?? 0);
+  const hasActiveInvitation = pendingInvitations?.some(
+    ({ event }) => getEventLifecycle(event, currentTime) !== 'ended'
+  );
   const sortedCurrentHunts = (events ?? []).slice().sort((a, b) => {
     const lifecycleA = getEventLifecycle(a, currentTime);
     const lifecycleB = getEventLifecycle(b, currentTime);
@@ -32,15 +34,6 @@ export default function HomeScreen() {
 
     return rankA - rankB || a.startDate - b.startDate;
   });
-
-  const profileInitial =
-    user?.name
-      ?.trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || null;
 
   if (
     user === undefined ||
@@ -74,23 +67,19 @@ export default function HomeScreen() {
       >
         <View className="flex-row justify-end">
           <IconButton
-            accessibilityLabel="Öppna profil"
+            accessibilityLabel={
+              hasActiveInvitation ? 'Öppna profil, ny jaktinbjudan' : 'Öppna profil'
+            }
             variant="outline"
             onPress={() => push('/profile' as Href)}
             className="relative border border-border/70 bg-card"
           >
-            {profileInitial ? (
-              <Text className="text-sm font-semibold text-primary">{profileInitial}</Text>
-            ) : (
-              <Ionicons name="person-outline" size={20} color="#425848" />
-            )}
-            {inboxCount > 0 ? (
-              <View className="absolute -right-1 -top-1 min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1">
-                <Text className="text-[10px] font-bold leading-3 text-white">
-                  {inboxCount > 9 ? '9+' : inboxCount}
-                </Text>
-              </View>
-            ) : null}
+            <UserAvatar
+              imageUrl={user?.imageUrl}
+              name={user?.name}
+              showNotificationIndicator={hasActiveInvitation}
+              size={40}
+            />
           </IconButton>
         </View>
 

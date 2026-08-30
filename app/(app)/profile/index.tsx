@@ -1,7 +1,10 @@
 import { Badge, Button, Card, CardContent, IconButton, Text } from '@/components/ui';
+import { HuntInvitationCard } from '@/components/profile/hunt-invitation-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import { useCurrentTime } from '@/hooks/use-current-time';
+import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { getUserContactLine, getUserDisplayName } from '@/lib/user-profile';
 import { APP_COLORS } from '@/lib/theme';
 import { useUser } from '@clerk/expo';
@@ -11,18 +14,6 @@ import { Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function formatDate(ts?: number) {
-  if (!ts) {
-    return 'Datum saknas';
-  }
-
-  return new Date(ts).toLocaleDateString('sv-SE', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 type SectionHeaderProps = {
   title: string;
@@ -94,8 +85,13 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { push, replace } = useRouter();
   const { user: clerkUser } = useUser();
+  const currentTime = useCurrentTime(60_000);
   const [updatingNotificationKey, setUpdatingNotificationKey] =
     useState<NotificationPreferenceKey | null>(null);
+  const [respondingInvitation, setRespondingInvitation] = useState<{
+    action: 'accept' | 'decline';
+    memberId: Id<'eventMembers'>;
+  } | null>(null);
 
   const user = useQuery(api.users.getCurrentUserProfile);
   const notificationPreferences = useQuery(api.notifications.getPreferences, user ? {} : 'skip');
@@ -115,8 +111,10 @@ export default function ProfileScreen() {
     user?.name || clerkUser?.fullName || clerkUser?.primaryEmailAddress?.emailAddress;
   const displayContact =
     getUserContactLine(user) || clerkUser?.primaryEmailAddress?.emailAddress || '';
-  const hasInvitations =
-    (invitations && invitations.length > 0) || (friendRequests && friendRequests.length > 0);
+  const activeInvitations = (invitations ?? []).filter(
+    ({ event }) => getEventLifecycle(event, currentTime) !== 'ended'
+  );
+  const hasInvitations = activeInvitations.length > 0 || (friendRequests?.length ?? 0) > 0;
   const resolvedNotificationPreferences = notificationPreferences ?? {
     allEnabled: true,
     chatEnabled: true,
@@ -141,24 +139,28 @@ export default function ProfileScreen() {
     }
   }
 
-  async function handleAcceptInvite(memberId: Id<'eventMembers'>, eventId?: Id<'events'>) {
+  async function handleAcceptInvite(memberId: Id<'eventMembers'>, eventId: Id<'events'>) {
+    setRespondingInvitation({ action: 'accept', memberId });
     try {
       await acceptInvite({ memberId });
-      if (eventId) {
-        replace(`/event/${eventId}` as Href);
-      }
+      setRespondingInvitation(null);
+      replace(`/event/${eventId}` as Href);
     } catch (error) {
+      setRespondingInvitation(null);
       Alert.alert(
-        'Kunde inte gå med',
+        'Kunde inte acceptera',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
       );
     }
   }
 
   async function handleDeclineInvite(memberId: Id<'eventMembers'>) {
+    setRespondingInvitation({ action: 'decline', memberId });
     try {
       await declineInvite({ memberId });
+      setRespondingInvitation(null);
     } catch (error) {
+      setRespondingInvitation(null);
       Alert.alert(
         'Kunde inte avböja',
         error instanceof Error ? error.message : 'Försök igen om en stund.'
@@ -223,7 +225,12 @@ export default function ProfileScreen() {
       <Card className="overflow-hidden border-border/70 bg-card py-0">
         <CardContent className="gap-5 p-5">
           <View className="flex-row items-center gap-4">
-            <UserAvatar imageUrl={user?.imageUrl} name={displayName} size={64} />
+            <UserAvatar
+              imageUrl={user?.imageUrl}
+              name={displayName}
+              showNotificationIndicator={activeInvitations.length > 0}
+              size={64}
+            />
             <View className="min-w-0 flex-1 gap-1">
               <Text className="text-xl font-semibold text-foreground" numberOfLines={1}>
                 {displayName || 'Profil'}
@@ -298,46 +305,22 @@ export default function ProfileScreen() {
         <View className="gap-3">
           <SectionHeader title="Inbjudningar" subtitle="Svara direkt här." />
 
-          {invitations?.map((invitation) => (
-            <Card key={invitation._id} className="border-border/70 bg-card py-0">
-              <CardContent className="gap-4 p-5">
-                <View className="flex-row items-start gap-3">
-                  <View className="size-11 items-center justify-center rounded-2xl bg-secondary">
-                    <Ionicons name="compass-outline" size={22} color={APP_COLORS.primary} />
-                  </View>
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-base font-semibold text-foreground" numberOfLines={2}>
-                      {invitation.event?.title || 'Borttagen jakt'}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      Jaktinbjudan · {formatDate(invitation.event?.startDate)}
-                    </Text>
-                  </View>
-                  <Badge>
-                    <Text>Jakt</Text>
-                  </Badge>
-                </View>
-                <View className="flex-row gap-2">
-                  <Button
-                    className="h-11 flex-1 rounded-xl"
-                    disabled={!invitation.event}
-                    onPress={() =>
-                      void handleAcceptInvite(invitation._id, invitation.event?._id as Id<'events'>)
-                    }
-                  >
-                    <Text>Gå med</Text>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-11 flex-1 rounded-xl bg-background/70"
-                    onPress={() => void handleDeclineInvite(invitation._id)}
-                  >
-                    <Text>Avböj</Text>
-                  </Button>
-                </View>
-              </CardContent>
-            </Card>
-          ))}
+          {activeInvitations.map((invitation) => {
+            const isResponding = respondingInvitation?.memberId === invitation._id;
+
+            return (
+              <HuntInvitationCard
+                key={invitation._id}
+                disabled={respondingInvitation !== null}
+                invitation={invitation}
+                onAccept={() =>
+                  void handleAcceptInvite(invitation._id, invitation.event._id)
+                }
+                onDecline={() => void handleDeclineInvite(invitation._id)}
+                pendingAction={isResponding ? respondingInvitation.action : null}
+              />
+            );
+          })}
 
           {friendRequests?.map((request) => (
             <Card key={request.friendshipId} className="border-border/70 bg-card py-0">

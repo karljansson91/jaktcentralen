@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
-import { isEventEnded } from "./eventLifecycle";
+import { isEventEnded } from "../lib/event-lifecycle";
 import { getCurrentUser } from "./helpers";
 import { recordHuntActivity } from "./huntActivity";
 import {

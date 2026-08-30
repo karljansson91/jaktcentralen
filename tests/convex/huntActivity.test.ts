@@ -2,11 +2,11 @@
 
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import schema from "./schema";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import schema from "../../convex/schema";
 
-const modules = import.meta.glob("./**/*.ts");
+const modules = import.meta.glob("../../convex/**/*.ts");
 const TOKEN_IDENTIFIER = "https://clerk.test|activity-test-user";
 const TEST_NOW = Date.UTC(2026, 7, 30, 12);
 

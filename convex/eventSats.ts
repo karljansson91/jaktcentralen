@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { isPointInPolygon } from "./geometry";
-import { isEventEnded } from "./eventLifecycle";
+import { isEventEnded } from "../lib/event-lifecycle";
 import { getCurrentUser } from "./helpers";
 import { recordHuntActivity } from "./huntActivity";
 import type { Doc, Id } from "./_generated/dataModel";

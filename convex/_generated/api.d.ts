@@ -15,7 +15,6 @@ import type * as areaSats from "../areaSats.js";
 import type * as areas from "../areas.js";
 import type * as eventAccess from "../eventAccess.js";
 import type * as eventCleanup from "../eventCleanup.js";
-import type * as eventLifecycle from "../eventLifecycle.js";
 import type * as eventMembers from "../eventMembers.js";
 import type * as eventPointAssignments from "../eventPointAssignments.js";
 import type * as eventSats from "../eventSats.js";
@@ -48,7 +47,6 @@ declare const fullApi: ApiFromModules<{
   areas: typeof areas;
   eventAccess: typeof eventAccess;
   eventCleanup: typeof eventCleanup;
-  eventLifecycle: typeof eventLifecycle;
   eventMembers: typeof eventMembers;
   eventPointAssignments: typeof eventPointAssignments;
   eventSats: typeof eventSats;

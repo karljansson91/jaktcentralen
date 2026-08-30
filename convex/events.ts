@@ -2,7 +2,11 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { deleteEventCascade } from "./eventCleanup";
-import { getEffectiveEndedAt, isEventEnded } from "./eventLifecycle";
+import {
+  getEffectiveEndedAt,
+  getEventEndBoundary,
+  isEventEnded,
+} from "../lib/event-lifecycle";
 import { getCurrentUser } from "./helpers";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -77,10 +81,14 @@ async function assertJoinCodeAvailable(
 }
 
 async function scheduleAutoEnd(ctx: MutationCtx, eventId: Id<"events">, endDate: number) {
-  await ctx.scheduler.runAt(Math.max(endDate, Date.now()), internal.events.autoEnd, {
-    eventId,
-    scheduledEndDate: endDate,
-  });
+  await ctx.scheduler.runAt(
+    Math.max(getEventEndBoundary(endDate), Date.now()),
+    internal.events.autoEnd,
+    {
+      eventId,
+      scheduledEndDate: endDate,
+    }
+  );
 }
 
 function normalizeAllowedGame(
@@ -256,6 +264,7 @@ export const update = mutation({
     endDate: v.optional(v.number()),
     allowedGame: v.optional(v.array(allowedGameRuleValidator)),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
@@ -287,7 +296,11 @@ export const update = mutation({
         : {}),
       ...(updates.endDate === undefined
         ? {}
-        : { endedAt: nextEndDate <= Date.now() ? nextEndDate : undefined }),
+        : {
+            endedAt: isEventEnded({ endDate: nextEndDate }, Date.now())
+              ? getEventEndBoundary(nextEndDate) - 1
+              : undefined,
+          }),
     };
 
     await ctx.db.patch(eventId, patch);
@@ -295,6 +308,7 @@ export const update = mutation({
     if (updates.endDate !== undefined && updates.endDate !== previousEndDate) {
       await scheduleAutoEnd(ctx, eventId, updates.endDate);
     }
+    return null;
   },
 });
 
@@ -303,6 +317,7 @@ export const updateEndDate = mutation({
     endDate: v.number(),
     eventId: v.id("events"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const event = await requireEventAdmin(ctx, args.eventId, user._id);
@@ -312,14 +327,16 @@ export const updateEndDate = mutation({
     }
 
     const now = Date.now();
+    const endBoundary = getEventEndBoundary(args.endDate);
     await ctx.db.patch(args.eventId, {
       endDate: args.endDate,
-      endedAt: args.endDate <= now ? args.endDate : undefined,
+      endedAt: endBoundary <= now ? endBoundary - 1 : undefined,
     });
 
-    if (args.endDate > now) {
+    if (endBoundary > now) {
       await scheduleAutoEnd(ctx, args.eventId, args.endDate);
     }
+    return null;
   },
 });
 
@@ -342,6 +359,7 @@ export const remove = mutation({
 
 export const end = mutation({
   args: { eventId: v.id("events") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
@@ -354,12 +372,16 @@ export const end = mutation({
     }
     const now = Date.now();
     if (event.endedAt !== undefined) {
-      return;
+      return null;
     }
 
     await ctx.db.patch(args.eventId, {
-      endedAt: event.endDate <= now ? event.endDate : now,
+      endedAt:
+        getEventEndBoundary(event.endDate) <= now
+          ? getEventEndBoundary(event.endDate) - 1
+          : now,
     });
+    return null;
   },
 });
 
@@ -368,16 +390,24 @@ export const autoEnd = internalMutation({
     eventId: v.id("events"),
     scheduledEndDate: v.number(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const event = await ctx.db.get(args.eventId);
-    if (!event || event.endedAt !== undefined || event.endDate !== args.scheduledEndDate) {
-      return;
+    if (
+      !event ||
+      event.endedAt !== undefined ||
+      event.endDate !== args.scheduledEndDate
+    ) {
+      return null;
     }
-    if (event.endDate > Date.now()) {
-      return;
+    const endBoundary = getEventEndBoundary(event.endDate);
+    if (endBoundary > Date.now()) {
+      await scheduleAutoEnd(ctx, args.eventId, event.endDate);
+      return null;
     }
 
-    await ctx.db.patch(args.eventId, { endedAt: event.endDate });
+    await ctx.db.patch(args.eventId, { endedAt: endBoundary - 1 });
+    return null;
   },
 });
 

@@ -3,10 +3,22 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
-import { isEventEnded } from "./eventLifecycle";
+import { isEventEnded } from "../lib/event-lifecycle";
 import { getCurrentUser } from "./helpers";
 import { recordHuntActivity } from "./huntActivity";
 import { writeMemberPosition } from "./positionTracking";
+
+const activeInvitationValidator = v.object({
+  _id: v.id("eventMembers"),
+  areaName: v.string(),
+  event: v.object({
+    _id: v.id("events"),
+    endDate: v.number(),
+    endedAt: v.optional(v.number()),
+    startDate: v.number(),
+    title: v.string(),
+  }),
+});
 
 function assertEventIsActive(event: Doc<"events">, now: number) {
   if (event.startDate > now || isEventEnded(event, now)) {
@@ -76,6 +88,7 @@ export const invite = mutation({
 
 export const acceptInvite = mutation({
   args: { memberId: v.id("eventMembers") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const member = await ctx.db.get(args.memberId);
@@ -93,11 +106,13 @@ export const acceptInvite = mutation({
       throw new Error("Cannot accept an invite to an ended hunt");
     }
     await ctx.db.patch(args.memberId, { status: "accepted" });
+    return null;
   },
 });
 
 export const declineInvite = mutation({
   args: { memberId: v.id("eventMembers") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const member = await ctx.db.get(args.memberId);
@@ -110,7 +125,12 @@ export const declineInvite = mutation({
     if (member.status !== "invited") {
       throw new Error("Not an invitation");
     }
+    const event = await ctx.db.get(member.eventId);
+    if (!event || isEventEnded(event)) {
+      throw new Error("Cannot decline an invite to an ended hunt");
+    }
     await ctx.db.patch(args.memberId, { status: "declined" });
+    return null;
   },
 });
 
@@ -270,6 +290,7 @@ export const listInviteStatuses = query({
 
 export const listMyInvitations = query({
   args: {},
+  returns: v.array(activeInvitationValidator),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
 
@@ -283,16 +304,28 @@ export const listMyInvitations = query({
     const rows = await Promise.all(
       invitations.map(async (inv) => {
         const event = await ctx.db.get(inv.eventId);
-        return event && !isEventEnded(event)
-          ? {
-              ...inv,
-              event,
-            }
-          : null;
+        if (!event || isEventEnded(event)) {
+          return null;
+        }
+
+        const area = await ctx.db.get(event.areaId);
+        return {
+          _id: inv._id,
+          areaName: area?.name ?? "Okänt område",
+          event: {
+            _id: event._id,
+            endDate: event.endDate,
+            endedAt: event.endedAt,
+            startDate: event.startDate,
+            title: event.title,
+          },
+        };
       })
     );
 
-    return rows.filter((row) => row !== null);
+    return rows
+      .filter((row) => row !== null)
+      .sort((a, b) => a.event.startDate - b.event.startDate);
   },
 });
 

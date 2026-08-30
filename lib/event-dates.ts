@@ -13,3 +13,9 @@ export function formatEventInfoDate(date: number): string {
     year: 'numeric',
   });
 }
+
+export function formatEventDateRange(startDate: number, endDate: number): string {
+  const start = formatEventInfoDate(startDate);
+  const end = formatEventInfoDate(endDate);
+  return start === end ? start : `${start} – ${end}`;
+}
