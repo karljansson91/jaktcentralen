@@ -15,7 +15,7 @@
     "issues": "node scripts/issues.mjs"
   },
   "dependencies": {
-    "@clerk/expo": "3.1.2",
+    "@clerk/expo": "4.6.1",
     "@convex-dev/migrations": "^0.3.2",
     "@expo/ngrok": "^4.1.0",
     "@expo/ui": "~56.0.13",
