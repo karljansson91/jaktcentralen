@@ -1,28 +1,10 @@
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCurrentUser } from "./helpers";
 import { getAcceptedEventMembership } from "./eventAccess";
-import { insertHuntMessage, markMembershipReadThroughMessage } from "./messageHelpers";
+import { recordHuntActivity } from "./huntActivity";
 import type { Id } from "./_generated/dataModel";
-
-const MAX_CHAT_IMAGE_COUNT = 4;
-const CHAT_IMAGE_CAPTION_MAX_LENGTH = 2000;
-
-function normalizeImageCaption(body: string) {
-  return body.trim().slice(0, CHAT_IMAGE_CAPTION_MAX_LENGTH);
-}
-
-function validateChatImageFileIds(imageFileIds: Id<"_storage">[]) {
-  if (imageFileIds.length === 0) {
-    throw new Error("Image messages require at least one image");
-  }
-
-  if (imageFileIds.length > MAX_CHAT_IMAGE_COUNT) {
-    throw new Error("Max 4 images per message");
-  }
-}
 
 async function buildMessageImages(
   ctx: QueryCtx,
@@ -40,27 +22,16 @@ async function buildMessageImages(
 
 export const send = mutation({
   args: { eventId: v.id("events"), body: v.string() },
+  returns: v.id("messages"),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const membership = await getAcceptedEventMembership(ctx, args.eventId, user._id);
+    await getAcceptedEventMembership(ctx, args.eventId, user._id);
 
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
-
-    const messageId = await insertHuntMessage(ctx, {
+    return await recordHuntActivity(ctx, {
+      activity: { body: args.body, kind: "text_message" },
+      actor: user,
       eventId: args.eventId,
-      userId: user._id,
-      body: args.body,
-      type: "text",
     });
-    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
-    await ctx.scheduler.runAfter(0, internal.notificationDispatch.sendChatMessage, {
-      messageId,
-    });
-
-    return messageId;
   },
 });
 
@@ -78,30 +49,20 @@ export const sendImage = mutation({
     eventId: v.id("events"),
     imageFileIds: v.array(v.id("_storage")),
   },
+  returns: v.id("messages"),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const membership = await getAcceptedEventMembership(ctx, args.eventId, user._id);
+    await getAcceptedEventMembership(ctx, args.eventId, user._id);
 
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
-
-    validateChatImageFileIds(args.imageFileIds);
-
-    const messageId = await insertHuntMessage(ctx, {
-      body: normalizeImageCaption(args.body),
+    return await recordHuntActivity(ctx, {
+      activity: {
+        body: args.body,
+        imageFileIds: args.imageFileIds,
+        kind: "image_message",
+      },
+      actor: user,
       eventId: args.eventId,
-      imageFileIds: args.imageFileIds,
-      type: "image",
-      userId: user._id,
     });
-    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
-    await ctx.scheduler.runAfter(0, internal.notificationDispatch.sendChatMessage, {
-      messageId,
-    });
-
-    return messageId;
   },
 });
 

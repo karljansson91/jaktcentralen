@@ -3,7 +3,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/s
 import { isPointInPolygon } from "./geometry";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
-import { insertHuntMessage } from "./messageHelpers";
+import { recordHuntActivity } from "./huntActivity";
 import type { Doc, Id } from "./_generated/dataModel";
 
 const assignmentInputValidator = v.object({
@@ -183,6 +183,7 @@ export const saveSetup = mutation({
     satId: v.id("areaSats"),
     selectedTargetKeys: v.array(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const event = await requireEditableEventCreator(ctx, args.eventId, user._id);
@@ -265,19 +266,22 @@ export const saveSetup = mutation({
     }
 
     if (previousActiveSatId !== args.satId) {
-      await insertHuntMessage(ctx, {
-        body: `Aktiv såt: ${sat.name}`,
+      await recordHuntActivity(ctx, {
+        activity: {
+          kind: "sat_activated",
+          satId: sat._id,
+        },
+        actor: user,
         eventId: args.eventId,
-        satId: sat._id,
-        type: "sat_activated",
-        userId: user._id,
       });
     }
+    return null;
   },
 });
 
 export const clearSetup = mutation({
   args: { eventId: v.id("events") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const event = await requireEditableEventCreator(ctx, args.eventId, user._id);
@@ -286,12 +290,12 @@ export const clearSetup = mutation({
     await ctx.db.patch(args.eventId, { activeSatId: undefined });
 
     if (event.activeSatId) {
-      await insertHuntMessage(ctx, {
-        body: "Aktiv såt rensad.",
+      await recordHuntActivity(ctx, {
+        activity: { kind: "sat_cleared" },
+        actor: user,
         eventId: args.eventId,
-        type: "sat_cleared",
-        userId: user._id,
       });
     }
+    return null;
   },
 });

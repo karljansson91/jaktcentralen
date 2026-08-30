@@ -4,7 +4,11 @@ import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
-import { insertHuntMessage, markMembershipReadThroughMessage } from "./messageHelpers";
+import { recordHuntActivity } from "./huntActivity";
+import {
+  ANIMAL_SIGHTING_LABELS,
+  type AnimalSightingKind,
+} from "./animalSightingModel";
 
 const animalValidator = v.union(
   v.literal("elk"),
@@ -13,16 +17,6 @@ const animalValidator = v.union(
   v.literal("fox"),
   v.literal("other")
 );
-
-type AnimalSightingKind = Doc<"animalSightings">["animal"];
-
-const ANIMAL_SIGHTING_LABELS: Record<AnimalSightingKind, string> = {
-  boar: "Vildsvin",
-  deer: "Rådjur",
-  elk: "Älg",
-  fox: "Räv",
-  other: "Annat",
-};
 
 async function attachUsers(ctx: QueryCtx, sightings: Doc<"animalSightings">[]) {
   const userIds = Array.from(new Set(sightings.map((sighting) => sighting.userId)));
@@ -46,9 +40,10 @@ export const report = mutation({
     latitude: v.number(),
     longitude: v.number(),
   },
+  returns: v.id("animalSightings"),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const membership = await getAcceptedEventMembership(ctx, args.eventId, user._id);
+    await getAcceptedEventMembership(ctx, args.eventId, user._id);
 
     const event = await ctx.db.get(args.eventId);
     if (!event || isEventEnded(event)) {
@@ -65,16 +60,14 @@ export const report = mutation({
       timestamp,
     });
 
-    const messageId = await insertHuntMessage(ctx, {
+    await recordHuntActivity(ctx, {
+      activity: {
+        kind: "animal_sighting",
+        sightingId,
+      },
+      actor: user,
       eventId: args.eventId,
-      userId: user._id,
-      body: `Såg ${ANIMAL_SIGHTING_LABELS[args.animal].toLowerCase()} på kartan.`,
-      type: "animal_sighting",
-      sightingId,
     });
-    await ctx.db.patch(sightingId, { messageId });
-
-    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
 
     return sightingId;
   },

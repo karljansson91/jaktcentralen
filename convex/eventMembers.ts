@@ -5,7 +5,7 @@ import { mutation, query } from "./_generated/server";
 import { getAcceptedEventMembership } from "./eventAccess";
 import { isEventEnded } from "./eventLifecycle";
 import { getCurrentUser } from "./helpers";
-import { insertHuntMessage, markMembershipReadThroughMessage } from "./messageHelpers";
+import { recordHuntActivity } from "./huntActivity";
 import { writeMemberPosition } from "./positionTracking";
 
 function assertEventIsActive(event: Doc<"events">, now: number) {
@@ -318,6 +318,7 @@ export const updatePosition = mutation({
 
 export const markInPosition = mutation({
   args: { eventId: v.id("events") },
+  returns: v.id("eventMembers"),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const now = Date.now();
@@ -348,14 +349,14 @@ export const markInPosition = mutation({
       inPositionTargetKey: assignment.targetKey,
     });
 
-    const messageId = await insertHuntMessage(ctx, {
-      body: `${user.name} är på plats.`,
+    await recordHuntActivity(ctx, {
+      activity: {
+        kind: "member_in_position",
+        targetKey: assignment.targetKey,
+      },
+      actor: user,
       eventId: args.eventId,
-      targetKey: assignment.targetKey,
-      type: "member_in_position",
-      userId: user._id,
     });
-    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
 
     return membership._id;
   },
@@ -363,6 +364,7 @@ export const markInPosition = mutation({
 
 export const clearInPosition = mutation({
   args: { eventId: v.id("events") },
+  returns: v.id("eventMembers"),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const now = Date.now();
@@ -384,14 +386,11 @@ export const clearInPosition = mutation({
       inPositionTargetKey: undefined,
     });
 
-    const messageId = await insertHuntMessage(ctx, {
-      body: `${user.name} är inte längre markerad på plats.`,
+    await recordHuntActivity(ctx, {
+      activity: { kind: "member_left_position", targetKey },
+      actor: user,
       eventId: args.eventId,
-      targetKey,
-      type: "member_left_position",
-      userId: user._id,
     });
-    await markMembershipReadThroughMessage(ctx, membership._id, messageId);
 
     return membership._id;
   },

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as animalSightingModel from "../animalSightingModel.js";
 import type * as animalSightings from "../animalSightings.js";
 import type * as areaFeatures from "../areaFeatures.js";
 import type * as areaSats from "../areaSats.js";
@@ -22,8 +23,8 @@ import type * as events from "../events.js";
 import type * as friends from "../friends.js";
 import type * as geometry from "../geometry.js";
 import type * as helpers from "../helpers.js";
+import type * as huntActivity from "../huntActivity.js";
 import type * as issues from "../issues.js";
-import type * as messageHelpers from "../messageHelpers.js";
 import type * as messages from "../messages.js";
 import type * as migrations from "../migrations.js";
 import type * as notificationDispatch from "../notificationDispatch.js";
@@ -40,6 +41,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  animalSightingModel: typeof animalSightingModel;
   animalSightings: typeof animalSightings;
   areaFeatures: typeof areaFeatures;
   areaSats: typeof areaSats;
@@ -54,8 +56,8 @@ declare const fullApi: ApiFromModules<{
   friends: typeof friends;
   geometry: typeof geometry;
   helpers: typeof helpers;
+  huntActivity: typeof huntActivity;
   issues: typeof issues;
-  messageHelpers: typeof messageHelpers;
   messages: typeof messages;
   migrations: typeof migrations;
   notificationDispatch: typeof notificationDispatch;
