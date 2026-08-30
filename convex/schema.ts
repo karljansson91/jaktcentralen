@@ -1,5 +1,13 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  followUpResolutionValidator,
+  followUpStatusValidator,
+  shooterPositionValidator,
+  shotReportActivityValidator,
+  shotReportResultValidator,
+  shotReportStatusValidator,
+} from "./shotReportValidators";
 
 const messageBaseFields = {
   eventId: v.id("events"),
@@ -200,6 +208,48 @@ export default defineSchema({
     .index("by_eventId_and_userId", ["eventId", "userId"])
     .index("by_sightingId_and_userId", ["sightingId", "userId"]),
 
+  shotReports: defineTable({
+    eventId: v.id("events"),
+    reporterUserId: v.id("users"),
+    operationKey: v.string(),
+    speciesId: v.string(),
+    speciesLabel: v.string(),
+    result: shotReportResultValidator,
+    shotLatitude: v.number(),
+    shotLongitude: v.number(),
+    shooterPosition: v.optional(shooterPositionValidator),
+    reportedAt: v.number(),
+    updatedAt: v.number(),
+    status: shotReportStatusValidator,
+    messageId: v.optional(v.id("messages")),
+  })
+    .index("by_eventId_and_reportedAt", ["eventId", "reportedAt"])
+    .index("by_eventId_and_reporterUserId_and_operationKey", [
+      "eventId",
+      "reporterUserId",
+      "operationKey",
+    ]),
+
+  followUps: defineTable({
+    eventId: v.id("events"),
+    reportId: v.id("shotReports"),
+    status: followUpStatusValidator,
+    assignedUserId: v.optional(v.id("users")),
+    instruction: v.optional(v.string()),
+    resolution: v.optional(followUpResolutionValidator),
+    resolutionNote: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_reportId", ["reportId"]),
+
+  shotReportActivities: defineTable(shotReportActivityValidator)
+    .index("by_eventId_and_timestamp", ["eventId", "timestamp"])
+    .index("by_reportId_and_timestamp", ["reportId", "timestamp"]),
+
   messages: defineTable(
     v.union(
       v.object({
@@ -234,6 +284,11 @@ export default defineSchema({
       v.object({
         ...messageBaseFields,
         type: v.literal("sat_cleared"),
+      }),
+      v.object({
+        ...messageBaseFields,
+        type: v.literal("shot_report"),
+        reportId: v.id("shotReports"),
       })
     )
   ).index("by_eventId", ["eventId"]),

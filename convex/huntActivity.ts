@@ -2,6 +2,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { getAnimalSightingLabel } from "../lib/animal-sightings";
+import { formatShotReportChatBody } from "../lib/shot-reports";
 
 const MAX_CHAT_IMAGE_COUNT = 4;
 const CHAT_IMAGE_CAPTION_MAX_LENGTH = 2000;
@@ -31,7 +32,8 @@ type HuntActivity =
       kind: "sat_activated";
       satId: Id<"areaSats">;
     }
-  | { kind: "sat_cleared" };
+  | { kind: "sat_cleared" }
+  | { kind: "shot_report"; reportId: Id<"shotReports"> };
 
 type RecordHuntActivityArgs = {
   activity: HuntActivity;
@@ -181,6 +183,25 @@ export async function recordHuntActivity(
       });
       markActorRead = false;
       break;
+
+    case "shot_report": {
+      const report = await ctx.db.get(activity.reportId);
+      if (
+        !report ||
+        report.eventId !== eventId ||
+        report.reporterUserId !== actor._id
+      ) {
+        throw new Error("Shot report not found");
+      }
+      messageId = await ctx.db.insert("messages", {
+        body: formatShotReportChatBody(report.speciesLabel, report.result),
+        eventId,
+        reportId: activity.reportId,
+        type: "shot_report",
+        userId: actor._id,
+      });
+      break;
+    }
   }
 
   if (markActorRead) {

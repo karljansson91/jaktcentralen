@@ -43,6 +43,30 @@ export default function EventLayout() {
         }}
       />
       <Stack.Screen
+        name="shot-report"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: '#FCF8F2' },
+          sheetAllowedDetents: [0.65, 0.92],
+          sheetInitialDetentIndex: 1,
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
+        name="shot-report-details"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: '#FCF8F2' },
+          sheetAllowedDetents: [0.72, 0.96],
+          sheetInitialDetentIndex: 1,
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
+        }}
+      />
+      <Stack.Screen
         name="wind-direction"
         options={{
           presentation: 'formSheet',

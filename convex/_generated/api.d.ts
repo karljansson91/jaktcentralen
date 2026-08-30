@@ -30,6 +30,8 @@ import type * as notificationModel from "../notificationModel.js";
 import type * as notifications from "../notifications.js";
 import type * as positionTracking from "../positionTracking.js";
 import type * as positionTrails from "../positionTrails.js";
+import type * as shotReportValidators from "../shotReportValidators.js";
+import type * as shotReports from "../shotReports.js";
 import type * as users from "../users.js";
 
 import type {
@@ -61,6 +63,8 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   positionTracking: typeof positionTracking;
   positionTrails: typeof positionTrails;
+  shotReportValidators: typeof shotReportValidators;
+  shotReports: typeof shotReports;
   users: typeof users;
 }>;
 

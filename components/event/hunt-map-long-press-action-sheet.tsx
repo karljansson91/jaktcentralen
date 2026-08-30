@@ -11,6 +11,7 @@ type HuntMapLongPressActionSheetProps = {
   onAddMeasurementPoint: (coordinate: LatLngPoint) => void;
   onMarkAnimalSighting: (coordinate: LatLngPoint) => void;
   onMeasureToPoint: (coordinate: LatLngPoint) => void;
+  onReportShot: (coordinate: LatLngPoint) => void;
   onSelectSat: (satId: string) => void;
   satOptions: { id: string; name: string }[];
 };
@@ -50,6 +51,7 @@ export function HuntMapLongPressActionSheet({
   onAddMeasurementPoint,
   onMarkAnimalSighting,
   onMeasureToPoint,
+  onReportShot,
   onSelectSat,
   satOptions,
 }: HuntMapLongPressActionSheetProps) {
@@ -83,6 +85,12 @@ export function HuntMapLongPressActionSheet({
             label="Lägg till mätpunkt"
             subtitle="Bygg en lokal mätsträcka med flera punkter."
             onPress={() => onAddMeasurementPoint(coordinate)}
+          />
+          <ActionRow
+            icon="locate-outline"
+            label="Rapportera skott"
+            subtitle="Välj vilt och resultat. Plats och tid sparas automatiskt."
+            onPress={() => onReportShot(coordinate)}
           />
           <ActionRow
             icon="binoculars-outline"

@@ -87,6 +87,13 @@ export default function MapPointActionsScreen() {
     );
   };
 
+  const handleReportShot = (point: LatLngPoint) => {
+    publishHuntMapLongPressAction({ point, type: 'clearPoint' });
+    replace(
+      `/event/${eventId}/shot-report?latitude=${point.latitude}&longitude=${point.longitude}`
+    );
+  };
+
   const handleSelectSat = (satId: string) => {
     if (coordinate) {
       publishHuntMapLongPressAction({ point: coordinate, type: 'clearPoint' });
@@ -101,6 +108,7 @@ export default function MapPointActionsScreen() {
       onAddMeasurementPoint={handleAddMeasurementPoint}
       onMarkAnimalSighting={handleMarkAnimalSighting}
       onMeasureToPoint={handleMeasureToPoint}
+      onReportShot={handleReportShot}
       onSelectSat={handleSelectSat}
       satOptions={parsedSatOptions}
     />

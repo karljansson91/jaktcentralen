@@ -13,6 +13,9 @@ export async function deleteEventCascade(
     trails,
     sightings,
     sightingAcknowledgements,
+    shotReports,
+    followUps,
+    shotReportActivities,
     messages,
   ] =
     await Promise.all([
@@ -45,6 +48,18 @@ export async function deleteEventCascade(
         .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
         .collect(),
       ctx.db
+        .query("shotReports")
+        .withIndex("by_eventId_and_reportedAt", (q) => q.eq("eventId", eventId))
+        .collect(),
+      ctx.db
+        .query("followUps")
+        .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+        .collect(),
+      ctx.db
+        .query("shotReportActivities")
+        .withIndex("by_eventId_and_timestamp", (q) => q.eq("eventId", eventId))
+        .collect(),
+      ctx.db
         .query("messages")
         .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
         .collect(),
@@ -70,6 +85,15 @@ export async function deleteEventCascade(
   }
   for (const acknowledgement of sightingAcknowledgements) {
     await ctx.db.delete(acknowledgement._id);
+  }
+  for (const activity of shotReportActivities) {
+    await ctx.db.delete(activity._id);
+  }
+  for (const followUp of followUps) {
+    await ctx.db.delete(followUp._id);
+  }
+  for (const report of shotReports) {
+    await ctx.db.delete(report._id);
   }
   for (const message of messages) {
     await ctx.db.delete(message._id);

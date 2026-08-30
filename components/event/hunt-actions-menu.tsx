@@ -34,7 +34,8 @@ export function HuntActionsMenu({ currentUserId, event, eventId }: HuntActionsMe
   const leaveEvent = useMutation(api.eventMembers.leave);
   const endEvent = useMutation(api.events.end);
   const isCreator = event.creatorId === currentUserId;
-  const isEnded = getEventLifecycle(event, currentTime) === 'ended';
+  const lifecycle = getEventLifecycle(event, currentTime);
+  const isEnded = lifecycle === 'ended';
   const destructiveTitle = isCreator ? 'Avsluta jakt' : 'Lämna jakt';
 
   const handleLeaveEvent = async () => {
@@ -104,7 +105,7 @@ export function HuntActionsMenu({ currentUserId, event, eventId }: HuntActionsMe
       title: 'Ändra kartvy',
     },
     {
-      attributes: { disabled: isSubmitting, hidden: !isEnded },
+      attributes: { disabled: isSubmitting, hidden: lifecycle === 'upcoming' },
       id: ACTION_TIMELINE,
       image: 'chart.line.uptrend.xyaxis',
       title: 'Jakt tidslinje',

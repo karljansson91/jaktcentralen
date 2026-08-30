@@ -1,14 +1,14 @@
 import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AnimalSightingLayers } from '@/components/event/animal-sighting-layers';
+import { ShotReportActivityList } from '@/components/event/shot-report-activity-list';
+import { ShotReportLayers } from '@/components/event/shot-report-layers';
 import { GlassSurface, GlassTopNav } from '@/components/glass';
 import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { useCurrentTime } from '@/hooks/use-current-time';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
-import { getEventLifecycle } from '@/lib/event-lifecycle';
 import { getMemberInitials } from '@/lib/event-formatting';
 import { APP_COLORS } from '@/lib/theme';
 import { Slider } from '@expo/ui/community/slider';
@@ -24,7 +24,7 @@ import {
 import { useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ElementRef, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const REPLAY_COLORS = ['#398048', '#D7832F', '#3D6FB6', '#8B5A9F', '#A33D3D', '#5B7C2A'];
@@ -86,10 +86,9 @@ function buildPointShape(group: ReplayGroup, point: ReplayPoint) {
 
 export default function EventTimelineScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const { back } = useRouter();
+  const { back, push } = useRouter();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<ElementRef<typeof Camera>>(null);
-  const currentTime = useCurrentTime();
   const { hillshadeVisible, mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
 
@@ -110,6 +109,14 @@ export default function EventTimelineScreen() {
   );
   const animalSightings = useQuery(
     api.animalSightings.listForReplay,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
+  const shotReports = useQuery(
+    api.shotReports.listMapReports,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
+  const shotActivities = useQuery(
+    api.shotReports.listTimeline,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
@@ -144,13 +151,15 @@ export default function EventTimelineScreen() {
   })();
 
   const timeline = (() => {
-    if (!replay || !animalSightings) return null;
+    if (!replay || !animalSightings || !shotReports || !shotActivities) return null;
 
     const sorted = Array.from(replay).sort((a, b) => a.timestamp - b.timestamp);
     const sortedSightings = Array.from(animalSightings).sort((a, b) => a.timestamp - b.timestamp);
     const timestamps = [
       ...sorted.map((point) => point.timestamp),
       ...sortedSightings.map((sighting) => sighting.timestamp),
+      ...shotReports.map((report) => report.reportedAt),
+      ...shotActivities.map((activity) => activity.timestamp),
     ];
     const groups = new Map<string, ReplayGroup>();
 
@@ -178,6 +187,9 @@ export default function EventTimelineScreen() {
       maxTimestamp: timestamps.length > 0 ? Math.max(...timestamps) : null,
       minTimestamp: timestamps.length > 0 ? Math.min(...timestamps) : null,
       pointCount: sorted.length,
+      reportCount: shotReports.length,
+      reports: shotReports,
+      shotActivities,
       sightingCount: sortedSightings.length,
       sightings: sortedSightings,
     };
@@ -213,12 +225,26 @@ export default function EventTimelineScreen() {
     return timeline.sightings.filter((sighting) => sighting.timestamp <= selectedReplayTimestamp);
   })();
 
+  const visibleShotReports = (() => {
+    if (!timeline || selectedReplayTimestamp == null) return [];
+    return timeline.reports.filter((report) => report.reportedAt <= selectedReplayTimestamp);
+  })();
+
+  const visibleShotActivities = (() => {
+    if (!timeline || selectedReplayTimestamp == null) return [];
+    return timeline.shotActivities.filter(
+      (activity) => activity.timestamp <= selectedReplayTimestamp
+    );
+  })();
+
   if (
     event === undefined ||
     area === undefined ||
     areaFeatures === undefined ||
     replay === undefined ||
-    animalSightings === undefined
+    animalSightings === undefined ||
+    shotReports === undefined ||
+    shotActivities === undefined
   ) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
@@ -235,26 +261,9 @@ export default function EventTimelineScreen() {
     );
   }
 
-  if (getEventLifecycle(event, currentTime) !== 'ended') {
-    return (
-      <View className="flex-1 bg-background">
-        <View
-          pointerEvents="box-none"
-          className="absolute left-4 right-4 z-10"
-          style={{ top: Math.max(insets.top, 8) + 8 }}
-        >
-          <GlassTopNav appearance="screen" title="Jakt tidslinje" onBack={() => back()} />
-        </View>
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-center text-base text-muted-foreground">
-            Tidslinjen visas när jakten är avslutad.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  const hasReplay = timeline !== null && (timeline.pointCount > 0 || timeline.sightingCount > 0);
+  const hasReplay =
+    timeline !== null &&
+    (timeline.pointCount > 0 || timeline.sightingCount > 0 || timeline.reportCount > 0);
   const minTimestamp = timeline?.minTimestamp ?? 0;
   const maxTimestamp = timeline?.maxTimestamp ?? minTimestamp;
   const canScrub = hasReplay && maxTimestamp > minTimestamp;
@@ -360,6 +369,13 @@ export default function EventTimelineScreen() {
           idPrefix="timeline"
           sightings={visibleSightings}
         />
+        <ShotReportLayers
+          idPrefix="timeline"
+          reports={visibleShotReports}
+          onPressReport={(report) =>
+            push(`/event/${eventId}/shot-report-details?reportId=${report._id}`)
+          }
+        />
       </MapView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 top-0">
@@ -399,7 +415,8 @@ export default function EventTimelineScreen() {
               </View>
               <View className="rounded-full bg-primary/10 px-3 py-1.5">
                 <Text className="text-xs font-semibold text-primary">
-                  {visibleGroups.length} jägare · {visibleSightings.length} obs
+                  {visibleGroups.length} jägare · {visibleSightings.length} obs ·{' '}
+                  {visibleShotReports.length} skott
                 </Text>
               </View>
             </View>
@@ -418,7 +435,7 @@ export default function EventTimelineScreen() {
               />
             ) : (
               <Text className="text-sm leading-5 text-muted-foreground">
-                Det finns inga sparade positioner eller observationer för den här jakten ännu.
+                Det finns inga sparade positioner, observationer eller skott för den här jakten ännu.
               </Text>
             )}
 
@@ -439,6 +456,19 @@ export default function EventTimelineScreen() {
                   </View>
                 ))}
               </View>
+            ) : null}
+
+            {visibleShotActivities.length > 0 ? (
+              <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled>
+                <ShotReportActivityList
+                  activities={visibleShotActivities}
+                  onPressReport={(selectedReportId) =>
+                    push(
+                      `/event/${eventId}/shot-report-details?reportId=${selectedReportId}`
+                    )
+                  }
+                />
+              </ScrollView>
             ) : null}
           </GlassSurface>
         </View>

@@ -16,6 +16,7 @@ import { MapScaleBar } from '@/components/map/map-scale-bar';
 import { MapTargetCross } from '@/components/map/map-target-cross';
 import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
+import { ShotReportLayers } from '@/components/event/shot-report-layers';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -153,6 +154,10 @@ export default function EventMapScreen() {
   );
   const animalSightings = useQuery(
     api.animalSightings.listVisible,
+    event ? { eventId: eventId as Id<'events'> } : 'skip'
+  );
+  const shotReports = useQuery(
+    api.shotReports.listMapReports,
     event ? { eventId: eventId as Id<'events'> } : 'skip'
   );
 
@@ -611,6 +616,7 @@ export default function EventMapScreen() {
     currentUser === undefined ||
     assignments === undefined ||
     animalSightings === undefined ||
+    shotReports === undefined ||
     cameraBounds === null
   ) {
     return (
@@ -729,6 +735,13 @@ export default function EventMapScreen() {
           idPrefix="event"
           sightings={visibleAnimalSightings}
           onPressSighting={handlePressSighting}
+        />
+        <ShotReportLayers
+          idPrefix="event"
+          reports={shotReports}
+          onPressReport={(report) =>
+            push(`/event/${eventId}/shot-report-details?reportId=${report._id}`)
+          }
         />
       </MapView>
 

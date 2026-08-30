@@ -133,6 +133,11 @@ function getChatSendErrorMessage(error: unknown) {
 
 function getEventMessageIcon(type: string): EventMessageIcon {
   switch (type) {
+    case 'shot_report':
+      return {
+        color: '#A33D3D',
+        icon: 'locate-outline'
+      };
     case 'member_in_position':
       return {
         color: APP_COLORS.primary,

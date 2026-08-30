@@ -1,5 +1,29 @@
 import * as Location from 'expo-location';
 
+export type LastKnownUserPosition = {
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+};
+
+export async function getLastKnownUserPosition(): Promise<LastKnownUserPosition | null> {
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== 'granted') {
+    return null;
+  }
+
+  const position = await Location.getLastKnownPositionAsync();
+  if (!position) {
+    return null;
+  }
+
+  return {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+    timestamp: position.timestamp,
+  };
+}
+
 export async function getCurrentUserCoordinate(): Promise<[number, number] | null> {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
