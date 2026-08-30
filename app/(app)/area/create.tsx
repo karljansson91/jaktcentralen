@@ -1,114 +1,47 @@
-import { Button, Input, Text } from '@/components/ui';
 import { LngLat, PolygonDrawer } from '@/components/PolygonDrawer';
-import { api } from '@/convex/_generated/api';
-import { useMutation } from 'convex/react';
+import {
+  clearAreaCreateDraft,
+  getAreaCreateDraft,
+  saveAreaCreateDraft,
+} from '@/lib/area-create-draft-store';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRef, useState } from 'react';
 
 export default function CreateAreaScreen() {
-  const { back, replace } = useRouter();
-  const insets = useSafeAreaInsets();
-  const [polygonPoints, setPolygonPoints] = useState<LngLat[] | null>(null);
-  const [name, setName] = useState('');
-  const topContentInset = Math.max(insets.top, 12);
-  const bottomContentInset = Math.max(insets.bottom, 24);
-
-  const createArea = useMutation(api.areas.create);
+  const { back, push } = useRouter();
+  const draftIdRef = useRef<string | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState<LngLat[]>([]);
 
   const handlePolygonComplete = (points: LngLat[]) => {
     setPolygonPoints(points);
+    const currentDraftId = draftIdRef.current ?? undefined;
+    const currentDraft = currentDraftId ? getAreaCreateDraft(currentDraftId) : undefined;
+    const draftId = saveAreaCreateDraft(
+      {
+        name: currentDraft?.name ?? '',
+        polygon: points,
+      },
+      currentDraftId
+    );
+    draftIdRef.current = draftId;
+    push(`/area/create-details?draftId=${draftId}`);
   };
 
   const handleCancel = () => {
-    if (polygonPoints) {
-      // Go back to drawing
-      setPolygonPoints(null);
-    } else {
-      back();
+    if (draftIdRef.current) {
+      clearAreaCreateDraft(draftIdRef.current);
     }
+    back();
   };
 
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      Alert.alert('Fel', 'Namn krävs');
-      return;
-    }
-    if (!polygonPoints || polygonPoints.length < 3) {
-      Alert.alert('Fel', 'Rita ett område först');
-      return;
-    }
-
-    const polygon = polygonPoints.map(([lng, lat]) => ({
-      latitude: lat,
-      longitude: lng,
-    }));
-
-    try {
-      const areaId = await createArea({
-        name: name.trim(),
-        polygon,
-      });
-      replace(`/area/${areaId}`);
-    } catch (e: any) {
-      Alert.alert('Fel', e.message ?? 'Kunde inte skapa område');
-    }
-  };
-
-  // Step 1: Draw polygon
-  if (!polygonPoints) {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <PolygonDrawer onComplete={handlePolygonComplete} onCancel={() => back()} />
-      </>
-    );
-  }
-
-  // Step 2: Enter details
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        className="flex-1 bg-background"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          className="flex-1 bg-background"
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingHorizontal: 24,
-            paddingTop: 24,
-          }}
-          contentInset={{ top: topContentInset, bottom: bottomContentInset }}
-          scrollIndicatorInsets={{ top: topContentInset, bottom: bottomContentInset }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text variant="h3" className="mb-2">
-            Namnge ditt område
-          </Text>
-          <Text className="mb-6 text-muted-foreground">{polygonPoints.length} punkter ritade</Text>
-
-          <Text className="mb-1 font-medium">Namn *</Text>
-          <Input
-            value={name}
-            onChangeText={setName}
-            placeholder="Områdesnamn"
-            className="mb-4"
-            autoFocus
-          />
-
-          <Button onPress={handleSubmit} className="mb-3">
-            <Text>Skapa område</Text>
-          </Button>
-
-          <Button variant="outline" onPress={handleCancel}>
-            <Text>Tillbaka till ritning</Text>
-          </Button>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <PolygonDrawer
+        initialPoints={polygonPoints.length >= 3 ? polygonPoints : undefined}
+        onComplete={handlePolygonComplete}
+        onCancel={handleCancel}
+      />
     </>
   );
 }

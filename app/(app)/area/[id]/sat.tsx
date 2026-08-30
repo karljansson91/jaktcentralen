@@ -34,7 +34,10 @@ export default function SatFormScreen() {
   const { back } = useRouter();
   const insets = useSafeAreaInsets();
   const preserveDraftRef = useRef(false);
-  const areaFeatures = useQuery(api.areaFeatures.listByArea, { areaId: id as Id<'areas'> });
+  const areaFeatures = useQuery(
+    api.areaFeatures.listByArea,
+    satId ? { areaId: id as Id<'areas'> } : 'skip'
+  );
   const existingSat = useQuery(
     api.areaSats.get,
     satId ? { satId: satId as Id<'areaSats'> } : 'skip'
@@ -196,25 +199,29 @@ export default function SatFormScreen() {
         <Input value={name} onChangeText={setNameOverride} placeholder="Namn på såten" />
       </View>
 
-      <View className="gap-2">
-        <Text className="font-medium">Område</Text>
-        <View className="rounded-2xl border border-border bg-card px-4 py-3">
-          <Text className="text-sm text-muted-foreground">
-            {activeDraft?.polygon
-              ? `${activeDraft.polygon.length} polygonpunkter`
-              : 'Ingen såt ritad'}
-          </Text>
-        </View>
-      </View>
+      {canDelete ? (
+        <>
+          <View className="gap-2">
+            <Text className="font-medium">Område</Text>
+            <View className="rounded-2xl border border-border bg-card px-4 py-3">
+              <Text className="text-sm text-muted-foreground">
+                {activeDraft?.polygon
+                  ? `${activeDraft.polygon.length} polygonpunkter`
+                  : 'Ingen såt ritad'}
+              </Text>
+            </View>
+          </View>
 
-      <View className="gap-2">
-        <Text className="font-medium">Pass i såten</Text>
-        <View className="rounded-2xl border border-border bg-card px-4 py-3">
-          <Text className="text-sm text-muted-foreground">
-            {`${passMarkers.length} pass i såten`}
-          </Text>
-        </View>
-      </View>
+          <View className="gap-2">
+            <Text className="font-medium">Pass i såten</Text>
+            <View className="rounded-2xl border border-border bg-card px-4 py-3">
+              <Text className="text-sm text-muted-foreground">
+                {`${passMarkers.length} pass i såten`}
+              </Text>
+            </View>
+          </View>
+        </>
+      ) : null}
 
       <View className="gap-3">
         <Text className="font-medium">Färg</Text>

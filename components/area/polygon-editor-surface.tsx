@@ -14,8 +14,7 @@ export function PolygonEditorSurface({ children, editor }: PolygonEditorSurfaceP
   return (
     <View
       style={{ flex: 1 }}
-      onStartShouldSetResponder={freehandEditor?.handleShouldSetResponder}
-      onMoveShouldSetResponder={freehandEditor?.handleShouldSetResponder}
+      onMoveShouldSetResponderCapture={freehandEditor?.handleShouldSetResponder}
       onResponderGrant={freehandEditor?.handleTouchStart}
       onResponderMove={freehandEditor?.handleTouchMove}
       onResponderRelease={freehandEditor?.handleTouchEnd}

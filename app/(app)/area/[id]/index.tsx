@@ -2,15 +2,21 @@ import { AreaFeatureLayers } from '@/components/AreaFeatureLayers';
 import { AreaSatLayers } from '@/components/AreaSatLayers';
 import { AreaActionsMenu } from '@/components/area/area-actions-menu';
 import { AreaUnavailableState } from '@/components/area/area-unavailable-state';
+import { FastighetSelectionDetails } from '@/components/area/fastighet-selection-details';
 import { MarkerPlacementOverlay } from '@/components/area/marker-placement-overlay';
 import {
+  AreaPolygonMethodControls,
   PolygonDrawingControls,
   PolygonModeControls,
 } from '@/components/area/polygon-drawing-controls';
 import { PolygonDrawingLayers } from '@/components/area/polygon-drawing-layers';
 import { PolygonEditorSurface } from '@/components/area/polygon-editor-surface';
 import { DraggableAreaPointMarkers } from '@/components/DraggableAreaPointMarkers';
-import { GlassFloatingButton, GlassTopNav } from '@/components/glass';
+import {
+  FastighetsindelningLayer,
+  SelectedFastighetLayer,
+} from '@/components/FastighetsindelningLayer';
+import { GlassFloatingButton, GlassIconButton, GlassTopNav } from '@/components/glass';
 import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLayer';
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { MapScaleBar } from '@/components/map/map-scale-bar';
@@ -20,7 +26,9 @@ import { Id } from '@/convex/_generated/dataModel';
 import { areaFeaturePointToLngLat, getAreaFeatureTargetKey } from '@/lib/area-features';
 import { buildAreaPolygonFeature, getAreaCameraBounds } from '@/lib/area-map';
 import { useAreaMarkerGestures } from '@/hooks/use-area-marker-gestures';
+import { useAreaPolygonEditor } from '@/hooks/use-area-polygon-editor';
 import { useMapCameraState } from '@/hooks/use-map-camera-state';
+import { useMapStylePicker } from '@/hooks/use-map-style-picker';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
 import { usePolygonEditor } from '@/hooks/use-polygon-editor';
 import { getDefaultAreaSatColor } from '@/lib/area-sats';
@@ -52,6 +60,7 @@ export default function ViewAreaScreen() {
     scale: mapScale,
   } = useMapCameraState(cameraRef);
   const { hillshadeVisible, mapStyleKey, mapStyleURL, topoSurfaceMode } = useMapStyleState();
+  const handleSelectMapStyle = useMapStylePicker();
   const [isDrawingSat, setIsDrawingSat] = useState(false);
   const [isEditingAreaPolygon, setIsEditingAreaPolygon] = useState(false);
   const [areaEditingError, setAreaEditingError] = useState<string | null>(null);
@@ -134,18 +143,20 @@ export default function ViewAreaScreen() {
       });
   };
 
-  const areaPolygonEditor = usePolygonEditor({
+  const areaPolygonEditor = useAreaPolygonEditor({
     initialMode: 'points',
     initialPoints: areaEditInitialPoints,
     mapRef,
     onComplete: handleCompleteAreaEditing,
   });
-
   const satDrawingColor = getDefaultAreaSatColor(areaSats?.length ?? 0);
   const areaDrawingColor = APP_COLORS.primary;
 
   const handleCompleteSatDrawing = (points: LngLat[]) => {
-    if (!area || !points.every((point) => isPointInPolygon(lngLatToLatLngPoint(point), area.polygon))) {
+    if (
+      !area ||
+      !points.every((point) => isPointInPolygon(lngLatToLatLngPoint(point), area.polygon))
+    ) {
       return;
     }
 
@@ -169,14 +180,14 @@ export default function ViewAreaScreen() {
   const activePolygonEditor = isDrawingSat
     ? satPolygonEditor
     : isEditingAreaPolygon
-      ? areaPolygonEditor
+      ? areaPolygonEditor.surfaceEditor
       : null;
   const isSatPolygonInsideArea = Boolean(
     area &&
-      satPolygonEditor.isReady &&
-      satPolygonEditor.polygonPoints.every((point) =>
-        isPointInPolygon(lngLatToLatLngPoint(point), area.polygon)
-      )
+    satPolygonEditor.isReady &&
+    satPolygonEditor.polygonPoints.every((point) =>
+      isPointInPolygon(lngLatToLatLngPoint(point), area.polygon)
+    )
   );
 
   const handleStartSatDrawing = () => {
@@ -200,8 +211,7 @@ export default function ViewAreaScreen() {
     satPolygonEditor.resetPolygonPoints([]);
     setIsDrawingSat(false);
     setAreaEditingError(null);
-    areaPolygonEditor.setMode('points');
-    areaPolygonEditor.resetPolygonPoints(area.polygon.map(areaFeaturePointToLngLat));
+    areaPolygonEditor.resetPolygonPoints(area.polygon.map(areaFeaturePointToLngLat), 'points');
     setIsEditingAreaPolygon(true);
   };
 
@@ -230,14 +240,35 @@ export default function ViewAreaScreen() {
     }
   };
 
-  const handleSaveAreaDrawing = () => {
-    if (!areaPolygonEditor.isReady || !areaPolygonEditor.hasChanges) {
+  const handleMapHeaderBack = () => {
+    if (isDrawingSat) {
+      handleCancelSatDrawing();
       return;
     }
-    areaPolygonEditor.handleDone();
+    if (isEditingAreaPolygon) {
+      handleCancelAreaDrawing();
+      return;
+    }
+    if (isPlacingMarker) {
+      cancelMarkerPlacement();
+      return;
+    }
+    back();
   };
 
   const renderAreaActionsMenu = () => {
+    if (isEditingPolygon) {
+      return (
+        <GlassIconButton
+          icon="map-outline"
+          iconSize={21}
+          accessibilityLabel="Ändra kartvy"
+          onPress={handleSelectMapStyle}
+          surfaceClassName="size-11"
+        />
+      );
+    }
+
     if (isPlacingMarker) {
       return null;
     }
@@ -292,6 +323,7 @@ export default function ViewAreaScreen() {
           ref={mapRef}
           style={{ flex: 1 }}
           styleURL={mapStyleURL}
+          gestureSettings={activePolygonEditor?.mapGestures.gestureSettings}
           scrollEnabled={activePolygonEditor?.mapGestures.scrollEnabled ?? true}
           zoomEnabled={activePolygonEditor?.mapGestures.zoomEnabled ?? true}
           rotateEnabled={activePolygonEditor?.mapGestures.rotateEnabled ?? true}
@@ -312,6 +344,14 @@ export default function ViewAreaScreen() {
           <LantmaterietHillshadeLayer
             belowLayerID="area-view-lantmateriet-topo-wetland-outline"
             visible={hillshadeVisible}
+          />
+
+          <FastighetsindelningLayer
+            visible={isEditingAreaPolygon && areaPolygonEditor.isSelectingBoundary}
+          />
+          <SelectedFastighetLayer
+            geometry={isEditingAreaPolygon ? areaPolygonEditor.boundaryGeometry : null}
+            idPrefix="area-edit-fastighet-selection"
           />
 
           {polygonGeoJSON && (
@@ -357,7 +397,7 @@ export default function ViewAreaScreen() {
               idPrefix="area-view-area-drawing"
               points={areaPolygonEditor.polygonPoints}
               previewPoints={areaPolygonEditor.freehandPreviewPoints}
-              showEditingHandles={areaPolygonEditor.mode === 'points'}
+              showEditingHandles={areaPolygonEditor.showEditingHandles}
             />
           ) : null}
 
@@ -388,8 +428,8 @@ export default function ViewAreaScreen() {
         <View className="absolute left-4 right-4" style={{ top: Math.max(insets.top, 8) + 8 }}>
           <GlassTopNav
             appearance="floating"
-            title={area.name}
-            onBack={isPlacingMarker ? cancelMarkerPlacement : () => back()}
+            title={isDrawingSat ? 'Ny såt' : isEditingAreaPolygon ? 'Rita om area' : area.name}
+            onBack={handleMapHeaderBack}
             renderRightAccessory={renderAreaActionsMenu}
           />
         </View>
@@ -411,18 +451,16 @@ export default function ViewAreaScreen() {
             bottomInset={Math.max(insets.bottom, 16) + 8}
             canContinue={satPolygonEditor.isReady && isSatPolygonInsideArea}
             canUndo={satPolygonEditor.canUndo}
-            continueLabel="Fortsätt"
+            continueLabel="Spara"
             errorText={
               satPolygonEditor.isReady && !isSatPolygonInsideArea
                 ? 'Såten måste ligga inom jaktmarken.'
                 : null
             }
-            onCancel={handleCancelSatDrawing}
             onContinue={satPolygonEditor.handleDone}
             onUndo={satPolygonEditor.handleUndo}
             pointCount={satPolygonEditor.pointCount}
             statusText={satPolygonEditor.statusText}
-            title="Ny såt"
           >
             <PolygonModeControls
               mode={satPolygonEditor.mode}
@@ -432,20 +470,27 @@ export default function ViewAreaScreen() {
         ) : isEditingAreaPolygon ? (
           <PolygonDrawingControls
             bottomInset={Math.max(insets.bottom, 16) + 8}
-            canContinue={areaPolygonEditor.isReady && areaPolygonEditor.hasChanges}
+            canContinue={areaPolygonEditor.canContinue}
             canUndo={areaPolygonEditor.canUndo}
-            continueLabel="Spara"
-            errorText={areaEditingError}
+            continueLabel={areaPolygonEditor.isSelectingBoundary ? 'Använd gräns' : 'Spara'}
+            errorText={areaPolygonEditor.errorText ?? areaEditingError}
             isSubmitting={isUpdatingAreaPolygon}
-            onCancel={handleCancelAreaDrawing}
-            onContinue={() => {
-              handleSaveAreaDrawing();
-            }}
+            onContinue={areaPolygonEditor.handleContinue}
             onUndo={handleUndoAreaPoint}
             pointCount={areaPolygonEditor.pointCount}
             statusText={areaPolygonEditor.statusText}
-            title="Rita om area"
-          />
+          >
+            <AreaPolygonMethodControls
+              method={areaPolygonEditor.method}
+              onMethodChange={(method) => {
+                setAreaEditingError(null);
+                areaPolygonEditor.setMethod(method);
+              }}
+            />
+            {areaPolygonEditor.boundarySelection ? (
+              <FastighetSelectionDetails selection={areaPolygonEditor.boundarySelection} />
+            ) : null}
+          </PolygonDrawingControls>
         ) : isPlacingMarker ? (
           <MarkerPlacementOverlay
             bottomInset={Math.max(insets.bottom, 16) + 8}

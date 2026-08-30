@@ -9,6 +9,17 @@ import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
+const ISSUE_SHEET_OPTIONS = {
+  presentation: 'formSheet' as const,
+  headerShown: false,
+  contentStyle: { backgroundColor: APP_COLORS.background },
+  sheetAllowedDetents: [0.86, 1],
+  sheetInitialDetentIndex: 0,
+  sheetGrabberVisible: true,
+  sheetExpandsWhenScrolledToEdge: true,
+  sheetCornerRadius: 28,
+};
+
 export default function AppLayout() {
   const { isLoaded, isSignedIn, signOut } = useAuth();
   const { back } = useRouter();
@@ -62,17 +73,6 @@ export default function AppLayout() {
     headerTintColor: APP_COLORS.text,
     contentStyle: { backgroundColor: APP_COLORS.background },
   });
-  const issueSheetOptions = {
-    presentation: 'formSheet' as const,
-    headerShown: false,
-    contentStyle: { backgroundColor: APP_COLORS.background },
-    sheetAllowedDetents: [0.86, 1],
-    sheetInitialDetentIndex: 0,
-    sheetGrabberVisible: true,
-    sheetExpandsWhenScrolledToEdge: true,
-    sheetCornerRadius: 28,
-  };
-
   useEffect(() => {
     if (isSignedIn && !hasSynced.current) {
       hasSynced.current = true;
@@ -117,8 +117,8 @@ export default function AppLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="profile" options={appHeaderOptions('', true)} />
       <Stack.Screen name="issues" options={appHeaderOptions('Feedback')} />
-      <Stack.Screen name="issues/[issueId]" options={issueSheetOptions} />
-      <Stack.Screen name="issue-report" options={issueSheetOptions} />
+      <Stack.Screen name="issues/[issueId]" options={ISSUE_SHEET_OPTIONS} />
+      <Stack.Screen name="issue-report" options={ISSUE_SHEET_OPTIONS} />
       <Stack.Screen
         name="profile/edit"
         options={{
@@ -151,6 +151,17 @@ export default function AppLayout() {
           presentation: 'fullScreenModal',
           headerShown: false,
           contentStyle: { backgroundColor: APP_COLORS.background },
+        }}
+      />
+      <Stack.Screen
+        name="area/create-details"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          contentStyle: { backgroundColor: APP_COLORS.background },
+          sheetAllowedDetents: 'fitToContents',
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 28,
         }}
       />
       <Stack.Screen

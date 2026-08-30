@@ -362,9 +362,14 @@ export function usePolygonEditor({
     isFreehandMode,
     isReady,
     mapGestures: {
+      gestureSettings: {
+        panEnabled: !isDragging && !isFreehandMode,
+        pinchPanEnabled: !isDragging,
+        pinchZoomEnabled: !isDragging,
+      },
       pitchEnabled: !isDragging,
       rotateEnabled: !isDragging,
-      scrollEnabled: !isDragging && !isFreehandMode,
+      scrollEnabled: !isDragging,
       zoomEnabled: !isDragging,
     },
     mode,
@@ -375,9 +380,7 @@ export function usePolygonEditor({
     setMode,
     statusText: isReady
       ? `${polygonPoints.length} punkter`
-      : isFreehandMode
-        ? 'Rita med fingret.'
-        : `${polygonPoints.length} av 3 punkter`,
+      : `${polygonPoints.length} av 3 punkter`,
   };
 }
 

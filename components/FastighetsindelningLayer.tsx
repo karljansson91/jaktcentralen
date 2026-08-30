@@ -4,8 +4,10 @@ import {
   FASTIGHETS_SOURCE_ID,
   FASTIGHETS_SOURCE_LAYER,
   FASTIGHETS_TILESET_URL,
+  buildFastighetGeoJSON,
+  type FastighetGeometry,
 } from '@/lib/fastighetsindelning';
-import { FillLayer, LineLayer, VectorSource } from '@rnmapbox/maps';
+import { FillLayer, LineLayer, ShapeSource, VectorSource } from '@rnmapbox/maps';
 
 interface FastighetsindelningLayerProps {
   visible: boolean;
@@ -36,5 +38,30 @@ export function FastighetsindelningLayer({ visible }: FastighetsindelningLayerPr
         }}
       />
     </VectorSource>
+  );
+}
+
+interface SelectedFastighetLayerProps {
+  geometry: FastighetGeometry | null;
+  idPrefix: string;
+}
+
+export function SelectedFastighetLayer({ geometry, idPrefix }: SelectedFastighetLayerProps) {
+  if (!geometry) {
+    return null;
+  }
+
+  return (
+    <ShapeSource id={`${idPrefix}-source`} shape={buildFastighetGeoJSON(geometry)}>
+      <FillLayer
+        id={`${idPrefix}-fill`}
+        style={{ fillColor: 'rgba(245, 158, 11, 0.18)' }}
+        filter={['==', '$type', 'Polygon']}
+      />
+      <LineLayer
+        id={`${idPrefix}-line`}
+        style={{ lineColor: 'rgba(217, 119, 6, 0.72)', lineWidth: 1.6 }}
+      />
+    </ShapeSource>
   );
 }

@@ -13,6 +13,7 @@ import { LantmaterietHillshadeLayer } from '@/components/LantmaterietHillshadeLa
 import { LantmaterietTopoLayer } from '@/components/LantmaterietTopoLayer';
 import { LiveMemberPositionMarker } from '@/components/event/live-member-position-marker';
 import { MapScaleBar } from '@/components/map/map-scale-bar';
+import { MapTargetCross } from '@/components/map/map-target-cross';
 import { MeasurementPointMarkers } from '@/components/event/measurement-point-markers';
 import { ScentPlumeLayer } from '@/components/event/scent-plume-layer';
 import { Text } from '@/components/ui';
@@ -47,11 +48,11 @@ import { useMapCameraState } from '@/hooks/use-map-camera-state';
 import { useMapStyleState } from '@/hooks/use-map-style-url';
 import {
   Camera,
-  CircleLayer,
   FillLayer,
   LineLayer,
   LocationPuck,
   MapView,
+  MarkerView,
   ShapeSource,
 } from '@rnmapbox/maps';
 import { useMutation, useQuery } from 'convex/react';
@@ -294,21 +295,6 @@ export default function EventMapScreen() {
     eventId,
     members,
   });
-
-  const longPressPointGeoJSON: GeoJSON.Feature<GeoJSON.Point> | null = (() => {
-    if (!longPressActionPoint) {
-      return null;
-    }
-
-    return {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'Point',
-        coordinates: [longPressActionPoint.longitude, longPressActionPoint.latitude],
-      },
-    };
-  })();
 
   useEffect(() => {
     ownPositionSharingEnabledRef.current = isOwnPositionSharingEnabled;
@@ -715,26 +701,15 @@ export default function EventMapScreen() {
           />
         ) : null}
 
-        {longPressPointGeoJSON ? (
-          <ShapeSource id="event-long-press-point" shape={longPressPointGeoJSON}>
-            <CircleLayer
-              id="event-long-press-point-ring"
-              style={{
-                circleColor: '#ffffff',
-                circleOpacity: 0.86,
-                circleRadius: 14,
-                circleStrokeColor: APP_COLORS.primary,
-                circleStrokeWidth: 3,
-              }}
-            />
-            <CircleLayer
-              id="event-long-press-point-dot"
-              style={{
-                circleColor: APP_COLORS.primary,
-                circleRadius: 5,
-              }}
-            />
-          </ShapeSource>
+        {longPressActionPoint ? (
+          <MarkerView
+            coordinate={[longPressActionPoint.longitude, longPressActionPoint.latitude]}
+            anchor={{ x: 0.5, y: 0.5 }}
+            allowOverlap
+            allowOverlapWithPuck
+          >
+            <MapTargetCross accessibilityLabel="Markerad plats" />
+          </MarkerView>
         ) : null}
 
         {liveMemberMarkers?.map((marker) => (

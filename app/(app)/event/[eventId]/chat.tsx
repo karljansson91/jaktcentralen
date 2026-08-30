@@ -1,6 +1,11 @@
+import {
+  OutgoingMessageFlight,
+  SentMessageAnimation
+} from '@/components/event/sent-message-animation';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useOutgoingMessageFlight } from '@/hooks/use-outgoing-message-flight';
 import { withLoadingState } from '@/lib/async-state';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,11 +15,17 @@ import { File, UploadType } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ElementRef } from 'react';
-import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  TextInput,
+  View
+} from 'react-native';
 import {
   KeyboardChatScrollView,
   KeyboardStickyView,
-  useKeyboardState,
+  useKeyboardState
 } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,6 +42,7 @@ function scrollToLatestMessage(
     scrollViewRef.current?.scrollToEnd({ animated });
   });
 }
+
 const MIN_COMPOSER_BOTTOM_PADDING = 20;
 const COMPOSER_SCROLL_GAP = 12;
 const CHAT_SCROLL_BOTTOM_PADDING = 16;
@@ -68,7 +80,7 @@ type EventMessageIcon = {
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('sv-SE', {
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   });
 }
 
@@ -91,14 +103,16 @@ async function uploadChatImage(uploadUrl: string, image: PendingChatImage) {
     headers: { 'Content-Type': mimeType },
     httpMethod: 'POST',
     sessionType: 'foreground',
-    uploadType: UploadType.BINARY_CONTENT,
+    uploadType: UploadType.BINARY_CONTENT
   });
 
   if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
     throw new Error('Kunde inte ladda upp bilden.');
   }
 
-  const result = JSON.parse(uploadResponse.body) as { storageId: Id<'_storage'> };
+  const result = JSON.parse(uploadResponse.body) as {
+    storageId: Id<'_storage'>;
+  };
   return result.storageId;
 }
 
@@ -119,32 +133,32 @@ function getEventMessageIcon(type: string): EventMessageIcon {
     case 'animal_sighting':
       return {
         color: '#C98122',
-        icon: 'eye-outline',
+        icon: 'eye-outline'
       };
     case 'member_in_position':
       return {
         color: APP_COLORS.primary,
-        icon: 'checkmark-circle-outline',
+        icon: 'checkmark-circle-outline'
       };
     case 'member_left_position':
       return {
         color: APP_COLORS.textMuted,
-        icon: 'exit-outline',
+        icon: 'exit-outline'
       };
     case 'sat_activated':
       return {
         color: APP_COLORS.primary,
-        icon: 'map-outline',
+        icon: 'map-outline'
       };
     case 'sat_cleared':
       return {
         color: APP_COLORS.textMuted,
-        icon: 'map-outline',
+        icon: 'map-outline'
       };
     default:
       return {
         color: APP_COLORS.textMuted,
-        icon: 'information-circle-outline',
+        icon: 'information-circle-outline'
       };
   }
 }
@@ -152,7 +166,7 @@ function getEventMessageIcon(type: string): EventMessageIcon {
 function ChatImageGrid({
   images,
   isMine,
-  onImagePress,
+  onImagePress
 }: {
   images: ChatMessageImage[];
   isMine: boolean;
@@ -187,7 +201,7 @@ function ChatImageGrid({
           style={{
             aspectRatio: 4 / 3,
             backgroundColor: APP_COLORS.border,
-            width: '100%',
+            width: '100%'
           }}
         />
       </Pressable>
@@ -195,7 +209,10 @@ function ChatImageGrid({
   }
 
   return (
-    <View className="flex-row flex-wrap gap-2" style={{ width: CHAT_IMAGE_GRID_WIDTH }}>
+    <View
+      className="flex-row flex-wrap gap-2"
+      style={{ width: CHAT_IMAGE_GRID_WIDTH }}
+    >
       {images.map((image, index) => (
         <Pressable
           key={image.fileId}
@@ -211,7 +228,7 @@ function ChatImageGrid({
             style={{
               backgroundColor: APP_COLORS.border,
               height: '100%',
-              width: '100%',
+              width: '100%'
             }}
           />
         </Pressable>
@@ -221,10 +238,14 @@ function ChatImageGrid({
 }
 
 function ChatMessageRow({
+  animateOnSend,
+  concealForFlight,
   currentUserId,
   message,
-  onImagePress,
+  onImagePress
 }: {
+  animateOnSend: boolean;
+  concealForFlight: boolean;
   currentUserId?: Id<'users'>;
   message: ChatMessageItem;
   onImagePress: (message: ChatMessageItem, imageIndex: number) => void;
@@ -237,60 +258,68 @@ function ChatMessageRow({
   const hasBody = message.body.trim().length > 0;
 
   return (
-    <View
-      className={`max-w-[82%] rounded-[26px] ${
-        isImageMessage ? 'p-2' : 'px-4 py-3'
-      } ${isMine ? 'self-end bg-primary' : 'self-start bg-muted'}`}
-    >
-      {!isMine && (
-        <Text
-          className={`mb-1 text-xs font-semibold text-muted-foreground ${
-            isImageMessage ? 'px-2 pt-1' : ''
-          }`}
-        >
-          {message.user?.name ?? 'Okänd'}
-        </Text>
-      )}
-      {isImageMessage ? (
-        <View className="gap-2">
-          <ChatImageGrid
-            images={message.images ?? []}
-            isMine={isMine}
-            onImagePress={(imageIndex) => onImagePress(message, imageIndex)}
-          />
-          {hasBody ? (
+    <SentMessageAnimation active={animateOnSend}>
+      <View
+        className={`max-w-[82%] rounded-[26px] ${
+          isImageMessage ? 'p-2' : 'px-4 py-3'
+        } ${isMine ? 'self-end bg-primary' : 'self-start bg-muted'}`}
+        style={concealForFlight ? { opacity: 0 } : undefined}
+      >
+        {!isMine && (
+          <Text
+            className={`mb-1 text-xs font-semibold text-muted-foreground ${
+              isImageMessage ? 'px-2 pt-1' : ''
+            }`}
+          >
+            {message.user?.name ?? 'Okänd'}
+          </Text>
+        )}
+        {isImageMessage ? (
+          <View className="gap-2">
+            <ChatImageGrid
+              images={message.images ?? []}
+              isMine={isMine}
+              onImagePress={(imageIndex) => onImagePress(message, imageIndex)}
+            />
+            {hasBody ? (
+              <Text
+                className={`px-2 leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}
+              >
+                {message.body}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+        <View className="flex-row items-start gap-2">
+          {eventIcon ? (
+            <View
+              className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}
+            >
+              <Ionicons
+                name={eventIcon.icon}
+                size={15}
+                color={eventIcon.color}
+              />
+            </View>
+          ) : null}
+          {!isImageMessage ? (
             <Text
-              className={`px-2 leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}
+              className={`shrink leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}
             >
               {message.body}
             </Text>
           ) : null}
         </View>
-      ) : null}
-      <View className="flex-row items-start gap-2">
-        {eventIcon ? (
-          <View
-            className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}
-          >
-            <Ionicons name={eventIcon.icon} size={15} color={eventIcon.color} />
-          </View>
-        ) : null}
-        {!isImageMessage ? (
-          <Text
-            className={`shrink leading-5 ${isMine ? 'text-primary-foreground' : 'text-foreground'}`}
-          >
-            {message.body}
-          </Text>
-        ) : null}
+        <Text
+          className={`mt-1 text-right text-[11px] ${isImageMessage ? 'px-2' : ''} ${
+            isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'
+          }`}
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {formatTime(message._creationTime)}
+        </Text>
       </View>
-      <Text
-        className={`mt-1 text-right text-[11px] ${isImageMessage ? 'px-2' : ''} ${
-          isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'
-        }`}
-      >
-        {formatTime(message._creationTime)}
-      </Text>
-    </View>
+    </SentMessageAnimation>
   );
 }
 
@@ -301,7 +330,10 @@ export default function EventChatScreen() {
   }>();
   const { back, canGoBack, push, replace } = useRouter();
   const insets = useSafeAreaInsets();
-  const composerBottomPadding = Math.max(insets.bottom, MIN_COMPOSER_BOTTOM_PADDING);
+  const composerBottomPadding = Math.max(
+    insets.bottom,
+    MIN_COMPOSER_BOTTOM_PADDING
+  );
   const keyboardComposerOverlap = Math.max(
     0,
     composerBottomPadding - COMPOSER_KEYBOARD_BOTTOM_PADDING
@@ -309,11 +341,18 @@ export default function EventChatScreen() {
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scrollViewRef = useRef<ElementRef<typeof KeyboardChatScrollView>>(null);
   const composerRef = useRef<ElementRef<typeof TextInput>>(null);
+  const composerSurfaceRef = useRef<ElementRef<typeof View>>(null);
+  const animateNextMessageScrollRef = useRef(false);
   const [body, setBody] = useState('');
-  const [composerHeight, setComposerHeight] = useState(COMPOSER_KEYBOARD_OFFSET);
+  const [composerHeight, setComposerHeight] = useState(
+    COMPOSER_KEYBOARD_OFFSET
+  );
   const [pendingImages, setPendingImages] = useState<PendingChatImage[]>([]);
   const [isAddingImages, setIsAddingImages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [messageIdsToAnimate, setMessageIdsToAnimate] = useState<
+    Set<Id<'messages'>>
+  >(() => new Set());
   const sendMessage = useMutation(api.messages.send);
   const sendImageMessage = useMutation(api.messages.sendImage);
   const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
@@ -328,16 +367,17 @@ export default function EventChatScreen() {
     { initialNumItems: 30 }
   );
   const messages = [...results].reverse();
+  const {
+    beginFlight: beginOutgoingMessageFlight,
+    cancelFlight: cancelOutgoingMessageFlight,
+    confirmFlight: confirmOutgoingMessageFlight,
+    flight: outgoingMessageFlight,
+  } = useOutgoingMessageFlight(messages);
 
   useEffect(() => {
-    if (messages.length === 0) return;
-    scrollToLatestMessage(scrollViewRef);
-  }, [messages.length]);
-
-  useEffect(() => {
-    if (!keyboardVisible || messages.length === 0) return;
+    if (!keyboardVisible) return;
     scrollToLatestMessage(scrollViewRef, false);
-  }, [keyboardVisible, messages.length]);
+  }, [keyboardVisible]);
 
   useEffect(() => {
     if (focusComposer !== '1') return;
@@ -352,23 +392,32 @@ export default function EventChatScreen() {
   useEffect(() => {
     if (status === 'LoadingFirstPage') return;
 
-    void markMessagesRead({ eventId: eventId as Id<'events'> }).catch((error) => {
-      console.error('Failed to mark chat read:', error);
-    });
+    void markMessagesRead({ eventId: eventId as Id<'events'> }).catch(
+      (error) => {
+        console.error('Failed to mark chat read:', error);
+      }
+    );
   }, [eventId, markMessagesRead, messages.length, status]);
 
   const handlePickImages = async () => {
     const remainingSlots = MAX_CHAT_IMAGES - pendingImages.length;
     if (remainingSlots <= 0) {
-      Alert.alert('Max antal bilder', `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`);
+      Alert.alert(
+        'Max antal bilder',
+        `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`
+      );
       return;
     }
 
     setIsAddingImages(true);
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Behörighet krävs', 'Ge appen åtkomst till bilder för att skicka dem.');
+        Alert.alert(
+          'Behörighet krävs',
+          'Ge appen åtkomst till bilder för att skicka dem.'
+        );
         setIsAddingImages(false);
         return;
       }
@@ -379,7 +428,7 @@ export default function EventChatScreen() {
         preferredAssetRepresentationMode:
           ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
         quality: 0.78,
-        selectionLimit: remainingSlots,
+        selectionLimit: remainingSlots
       });
 
       if (result.canceled) {
@@ -388,13 +437,17 @@ export default function EventChatScreen() {
       }
 
       const pickedAt = Date.now();
-      const nextImages = result.assets.slice(0, remainingSlots).map((asset, index) => ({
-        id: `${asset.assetId ?? asset.uri}-${pickedAt}-${index}`,
-        mimeType: asset.mimeType,
-        uri: asset.uri,
-      }));
+      const nextImages = result.assets
+        .slice(0, remainingSlots)
+        .map((asset, index) => ({
+          id: `${asset.assetId ?? asset.uri}-${pickedAt}-${index}`,
+          mimeType: asset.mimeType,
+          uri: asset.uri
+        }));
 
-      setPendingImages((current) => [...current, ...nextImages].slice(0, MAX_CHAT_IMAGES));
+      setPendingImages((current) =>
+        [...current, ...nextImages].slice(0, MAX_CHAT_IMAGES)
+      );
     } catch (error) {
       Alert.alert(
         'Kunde inte lägga till bild',
@@ -408,7 +461,10 @@ export default function EventChatScreen() {
 
   const handleTakePhoto = async () => {
     if (pendingImages.length >= MAX_CHAT_IMAGES) {
-      Alert.alert('Max antal bilder', `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`);
+      Alert.alert(
+        'Max antal bilder',
+        `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`
+      );
       return;
     }
 
@@ -416,14 +472,17 @@ export default function EventChatScreen() {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Behörighet krävs', 'Ge appen åtkomst till kameran för att ta en bild.');
+        Alert.alert(
+          'Behörighet krävs',
+          'Ge appen åtkomst till kameran för att ta en bild.'
+        );
         setIsAddingImages(false);
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        quality: 0.78,
+        quality: 0.78
       });
 
       if (result.canceled || result.assets.length === 0) {
@@ -439,8 +498,8 @@ export default function EventChatScreen() {
           {
             id: `${asset.assetId ?? asset.uri}-${pickedAt}`,
             mimeType: asset.mimeType,
-            uri: asset.uri,
-          },
+            uri: asset.uri
+          }
         ].slice(0, MAX_CHAT_IMAGES)
       );
     } catch (error) {
@@ -458,25 +517,34 @@ export default function EventChatScreen() {
     if (isBusy) return;
 
     if (pendingImages.length >= MAX_CHAT_IMAGES) {
-      Alert.alert('Max antal bilder', `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`);
+      Alert.alert(
+        'Max antal bilder',
+        `Du kan lägga till max ${MAX_CHAT_IMAGES} bilder.`
+      );
       return;
     }
 
     Alert.alert('Lägg till bild', undefined, [
       { text: 'Ta bild', onPress: () => void handleTakePhoto() },
       { text: 'Välj från bilder', onPress: () => void handlePickImages() },
-      { text: 'Avbryt', style: 'cancel' },
+      { text: 'Avbryt', style: 'cancel' }
     ]);
   };
 
   const handleRemovePendingImage = (imageId: string) => {
-    setPendingImages((current) => current.filter((image) => image.id !== imageId));
+    setPendingImages((current) =>
+      current.filter((image) => image.id !== imageId)
+    );
   };
 
   const handleOpenImage = (message: ChatMessageItem, imageIndex: number) => {
     push(
       `/event/${eventId}/chat-image-viewer?messageId=${message._id}&index=${imageIndex}` as Href
     );
+  };
+
+  const markMessageForSendAnimation = (messageId: Id<'messages'>) => {
+    setMessageIdsToAnimate((current) => new Set(current).add(messageId));
   };
 
   const handleSend = async () => {
@@ -494,20 +562,44 @@ export default function EventChatScreen() {
             })
           );
 
-          await sendImageMessage({
+          animateNextMessageScrollRef.current = true;
+          const messageId = await sendImageMessage({
             body: trimmed,
             eventId: eventId as Id<'events'>,
-            imageFileIds,
+            imageFileIds
           });
+          markMessageForSendAnimation(messageId);
           setPendingImages([]);
         } else {
-          await sendMessage({ eventId: eventId as Id<'events'>, body: trimmed });
+          const sentAt = Date.now();
+          const outgoingFlightId = await beginOutgoingMessageFlight({
+            body: trimmed,
+            composer: composerRef.current,
+            composerSurface: composerSurfaceRef.current,
+            previousLatestMessageId: messages.at(-1)?._id,
+            sentAt,
+            time: formatTime(sentAt),
+          });
+          animateNextMessageScrollRef.current = true;
+          const messageId = await sendMessage({
+            eventId: eventId as Id<'events'>,
+            body: trimmed
+          });
+          if (outgoingFlightId) {
+            confirmOutgoingMessageFlight(outgoingFlightId, messageId);
+          } else {
+            markMessageForSendAnimation(messageId);
+          }
         }
 
         setBody('');
-        scrollToLatestMessage(scrollViewRef);
       } catch (error) {
-        Alert.alert('Kunde inte skicka meddelandet', getChatSendErrorMessage(error));
+        animateNextMessageScrollRef.current = false;
+        cancelOutgoingMessageFlight();
+        Alert.alert(
+          'Kunde inte skicka meddelandet',
+          getChatSendErrorMessage(error)
+        );
       }
     });
   };
@@ -543,7 +635,7 @@ export default function EventChatScreen() {
           gap: 12,
           paddingHorizontal: 20,
           paddingBottom: CHAT_SCROLL_BOTTOM_PADDING,
-          paddingTop: 12,
+          paddingTop: 12
         }}
         keyboardDismissMode="interactive"
         keyboardLiftBehavior="always"
@@ -551,7 +643,9 @@ export default function EventChatScreen() {
         offset={composerHeight}
         onContentSizeChange={() => {
           if (messages.length > 0) {
-            scrollToLatestMessage(scrollViewRef, false);
+            const shouldAnimate = animateNextMessageScrollRef.current;
+            animateNextMessageScrollRef.current = false;
+            scrollToLatestMessage(scrollViewRef, shouldAnimate);
           }
         }}
         onLayout={() => {
@@ -591,20 +685,33 @@ export default function EventChatScreen() {
         ) : (
           <>
             <View style={{ flexGrow: 1 }} />
-            {messages.map((item) => (
-              <ChatMessageRow
-                key={item._id}
-                currentUserId={currentUser?._id}
-                message={item}
-                onImagePress={handleOpenImage}
-              />
-            ))}
+            {messages.map((item, index) => {
+              const isNewestOwnMatchingMessage =
+                index === messages.length - 1 &&
+                item._id !== outgoingMessageFlight?.previousLatestMessageId &&
+                item.userId === currentUser?._id &&
+                item.body === outgoingMessageFlight?.body;
+              const concealForFlight = outgoingMessageFlight?.messageId
+                ? item._id === outgoingMessageFlight.messageId
+                : isNewestOwnMatchingMessage;
+
+              return (
+                <ChatMessageRow
+                  key={`${item._id}:${messageIdsToAnimate.has(item._id) ? 'sent' : 'idle'}`}
+                  animateOnSend={messageIdsToAnimate.has(item._id)}
+                  concealForFlight={concealForFlight}
+                  currentUserId={currentUser?._id}
+                  message={item}
+                  onImagePress={handleOpenImage}
+                />
+              );
+            })}
             <View
               style={{
                 height:
                   COMPOSER_SCROLL_GAP +
                   CHAT_SCROLL_BOTTOM_PADDING +
-                  LAST_MESSAGE_COMPOSER_CLEARANCE,
+                  LAST_MESSAGE_COMPOSER_CLEARANCE
               }}
             />
           </>
@@ -613,12 +720,15 @@ export default function EventChatScreen() {
 
       <KeyboardStickyView offset={{ opened: keyboardComposerOverlap }}>
         <View
+          ref={composerSurfaceRef}
           className="shrink-0 border-t border-border bg-background px-5 pt-3"
           style={{ paddingBottom: composerBottomPadding }}
           onLayout={(event) => {
             const nextHeight = event.nativeEvent.layout.height;
             setComposerHeight((currentHeight) =>
-              Math.abs(currentHeight - nextHeight) > 1 ? nextHeight : currentHeight
+              Math.abs(currentHeight - nextHeight) > 1
+                ? nextHeight
+                : currentHeight
             );
           }}
           collapsable={false}
@@ -669,13 +779,24 @@ export default function EventChatScreen() {
               {isAddingImages ? (
                 <ActivityIndicator size="small" color={APP_COLORS.primary} />
               ) : (
-                <Ionicons name="image-outline" size={23} color={APP_COLORS.primary} />
+                <Ionicons
+                  name="image-outline"
+                  size={23}
+                  color={APP_COLORS.primary}
+                />
               )}
             </Pressable>
             <TextInput
               ref={composerRef}
               nativeID="event-chat-composer"
-              className="min-h-[44px] flex-1 rounded-[22px] bg-card px-4 py-3 text-base text-foreground"
+              className="min-h-[44px] flex-1 rounded-[22px] bg-card px-4 py-3 text-base"
+              style={{
+                color:
+                  outgoingMessageFlight &&
+                  body.trim() === outgoingMessageFlight.body
+                    ? 'transparent'
+                    : APP_COLORS.text
+              }}
               placeholder="Skriv ett meddelande…"
               placeholderTextColor={APP_COLORS.textMuted}
               value={body}
@@ -703,11 +824,27 @@ export default function EventChatScreen() {
                 <Ionicons
                   name="arrow-up"
                   size={24}
-                  color={canSend && !isBusy ? APP_COLORS.surface : APP_COLORS.textMuted}
+                  color={
+                    canSend && !isBusy
+                      ? APP_COLORS.surface
+                      : APP_COLORS.textMuted
+                  }
                 />
               )}
             </Pressable>
           </View>
+
+          {outgoingMessageFlight ? (
+            <OutgoingMessageFlight
+              key={outgoingMessageFlight.id}
+              body={outgoingMessageFlight.body}
+              left={outgoingMessageFlight.left}
+              maxBubbleWidth={outgoingMessageFlight.maxBubbleWidth}
+              time={outgoingMessageFlight.time}
+              top={outgoingMessageFlight.top}
+              travelWidth={outgoingMessageFlight.travelWidth}
+            />
+          ) : null}
         </View>
       </KeyboardStickyView>
     </View>
