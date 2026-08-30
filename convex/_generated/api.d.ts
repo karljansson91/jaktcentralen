@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as animalSightingModel from "../animalSightingModel.js";
 import type * as animalSightings from "../animalSightings.js";
 import type * as areaFeatures from "../areaFeatures.js";
 import type * as areaSats from "../areaSats.js";
@@ -40,7 +39,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  animalSightingModel: typeof animalSightingModel;
   animalSightings: typeof animalSightings;
   areaFeatures: typeof areaFeatures;
   areaSats: typeof areaSats;

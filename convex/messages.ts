@@ -131,9 +131,12 @@ export const list = query({
       results.page.map(async (msg) => {
         const type = msg.type ?? "text";
         const images = msg.type === "image" ? await buildMessageImages(ctx, msg.imageFileIds) : [];
+        const sighting =
+          msg.type === "animal_sighting" ? await ctx.db.get(msg.sightingId) : null;
 
         return {
           ...msg,
+          ...(sighting ? { animal: sighting.animal } : {}),
           images,
           type,
           user: await ctx.db.get(msg.userId),

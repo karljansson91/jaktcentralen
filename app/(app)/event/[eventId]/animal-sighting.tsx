@@ -1,3 +1,4 @@
+import { AnimalSightingIcon } from '@/components/event/animal-sighting-icon';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -20,6 +21,7 @@ function parseCoordinate(value: string | string[] | undefined) {
 }
 
 type AnimalSightingOptionTileProps = {
+  animal: AnimalSightingType;
   color: string;
   disabled: boolean;
   isSaving: boolean;
@@ -29,6 +31,7 @@ type AnimalSightingOptionTileProps = {
 };
 
 function AnimalSightingOptionTile({
+  animal,
   color,
   disabled,
   isSaving,
@@ -45,7 +48,7 @@ function AnimalSightingOptionTile({
       className="min-h-12 flex-row items-center gap-2 rounded-2xl border border-border bg-card px-3 active:bg-accent"
       style={{ opacity: disabled && !isSaving ? 0.54 : 1, width }}
     >
-      <View className="size-3 rounded-full" style={{ backgroundColor: color }} />
+      <AnimalSightingIcon animal={animal} color={color} size={27} />
       <Text className="min-w-0 flex-1 text-sm font-semibold" numberOfLines={1}>
         {label}
       </Text>
@@ -115,6 +118,7 @@ export default function AnimalSightingSheetScreen() {
           {ANIMAL_SIGHTING_OPTIONS.map((option) => (
             <AnimalSightingOptionTile
               key={option.value}
+              animal={option.value}
               color={option.color}
               disabled={savingAnimal !== null}
               isSaving={savingAnimal === option.value}

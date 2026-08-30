@@ -1,0 +1,110 @@
+diff --git a/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyle.swift b/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyle.swift
+index be9eadd..347c502 100644
+--- a/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyle.swift
++++ b/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyle.swift
+@@ -53,7 +53,7 @@ func fillLayer(layer: inout FillLayer, reactStyle:Dictionary<String, Any>, oldRe
+       self.setFillTranslateAnchor(&layer, styleValue:styleValue);
+     } else if (prop == "fillPattern") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setFillPattern(&layer, styleValue:styleValue) },
+@@ -63,7 +63,7 @@ func fillLayer(layer: inout FillLayer, reactStyle:Dictionary<String, Any>, oldRe
+       )
+     } else if (prop == "fillPatternCrossFade") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setFillPatternCrossFade(&layer, styleValue:styleValue) },
+@@ -142,7 +142,7 @@ func lineLayer(layer: inout LineLayer, reactStyle:Dictionary<String, Any>, oldRe
+       self.setLineDasharray(&layer, styleValue:styleValue);
+     } else if (prop == "linePattern") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setLinePattern(&layer, styleValue:styleValue) },
+@@ -162,7 +162,7 @@ func lineLayer(layer: inout LineLayer, reactStyle:Dictionary<String, Any>, oldRe
+       self.setLineCrossSlope(&layer, styleValue:styleValue);
+     } else if (prop == "linePatternCrossFade") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setLinePatternCrossFade(&layer, styleValue:styleValue) },
+@@ -231,7 +231,7 @@ func symbolLayer(layer: inout SymbolLayer, reactStyle:Dictionary<String, Any>, o
+       self.setIconTextFitPadding(&layer, styleValue:styleValue);
+     } else if (prop == "iconImage") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setIconImage(&layer, styleValue:styleValue) },
+@@ -367,7 +367,7 @@ func symbolLayer(layer: inout SymbolLayer, reactStyle:Dictionary<String, Any>, o
+       self.setTextEmissiveStrengthTransition(&layer, styleValue:styleValue);
+     } else if (prop == "iconImageCrossFade") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setIconImageCrossFade(&layer, styleValue:styleValue) },
+@@ -534,7 +534,7 @@ func fillExtrusionLayer(layer: inout FillExtrusionLayer, reactStyle:Dictionary<S
+       self.setFillExtrusionTranslateAnchor(&layer, styleValue:styleValue);
+     } else if (prop == "fillExtrusionPattern") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setFillExtrusionPattern(&layer, styleValue:styleValue) },
+@@ -564,7 +564,7 @@ func fillExtrusionLayer(layer: inout FillExtrusionLayer, reactStyle:Dictionary<S
+       self.setFillExtrusionRoundedRoof(&layer, styleValue:styleValue);
+     } else if (prop == "fillExtrusionPatternCrossFade") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setFillExtrusionPatternCrossFade(&layer, styleValue:styleValue) },
+@@ -881,7 +881,7 @@ func backgroundLayer(layer: inout BackgroundLayer, reactStyle:Dictionary<String,
+       self.setBackgroundColorTransition(&layer, styleValue:styleValue);
+     } else if (prop == "backgroundPattern") {
+       styleValue.setImage(
+-        bridge: bridge!,
++        bridge: bridge,
+         style: style,
+         oldValue: oldReactStyle?[prop],
+         setImageOnLayer: { (_) in self.setBackgroundPattern(&layer, styleValue:styleValue) },
+diff --git a/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyleValue.swift b/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyleValue.swift
+index 4c0b688..272b70f 100644
+--- a/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyleValue.swift
++++ b/node_modules/@rnmapbox/maps/ios/RNMBX/RNMBXStyleValue.swift
+@@ -497,7 +497,7 @@ class RNMBXStyleValue {
+   }
+ 
+   func setImage(
+-    bridge: RCTBridge,
++    bridge: RCTBridge?,
+     style: Style,
+     oldValue: Any?,
+     setImageOnLayer: (_: RNMBXStyleValue) -> Void,
+@@ -521,6 +521,11 @@ class RNMBXStyleValue {
+         }
+       }
+ 
++      guard let bridge else {
++        Logger.log(level:.error, message: "Cannot fetch image without a React bridge")
++        return
++      }
++
+       RNMBXUtils.fetchImage(bridge, url:imageURI, scale:getImageScale(), callback:{ (error, image) in
+         if let image = image {
+           DispatchQueue.main.sync {

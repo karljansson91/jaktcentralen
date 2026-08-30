@@ -5,10 +5,7 @@ import { getAcceptedEventMembership } from "./eventAccess";
 import { isEventEnded } from "../lib/event-lifecycle";
 import { getCurrentUser } from "./helpers";
 import { recordHuntActivity } from "./huntActivity";
-import {
-  ANIMAL_SIGHTING_LABELS,
-  type AnimalSightingKind,
-} from "./animalSightingModel";
+import { getAnimalSightingLabel } from "../lib/animal-sightings";
 
 const animalValidator = v.union(
   v.literal("elk"),
@@ -28,7 +25,7 @@ async function attachUsers(ctx: QueryCtx, sightings: Doc<"animalSightings">[]) {
 
   return sightings.map((sighting) => ({
     ...sighting,
-    label: ANIMAL_SIGHTING_LABELS[sighting.animal],
+    label: getAnimalSightingLabel(sighting.animal),
     user: usersById.get(sighting.userId) ?? null,
   }));
 }

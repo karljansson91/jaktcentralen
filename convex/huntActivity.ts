@@ -1,7 +1,7 @@
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { ANIMAL_SIGHTING_LABELS } from "./animalSightingModel";
+import { getAnimalSightingLabel } from "../lib/animal-sightings";
 
 const MAX_CHAT_IMAGE_COUNT = 4;
 const CHAT_IMAGE_CAPTION_MAX_LENGTH = 2000;
@@ -126,7 +126,7 @@ export async function recordHuntActivity(
         throw new Error("Animal sighting not found");
       }
       messageId = await ctx.db.insert("messages", {
-        body: `Såg ${ANIMAL_SIGHTING_LABELS[sighting.animal].toLowerCase()} på kartan.`,
+        body: `Såg ${getAnimalSightingLabel(sighting.animal).toLowerCase()} på kartan.`,
         eventId,
         sightingId: activity.sightingId,
         type: "animal_sighting",

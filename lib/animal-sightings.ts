@@ -1,18 +1,27 @@
 import type { Id } from '@/convex/_generated/dataModel';
 
+const OTHER_ANIMAL_SIGHTING_OPTION = {
+  value: 'other',
+  label: 'Annat',
+  color: '#398048',
+  icon: 'animal-paw',
+} as const;
+
 export const ANIMAL_SIGHTING_OPTIONS = [
-  { value: 'elk', label: 'Älg', color: '#C98122' },
-  { value: 'deer', label: 'Rådjur', color: '#8A6A46' },
-  { value: 'boar', label: 'Vildsvin', color: '#4B5563' },
-  { value: 'fox', label: 'Räv', color: '#D24F27' },
-  { value: 'other', label: 'Annat', color: '#398048' },
+  { value: 'elk', label: 'Älg', color: '#C98122', icon: 'animal-elk' },
+  { value: 'deer', label: 'Rådjur', color: '#8A6A46', icon: 'animal-deer' },
+  { value: 'boar', label: 'Vildsvin', color: '#4B5563', icon: 'animal-boar' },
+  { value: 'fox', label: 'Räv', color: '#D24F27', icon: 'animal-fox' },
+  OTHER_ANIMAL_SIGHTING_OPTION,
 ] as const;
 
 export type AnimalSightingType = (typeof ANIMAL_SIGHTING_OPTIONS)[number]['value'];
+export type AnimalSightingIconName = (typeof ANIMAL_SIGHTING_OPTIONS)[number]['icon'];
+type AnimalSightingOption = (typeof ANIMAL_SIGHTING_OPTIONS)[number];
 
 export type AnimalSightingMapItem = {
   _id: Id<'animalSightings'>;
-  animal: AnimalSightingType;
+  animal: string;
   label?: string;
   latitude: number;
   longitude: number;
@@ -22,16 +31,24 @@ export type AnimalSightingMapItem = {
 
 const ANIMAL_SIGHTING_LIVE_WINDOW_MS = 30 * 60_000;
 
-const animalSightingOptionByValue = new Map(
+const animalSightingOptionByValue = new Map<string, AnimalSightingOption>(
   ANIMAL_SIGHTING_OPTIONS.map((option) => [option.value, option])
 );
 
-export function getAnimalSightingLabel(animal: AnimalSightingType) {
-  return animalSightingOptionByValue.get(animal)?.label ?? 'Observation';
+export function getAnimalSightingOption(animal: string) {
+  return animalSightingOptionByValue.get(animal) ?? OTHER_ANIMAL_SIGHTING_OPTION;
 }
 
-export function getAnimalSightingColor(animal: AnimalSightingType) {
-  return animalSightingOptionByValue.get(animal)?.color ?? '#398048';
+export function getAnimalSightingLabel(animal: string) {
+  return getAnimalSightingOption(animal).label;
+}
+
+export function getAnimalSightingColor(animal: string) {
+  return getAnimalSightingOption(animal).color;
+}
+
+export function getAnimalSightingIconName(animal: string) {
+  return getAnimalSightingOption(animal).icon;
 }
 
 function formatAnimalSightingAge(timestamp: number, currentTime: number) {

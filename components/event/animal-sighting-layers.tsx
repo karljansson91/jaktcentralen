@@ -2,11 +2,13 @@ import {
   AnimalSightingMapItem,
   formatAnimalSightingMapLabel,
   getAnimalSightingColor,
+  getAnimalSightingIconName,
   getAnimalSightingLabel,
 } from '@/lib/animal-sightings';
 import { APP_COLORS } from '@/lib/theme';
 import { CircleLayer, ShapeSource, SymbolLayer } from '@rnmapbox/maps';
 import type { ComponentProps } from 'react';
+import { AnimalSightingMapImages } from './animal-sighting-icon';
 
 type AnimalSightingLayersProps = {
   currentTime?: number;
@@ -21,7 +23,7 @@ type ShapeSourcePressEvent = Parameters<
 
 const animalSightingCircleStyle = {
   circleColor: ['get', 'color'] as const,
-  circleRadius: 11,
+  circleRadius: 15,
   circleStrokeColor: APP_COLORS.surface,
   circleStrokeWidth: 2.5,
 } satisfies NonNullable<ComponentProps<typeof CircleLayer>['style']>;
@@ -35,8 +37,16 @@ const animalSightingLabelStyle = {
   textHaloColor: APP_COLORS.surface,
   textHaloWidth: 1.2,
   textIgnorePlacement: true,
-  textOffset: [0, 1.25] as const,
+  textOffset: [0, 1.65] as const,
   textSize: 12,
+} satisfies NonNullable<ComponentProps<typeof SymbolLayer>['style']>;
+
+const animalSightingIconStyle = {
+  iconAllowOverlap: true,
+  iconColor: APP_COLORS.surface,
+  iconIgnorePlacement: true,
+  iconImage: ['get', 'icon'] as const,
+  iconSize: 0.16,
 } satisfies NonNullable<ComponentProps<typeof SymbolLayer>['style']>;
 
 function buildAnimalSightingShape(
@@ -50,6 +60,7 @@ function buildAnimalSightingShape(
       properties: {
         id: sighting._id,
         color: getAnimalSightingColor(sighting.animal),
+        icon: getAnimalSightingIconName(sighting.animal),
         label:
           currentTime == null
             ? sighting.label ?? getAnimalSightingLabel(sighting.animal)
@@ -90,16 +101,20 @@ export function AnimalSightingLayers({
     : undefined;
 
   return (
-    <ShapeSource
-      id={`${idPrefix}-animal-sightings`}
-      shape={buildAnimalSightingShape(sightings, currentTime)}
-      hitbox={{ width: 44, height: 44 }}
-      onPress={handlePress}>
-      <CircleLayer id={`${idPrefix}-animal-sighting-circle`} style={animalSightingCircleStyle} />
-      <SymbolLayer
-        id={`${idPrefix}-animal-sighting-label`}
-        style={animalSightingLabelStyle}
-      />
-    </ShapeSource>
+    <>
+      <AnimalSightingMapImages />
+      <ShapeSource
+        id={`${idPrefix}-animal-sightings`}
+        shape={buildAnimalSightingShape(sightings, currentTime)}
+        hitbox={{ width: 44, height: 44 }}
+        onPress={handlePress}>
+        <CircleLayer id={`${idPrefix}-animal-sighting-circle`} style={animalSightingCircleStyle} />
+        <SymbolLayer id={`${idPrefix}-animal-sighting-icon`} style={animalSightingIconStyle} />
+        <SymbolLayer
+          id={`${idPrefix}-animal-sighting-label`}
+          style={animalSightingLabelStyle}
+        />
+      </ShapeSource>
+    </>
   );
 }

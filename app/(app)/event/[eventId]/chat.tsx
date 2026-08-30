@@ -2,11 +2,13 @@ import {
   OutgoingMessageFlight,
   SentMessageAnimation
 } from '@/components/event/sent-message-animation';
+import { AnimalSightingIcon } from '@/components/event/animal-sighting-icon';
 import { Text } from '@/components/ui';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOutgoingMessageFlight } from '@/hooks/use-outgoing-message-flight';
 import { withLoadingState } from '@/lib/async-state';
+import { getAnimalSightingColor } from '@/lib/animal-sightings';
 import { APP_COLORS } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
@@ -65,6 +67,7 @@ type PendingChatImage = {
 type ChatMessageItem = {
   _creationTime: number;
   _id: Id<'messages'>;
+  animal?: string;
   body: string;
   images?: ChatMessageImage[];
   type?: string;
@@ -130,11 +133,6 @@ function getChatSendErrorMessage(error: unknown) {
 
 function getEventMessageIcon(type: string): EventMessageIcon {
   switch (type) {
-    case 'animal_sighting':
-      return {
-        color: '#C98122',
-        icon: 'eye-outline'
-      };
     case 'member_in_position':
       return {
         color: APP_COLORS.primary,
@@ -254,7 +252,11 @@ function ChatMessageRow({
   const isImageMessage = messageType === 'image';
   const isSystemMessage = messageType !== 'text' && !isImageMessage;
   const isMine = message.userId === currentUserId;
-  const eventIcon = isSystemMessage ? getEventMessageIcon(messageType) : null;
+  const isAnimalSightingMessage = messageType === 'animal_sighting';
+  const eventIcon = isSystemMessage && !isAnimalSightingMessage
+    ? getEventMessageIcon(messageType)
+    : null;
+  const sightingAnimal = message.animal ?? 'other';
   const hasBody = message.body.trim().length > 0;
 
   return (
@@ -291,7 +293,17 @@ function ChatMessageRow({
           </View>
         ) : null}
         <View className="flex-row items-start gap-2">
-          {eventIcon ? (
+          {isAnimalSightingMessage ? (
+            <View
+              className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}
+            >
+              <AnimalSightingIcon
+                animal={sightingAnimal}
+                color={getAnimalSightingColor(sightingAnimal)}
+                size={15}
+              />
+            </View>
+          ) : eventIcon ? (
             <View
               className={`mt-0.5 size-6 items-center justify-center rounded-full ${isMine ? 'bg-primary-foreground/90' : 'bg-background'}`}
             >

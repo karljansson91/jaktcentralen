@@ -85,7 +85,7 @@ export function HuntMapLongPressActionSheet({
             onPress={() => onAddMeasurementPoint(coordinate)}
           />
           <ActionRow
-            icon="eye-outline"
+            icon="binoculars-outline"
             label="Markera observation"
             subtitle="Välj djur och skicka observationen till jakten."
             onPress={() => onMarkAnimalSighting(coordinate)}

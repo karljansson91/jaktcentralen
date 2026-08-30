@@ -172,6 +172,10 @@ describe("hunt activity", () => {
 
     const state = await readEventState(t, seeded.eventId, seeded.membershipId);
     const sighting = await t.run((ctx) => ctx.db.get(sightingId));
+    const messages = await asUser.query(api.messages.list, {
+      eventId: seeded.eventId,
+      paginationOpts: { cursor: null, numItems: 20 },
+    });
     expect(state.messages[0]).toMatchObject({
       body: "Såg älg på kartan.",
       eventId: seeded.eventId,
@@ -180,6 +184,7 @@ describe("hunt activity", () => {
       userId: seeded.userId,
     });
     expect(sighting?.messageId).toBe(state.messages[0]._id);
+    expect(messages.page[0]).toMatchObject({ animal: "elk", sightingId });
     expect(state.membership?.lastReadMessageAt).toBe(
       state.messages[0]._creationTime
     );
